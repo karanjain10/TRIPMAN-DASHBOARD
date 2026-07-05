@@ -4797,6 +4797,56 @@
       z-index: 50;
     }
 
+    /* ── Shift Readings Compliance ─────────────────────────────────────── */
+    .src-filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      position: sticky;
+      top: 56px;
+      z-index: 50;
+    }
+    .src-stat-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .src-stat-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+      user-select: none;
+    }
+    .src-stat-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,58,92,.08); }
+    .src-stat-active { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(26,58,92,.12) !important; background: var(--accent-light) !important; }
+    .src-stat-icon { font-size: 22px; line-height: 1; }
+    .src-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 4px; }
+    .src-stat-value { font-size: 28px; font-weight: 700; font-family: var(--font-mono); line-height: 1; }
+    .src-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .src-table thead tr { background: var(--bg); border-bottom: 2px solid var(--border); -webkit-print-color-adjust: exact; }
+    .src-table thead th { padding: 10px 14px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); white-space: nowrap; }
+    .src-table tbody td { padding: 9px 14px; vertical-align: middle; }
+    .src-reading-cell { font-family: var(--font-mono); text-align: right; min-width: 90px; }
+    .src-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+    .src-pill-complete { background: #dcfce7; color: #16a34a; }
+    .src-pill-partial  { background: #fef9c3; color: #a16207; }
+    .src-pill-missing  { background: #fee2e2; color: #dc2626; }
+    .src-val-tip:hover { opacity: .75; }
+
     .dep-filter-field {
       display: flex;
       flex-direction: column;
@@ -5322,6 +5372,7 @@
         <button class="action-btn" onclick="openEqHealthPage()" style="height:30px;font-size:12px;">🔧 Equipment
           Health</button>
         <button class="action-btn" onclick="openDeploymentsPage()" style="height:30px;font-size:12px;">🚛 Deployments</button>
+        <button class="action-btn" id="compliance-btn" onclick="openCompliancePage()" style="height:30px;font-size:12px;display:none;">📋 Shift Compliance</button>
         <button class="action-btn" id="manual-trip-btn" onclick="openManualTripPage()"
           style="height:30px;font-size:12px;display:none;background:#1a3a5c;color:#fff;border-color:#1a3a5c;">✏ Manual
           Entry</button>
@@ -7484,6 +7535,96 @@
       </div>
     </div>
   </div>
+  <!-- ── COMPLIANCE PAGE ── -->
+  <div id="compliance-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeCompliancePage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">📋 Shift Readings Compliance</div>
+      <div class="topbar-user">
+        <button class="action-btn primary" onclick="srcExportCsv()" style="height:30px;font-size:12px;">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div style="padding:24px;max-width:1300px;margin:0 auto;">
+
+      <!-- FILTER BAR -->
+      <div class="src-filter-bar">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Date</div>
+            <input type="date" id="src-date" class="date-input" style="height:34px;" onchange="srcFetch()" />
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Shift</div>
+            <div class="dep-shift-pills" id="src-shift-pills">
+              <button class="dep-shift-pill active-all" data-shift="all" onclick="srcSetShift(this,'all')">All</button>
+              <button class="dep-shift-pill" data-shift="A" onclick="srcSetShift(this,'A')">A</button>
+              <button class="dep-shift-pill" data-shift="B" onclick="srcSetShift(this,'B')">B</button>
+              <button class="dep-shift-pill" data-shift="C" onclick="srcSetShift(this,'C')">C</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="dep-filter-label">Equipment</div>
+          <select id="src-eq-filter" class="dep-select" style="min-width:160px;" onchange="srcApplyFilters()">
+            <option value="">All Equipment</option>
+            <option value="__tipper">Tippers</option>
+            <option value="__excavator">Excavators</option>
+            <option value="__other">Others</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SUMMARY STRIP -->
+      <div class="src-stat-strip">
+        <div class="src-stat-card" data-status="complete" onclick="srcClickStat('complete')">
+          <div class="src-stat-icon" style="color:#16a34a;">✅</div>
+          <div>
+            <div class="src-stat-label">Complete</div>
+            <div class="src-stat-value" id="src-stat-complete" style="color:#16a34a;">—</div>
+          </div>
+        </div>
+        <div class="src-stat-card" data-status="partial" onclick="srcClickStat('partial')">
+          <div class="src-stat-icon" style="color:#d97706;">⚠️</div>
+          <div>
+            <div class="src-stat-label">Partial</div>
+            <div class="src-stat-value" id="src-stat-partial" style="color:#d97706;">—</div>
+          </div>
+        </div>
+        <div class="src-stat-card" data-status="missing" onclick="srcClickStat('missing')">
+          <div class="src-stat-icon" style="color:#dc2626;">❌</div>
+          <div>
+            <div class="src-stat-label">Missing</div>
+            <div class="src-stat-value" id="src-stat-missing" style="color:#dc2626;">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN TABLE -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <table class="src-table">
+          <thead>
+            <tr>
+              <th>Equipment</th>
+              <th>Driver / Operator</th>
+              <th>Shift</th>
+              <th>KMR Opening</th>
+              <th>KMR Closing</th>
+              <th>HMR Opening</th>
+              <th>HMR Closing</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="src-table-body">
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">Select a date to load data</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+  <!-- ── END COMPLIANCE PAGE ── -->
 
   <!-- ── DEPLOYMENTS SECTION START ── -->
   <!-- DEPLOYMENTS PAGE -->
@@ -13449,6 +13590,13 @@
     function updateAdminUI() {
       const btn = document.getElementById('manual-trip-btn');
       if (btn) btn.style.display = (currentUser && currentUser.is_admin === true) ? 'flex' : 'none';
+      // Compliance page: visible to supervisor, admin, owner, superadmin
+      const compBtn = document.getElementById('compliance-btn');
+      if (compBtn) {
+        const role = currentUser && (currentUser.role || '');
+        const allowed = ['supervisor','admin','owner','superadmin'];
+        compBtn.style.display = (currentUser && (currentUser.is_admin || allowed.includes(role))) ? 'inline-flex' : 'none';
+      }
     }
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
@@ -17916,6 +18064,260 @@
       });
       obs.observe(appEl, { attributes: true, attributeFilter: ['style'] });
     })();
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SHIFT READINGS COMPLIANCE
+    // ─────────────────────────────────────────────────────────────────────────────
+    let _srcAllData       = [];   // raw deployment records from API
+    let _srcFiltered      = [];   // after all filters applied
+    let _srcStatusFilter  = '';   // '', 'complete', 'partial', 'missing'
+    let _srcCurrentShift  = 'all';
+
+    function openCompliancePage() {
+      const role = currentUser && (currentUser.role || '');
+      const allowed = ['supervisor','admin','owner','superadmin'];
+      if (!currentUser || (!currentUser.is_admin && !allowed.includes(role))) {
+        showToast('Access restricted to supervisors and admins'); return;
+      }
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('compliance-page').style.display = 'block';
+      // Default date to today
+      const dateEl = document.getElementById('src-date');
+      if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+      srcFetch();
+    }
+
+    function closeCompliancePage() {
+      document.getElementById('compliance-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    function srcSetShift(btn, shift) {
+      _srcCurrentShift = shift;
+      document.querySelectorAll('#src-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active', 'active-all'));
+      btn.classList.add(shift === 'all' ? 'active-all' : 'active');
+      srcApplyFilters();
+    }
+
+    function srcClickStat(status) {
+      _srcStatusFilter = (_srcStatusFilter === status) ? '' : status;
+      document.querySelectorAll('.src-stat-card').forEach(c => {
+        c.classList.toggle('src-stat-active', c.dataset.status === _srcStatusFilter);
+      });
+      srcRenderTable();
+    }
+
+    async function srcFetch() {
+      const date  = document.getElementById('src-date').value;
+      const eqType = document.getElementById('src-eq-filter').value;
+      const p = new URLSearchParams();
+      if (date) p.set('date', date);
+      const url = `${API}/deployments/summary?${p}`;
+      document.getElementById('src-table-body').innerHTML =
+        `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
+      try {
+        const res = await apiFetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const live    = Array.isArray(data.live)    ? data.live    : [];
+        const history = Array.isArray(data.history) ? data.history : [];
+        _srcAllData = [...live, ...history];
+        // Populate equipment filter dropdown
+        srcPopulateEqFilter();
+        srcApplyFilters();
+      } catch(e) {
+        document.getElementById('src-table-body').innerHTML =
+          `<tr><td colspan="9" style="text-align:center;padding:28px;color:#c0392b;">⚠ Could not load data. Check your connection.</td></tr>`;
+      }
+    }
+
+    function srcPopulateEqFilter() {
+      const types = [...new Set(_srcAllData.map(d => depFmtType(d.equipment_type || '')).filter(Boolean))].sort();
+      const sel = document.getElementById('src-eq-filter');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">All Equipment</option>' +
+        '<option value="__tipper">Tippers</option>' +
+        '<option value="__excavator">Excavators</option>' +
+        '<option value="__other">Others</option>';
+      if (prev) sel.value = prev;
+    }
+
+    function srcIsTipper(d) {
+      const t = (d.equipment_type || d.vehicle_type || '').toLowerCase();
+      return t.includes('tipper') || t.includes('truck') || t.includes('dumper');
+    }
+
+    function srcIsExcavator(d) {
+      const t = (d.equipment_type || d.vehicle_type || '').toLowerCase();
+      return t.includes('excavator') || t.includes('dozer') || t.includes('grader') || t.includes('drill');
+    }
+
+    function srcGetStatus(d) {
+      if (d.reading_status) return d.reading_status.toLowerCase();
+      // Derive from fields if status not set
+      const hasKmrO = d.kmr_opening_added;
+      const hasKmrC = d.kmr_closing_added;
+      const hasHmrO = d.hmr_opening_added;
+      const hasHmrC = d.hmr_closing_added;
+      const isTipper = srcIsTipper(d);
+      let filled = 0, total = 0;
+      if (isTipper) {
+        total += 2; // KMR open + close
+        if (hasKmrO) filled++;
+        if (hasKmrC) filled++;
+      }
+      total += 2; // HMR open + close for all
+      if (hasHmrO) filled++;
+      if (hasHmrC) filled++;
+      if (filled === 0) return 'missing';
+      if (filled === total) return 'complete';
+      return 'partial';
+    }
+
+    function srcGetEquipmentCode(d) {
+      return d.truck_number || d.equipment_code || d.vehicle_number ||
+        (d.equipment_id ? d.equipment_id.slice(-6).toUpperCase() : '—');
+    }
+
+    function srcGetPersonName(d) {
+      return d.driver_name || d.operator_name || d.worker_name || d.added_by || '—';
+    }
+
+    function srcApplyFilters() {
+      const shift  = _srcCurrentShift;
+      const eqType = document.getElementById('src-eq-filter').value;
+      _srcFiltered = _srcAllData.filter(d => {
+        if (shift && shift !== 'all' && (d.shift || '').toUpperCase() !== shift) return false;
+        if (eqType === '__tipper'    && !srcIsTipper(d))    return false;
+        if (eqType === '__excavator' && !srcIsExcavator(d)) return false;
+        if (eqType === '__other'     && (srcIsTipper(d) || srcIsExcavator(d))) return false;
+        return true;
+      });
+      srcUpdateStats();
+      srcRenderTable();
+    }
+
+    function srcUpdateStats() {
+      const counts = { complete: 0, partial: 0, missing: 0 };
+      _srcFiltered.forEach(d => { const s = srcGetStatus(d); if (counts[s] !== undefined) counts[s]++; });
+      document.getElementById('src-stat-complete').textContent = counts.complete;
+      document.getElementById('src-stat-partial').textContent  = counts.partial;
+      document.getElementById('src-stat-missing').textContent  = counts.missing;
+    }
+
+    function srcFmtVal(added, val) {
+      if (!added) return '<span style="color:var(--text-muted);">—</span>';
+      return `<span style="font-family:var(--font-mono);">${val !== undefined && val !== null ? val : '—'}</span>`;
+    }
+
+    function srcFmtValTip(added, val, ts, by) {
+      if (!added) return '<span style="color:var(--text-muted);">—</span>';
+      const display = (val !== undefined && val !== null) ? val : '—';
+      const tsStr   = ts ? new Date(ts).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '';
+      const tip = [tsStr, by ? `By: ${by}` : ''].filter(Boolean).join('  ·  ');
+      return `<span class="src-val-tip" title="${tip}" style="font-family:var(--font-mono);border-bottom:1px dashed var(--border-strong);cursor:default;">${display}</span>`;
+    }
+
+    function srcStatusPill(status) {
+      if (status === 'complete') return '<span class="src-pill src-pill-complete">Complete</span>';
+      if (status === 'partial')  return '<span class="src-pill src-pill-partial">Partial</span>';
+      return '<span class="src-pill src-pill-missing">Missing</span>';
+    }
+
+    const SRC_STATUS_ORDER = { missing: 0, partial: 1, complete: 2 };
+
+    function srcRenderTable() {
+      const tbody = document.getElementById('src-table-body');
+      const statusFilter = _srcStatusFilter;
+      let rows = _srcFiltered.slice();
+      if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>`;
+        return;
+      }
+
+      // Sort: missing → partial → complete, then equipment code ascending
+      rows.sort((a, b) => {
+        const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
+        const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
+        if (sa !== sb) return sa - sb;
+        return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      tbody.innerHTML = rows.map(d => {
+        const status = srcGetStatus(d);
+        const isTip  = srcIsTipper(d);
+        const rowBg  = status === 'complete' ? 'background:#f0fdf4;' :
+                       status === 'partial'  ? 'background:#fffbeb;' :
+                                              'background:#fff5f5;';
+        const kmrOpen  = isTip
+          ? srcFmtValTip(d.kmr_opening_added,  d.kmr_opening_value,  d.kmr_opening_timestamp,  d.added_by)
+          : '<span style="color:var(--text-muted);">—</span>';
+        const kmrClose = isTip
+          ? srcFmtValTip(d.kmr_closing_added,  d.kmr_closing_value,  d.kmr_closing_timestamp,  d.added_by)
+          : '<span style="color:var(--text-muted);">—</span>';
+        const hmrOpen  = srcFmtValTip(d.hmr_opening_added,  d.hmr_opening_value,  d.hmr_opening_timestamp,  d.added_by);
+        const hmrClose = srcFmtValTip(d.hmr_closing_added,  d.hmr_closing_value,  d.hmr_closing_timestamp,  d.added_by);
+        return `<tr style="${rowBg}border-bottom:1px solid var(--border);">
+          <td style="font-family:var(--font-mono);font-weight:600;">${srcGetEquipmentCode(d)}</td>
+          <td>${srcGetPersonName(d)}</td>
+          <td><span class="dep-shift-badge">${d.shift || '—'}</span></td>
+          <td class="src-reading-cell">${kmrOpen}</td>
+          <td class="src-reading-cell">${kmrClose}</td>
+          <td class="src-reading-cell">${hmrOpen}</td>
+          <td class="src-reading-cell">${hmrClose}</td>
+          <td>${srcStatusPill(status)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function srcExportCsv() {
+      const statusFilter = _srcStatusFilter;
+      let rows = _srcFiltered.slice();
+      if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
+      rows.sort((a, b) => {
+        const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
+        const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
+        if (sa !== sb) return sa - sb;
+        return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+      const date = document.getElementById('src-date').value || 'unknown';
+      const esc  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = [
+        `${currentCompanyName || 'Tripman'} — Shift Readings Compliance`,
+        `Date: ${date}  ·  Shift: ${_srcCurrentShift === 'all' ? 'All' : _srcCurrentShift}  ·  Generated: ${new Date().toLocaleString('en-IN')}`,
+        '',
+        'Equipment,Driver/Operator,Shift,KMR Opening,KMR Closing,HMR Opening,HMR Closing,Status,KMR Open Timestamp,KMR Open By,KMR Close Timestamp,KMR Close By,HMR Open Timestamp,HMR Open By,HMR Close Timestamp,HMR Close By',
+        ...rows.map(d => {
+          const isTip = srcIsTipper(d);
+          return [
+            esc(srcGetEquipmentCode(d)),
+            esc(srcGetPersonName(d)),
+            esc(d.shift || ''),
+            esc(isTip && d.kmr_opening_added ? d.kmr_opening_value : ''),
+            esc(isTip && d.kmr_closing_added ? d.kmr_closing_value : ''),
+            esc(d.hmr_opening_added ? d.hmr_opening_value : ''),
+            esc(d.hmr_closing_added ? d.hmr_closing_value : ''),
+            esc(srcGetStatus(d)),
+            esc(isTip ? (d.kmr_opening_timestamp || '') : ''),
+            esc(isTip ? (d.kmr_opening_added ? (d.added_by || '') : '') : ''),
+            esc(isTip ? (d.kmr_closing_timestamp || '') : ''),
+            esc(isTip ? (d.kmr_closing_added ? (d.added_by || '') : '') : ''),
+            esc(d.hmr_opening_timestamp || ''),
+            esc(d.hmr_opening_added ? (d.added_by || '') : ''),
+            esc(d.hmr_closing_timestamp || ''),
+            esc(d.hmr_closing_added ? (d.added_by || '') : ''),
+          ].join(',');
+        })
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Tripman_ShiftCompliance_${date}.csv`;
+      a.click();
+      showToast('CSV downloaded');
+    }
 
     /* ── AUTO-REFRESH SYSTEM END ── */
 
