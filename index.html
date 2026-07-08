@@ -17187,6 +17187,83 @@
       if (headingEl) headingEl.textContent = label;
       if (pulseEl)   pulseEl.style.display  = isLive ? 'inline-block' : 'none';
 
+      // Deduplicate: latest per truck+shift+date
+      const deduped = depGetLatestPerTruck(items);
+      document.getElementById('dep-live-count').textContent = deduped.length;
+
+      const grid = document.getElementById('dep-live-grid');
+      // Separate excavators and other types (tippers, dozers, etc.)
+      // If no excavators found in live data (e.g. filtered past shift, all completed),
+      // fall back to latest-per-excavator from history data so cards always render.
+      let excavators = deduped.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
+      const others   = deduped.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator');
+
+      if (!excavators.length) {
+        // Pull latest version per excavator truck_number from history
+        const histExcMap = new Map();
+        _depFilteredHist
+          .filter(d => (d.equipment_type || '').toLowerCase() === 'excavator')
+          .forEach(d => {
+            const key = d.truck_number;
+            const existing = histExcMap.get(key);
+            if (!existing || new Date(d.deployed_since) > new Date(existing.deployed_since)) {
+              histExcMap.set(key, d);
+            }
+          });
+        excavators = [...histExcMap.values()];
+      }
+
+      // Only show empty state if nothing found in live OR history
+      if (!excavators.length) {
+        const syncLbl = document.getElementById('dep-sync-label').textContent;
+        grid.innerHTML = `
+          <div style="grid-column:1/-1;padding:52px 24px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:12px;opacity:0.3;">🚛</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">
+              No deployments found</div>
+            <div style="font-size:12px;color:var(--text-muted);">${syncLbl}</div>
+          </div>`;
+        return;
+      }
+
+      // Build tipper lookup from the correct source:
+      // - If viewing today live → use _depLiveData (active deployments)
+      // - If viewing a past date/shift → use _depHistoryData for that same date+shift
+      //   so we show who was ACTUALLY assigned on that date/shift, not today's actives
+      const byTruckNum = {};
+      const byId       = {};
+      const dateVal  = document.getElementById('dep-filter-date').value;
+      const shiftVal = _depCurrentShift;
+      const today    = new Date().toISOString().split('T')[0];
+      const isLiveView = (!dateVal || dateVal === today) && shiftVal === 'all';
+
+      const tipperSource = isLiveView
+        ? _depLiveData.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator')
+        : depGetLatestPerTruck(_depHistoryData.filter(d => {
+            const dType = (d.equipment_type || '').toLowerCase();
+            if (dType === 'excavator') return false;
+            if (dateVal && d.date && d.date !== dateVal) return false;
+            if (shiftVal && shiftVal !== 'all' && d.shift !== shiftVal) return false;
+            return true;
+          }));
+
+      tipperSource.forEach(t => {
+        if (t.truck_number != null) byTruckNum[String(t.truck_number)] = t;
+        if (t._id          != null) byId[String(t._id)]                = t;
+        if (t.id           != null) byId[String(t.id)]                 = t;
+        if (t.vehicle_id   != null) byId[String(t.vehicle_id)]         = t;
+      });
+
+      // Resolve tippers for an excavator record.
+      // Tries (in order):
+      //   1. exc.tippers  – fully-embedded tipper objects from the API
+      //   2. exc.truck_ids – vehicle ObjectIDs resolved via _depVehicleIdMap → truck_number → deployment record
+      //   3. exc.truck_ids – direct truck_number or deployment _id lookup (fallback)
+      function resolveAssignedTippers(exc) {
+        // 1. Embedded tippers array
+        if (Array.isArray(exc.tippers) && exc.tippers.length) {
+          return exc.tippers;
+        }
         // 2. truck_ids: resolve vehicle ObjectID → truck_number → tipper deployment record
         if (Array.isArray(exc.truck_ids) && exc.truck_ids.length) {
           return exc.truck_ids
@@ -17202,6 +17279,7 @@
         }
         return [];
       }
+
 
       // Track tippers nested inside an excavator so we don't double-render
       const assignedTipper = new Set();
