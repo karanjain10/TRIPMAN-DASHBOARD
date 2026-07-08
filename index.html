@@ -7636,6 +7636,7 @@
       <div class="topbar-user">
         <span style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);" id="dep-sync-label"></span>
         <button class="action-btn" onclick="depRefresh()" style="height:30px;font-size:12px;">↻ Refresh</button>
+        <button id="dep-prev-toggle-btn" class="action-btn" onclick="depTogglePrevAssigned()" style="height:30px;font-size:12px;" title="Show/hide previously assigned tippers">👁 Show History</button>
         <button class="action-btn" onclick="depDownloadPdf()" style="height:30px;font-size:12px;background:var(--accent);color:#fff;border-color:var(--accent);">⬇ PDF</button>
       </div>
     </div>
@@ -16686,6 +16687,7 @@
     let _depTripCounts       = {};   // truck_number → trip count for current date+shift
     let _depDriverTripCounts = {};   // driver_name  → cumulative trip count across ALL trucks (current date+shift)
     let _depRawTrips         = [];   // raw trip records for current dep date+shift (for driver modal + heatmap)
+    let _depShowPrevAssigned = false; // toggle: show previously-assigned tippers section on cards
 
     // Equipment type → badge color  (built-in + overflow palette)
     const _DEP_TYPE_BUILT = {
@@ -17660,7 +17662,7 @@
           ${locRow}
           ${mineDevBlock}
           ${tippersBlock}
-          ${orphanedBlock}
+          ${_depShowPrevAssigned ? orphanedBlock : ''}
           ${editedFooter}
         </div>`;
       });
@@ -18036,6 +18038,19 @@
       document.getElementById('dep-results-loading').classList.toggle('visible', v);
     }
 
+    function depTogglePrevAssigned() {
+      _depShowPrevAssigned = !_depShowPrevAssigned;
+      const btn = document.getElementById('dep-prev-toggle-btn');
+      if (btn) {
+        btn.textContent  = _depShowPrevAssigned ? '👁 Hide History' : '👁 Show History';
+        btn.style.background    = _depShowPrevAssigned ? 'var(--accent)'  : '';
+        btn.style.color         = _depShowPrevAssigned ? '#fff'           : '';
+        btn.style.borderColor   = _depShowPrevAssigned ? 'var(--accent)'  : '';
+      }
+      // Re-render live cards with updated flag (no new API call needed)
+      depRenderLiveCards(_depFilteredLive);
+    }
+
     function depShowError() {
       document.getElementById('dep-error-banner').classList.add('visible');
       document.getElementById('dep-live-grid').innerHTML    = '';
@@ -18203,17 +18218,39 @@
 
         const assignedItems = isMineDevMode ? [] : pdfResolveTippers(exc);
 
+        // ── Per-excavator heatmap for PDF (same logic as live cards) ────────────────
+        // Compute effective trips per driver using global _depDriverTripCounts
+        const _pdfHmEffective = assignedItems.map(t => {
+          const drvName = (t.driver_name || '').trim();
+          return drvName && drvName !== '—' ? (_depDriverTripCounts[drvName] ?? 0) : 0;
+        });
+        const _pdfHmMax     = _pdfHmEffective.length ? Math.max(..._pdfHmEffective) : 0;
+        const _pdfHmMin     = _pdfHmEffective.length ? Math.min(..._pdfHmEffective) : 0;
+        const _pdfHmAllSame = _pdfHmEffective.length <= 1 || _pdfHmEffective.every(v => v === _pdfHmEffective[0]);
+
         const tippersHtml = assignedItems.length ? `
           <div style="margin-top:10px;padding-top:8px;border-top:1px solid #e2e0d8;">
             <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9b9890;margin-bottom:5px;">Tippers (${assignedItems.length})</div>
-            ${assignedItems.map(t => {
+            ${assignedItems.map((t, tIdx) => {
               const drvName = (t.driver_name || '').trim();
               const trips   = drvName && drvName !== '—' ? (_depDriverTripCounts[drvName] ?? 0) : 0;
-              const tripStyle = trips > 0 ? 'background:#eafaf1;color:#1e8449;' : 'background:#f0f0ee;color:#9b9890;';
-              return `<div style="display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:5px;background:#f5f4f0;border:1px solid #e2e0d8;margin-bottom:3px;">
+              // Heatmap row colour (only when 2+ tippers with different counts)
+              let hmBg = '#f5f4f0', hmBd = '#e2e0d8';
+              if (!_pdfHmAllSame) {
+                const eff = _pdfHmEffective[tIdx];
+                if      (eff >= _pdfHmMax) { hmBg = 'rgba(34,197,94,0.18)';  hmBd = 'rgba(34,197,94,0.45)';  }
+                else if (eff <= _pdfHmMin) { hmBg = 'rgba(239,68,68,0.18)';  hmBd = 'rgba(239,68,68,0.45)';  }
+                else                       { hmBg = 'rgba(234,179,8,0.18)';   hmBd = 'rgba(234,179,8,0.45)';  }
+              }
+              const tripColor = trips > 0
+                ? (!_pdfHmAllSame && _pdfHmEffective[tIdx] >= _pdfHmMax ? 'background:#1e8449;color:#fff;'
+                  : !_pdfHmAllSame && _pdfHmEffective[tIdx] <= _pdfHmMin ? 'background:#dc2626;color:#fff;'
+                  : 'background:#eafaf1;color:#1e8449;')
+                : 'background:#f0f0ee;color:#9b9890;';
+              return `<div style="display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:5px;background:${hmBg};border:1px solid ${hmBd};margin-bottom:3px;">
                 <span style="font-family:monospace;font-size:11px;font-weight:700;color:#1a3a5c;min-width:52px;">${t.truck_number || '—'}</span>
                 <span style="font-size:11px;color:#6b6860;flex:1;">${t.driver_name || '—'}</span>
-                <span style="font-family:monospace;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;${tripStyle}">${trips} trip${trips !== 1 ? 's' : ''}</span>
+                <span style="font-family:monospace;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;${tripColor}">${trips} trip${trips !== 1 ? 's' : ''}</span>
               </div>`;
             }).join('')}
           </div>` : '';
