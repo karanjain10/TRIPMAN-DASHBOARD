@@ -4797,6 +4797,56 @@
       z-index: 50;
     }
 
+    /* ── Shift Readings Compliance ─────────────────────────────────────── */
+    .src-filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      position: sticky;
+      top: 56px;
+      z-index: 50;
+    }
+    .src-stat-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .src-stat-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+      user-select: none;
+    }
+    .src-stat-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,58,92,.08); }
+    .src-stat-active { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(26,58,92,.12) !important; background: var(--accent-light) !important; }
+    .src-stat-icon { font-size: 22px; line-height: 1; }
+    .src-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 4px; }
+    .src-stat-value { font-size: 28px; font-weight: 700; font-family: var(--font-mono); line-height: 1; }
+    .src-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .src-table thead tr { background: var(--bg); border-bottom: 2px solid var(--border); -webkit-print-color-adjust: exact; }
+    .src-table thead th { padding: 10px 14px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); white-space: nowrap; }
+    .src-table tbody td { padding: 9px 14px; vertical-align: middle; }
+    .src-reading-cell { font-family: var(--font-mono); text-align: right; min-width: 90px; }
+    .src-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+    .src-pill-complete { background: #dcfce7; color: #16a34a; }
+    .src-pill-partial  { background: #fef9c3; color: #a16207; }
+    .src-pill-missing  { background: #fee2e2; color: #dc2626; }
+    .src-val-tip:hover { opacity: .75; }
+
     .dep-filter-field {
       display: flex;
       flex-direction: column;
@@ -5322,6 +5372,7 @@
         <button class="action-btn" onclick="openEqHealthPage()" style="height:30px;font-size:12px;">🔧 Equipment
           Health</button>
         <button class="action-btn" onclick="openDeploymentsPage()" style="height:30px;font-size:12px;">🚛 Deployments</button>
+        <button class="action-btn" id="compliance-btn" onclick="openCompliancePage()" style="height:30px;font-size:12px;display:none;">📋 Shift Compliance</button>
         <button class="action-btn" id="manual-trip-btn" onclick="openManualTripPage()"
           style="height:30px;font-size:12px;display:none;background:#1a3a5c;color:#fff;border-color:#1a3a5c;">✏ Manual
           Entry</button>
@@ -5553,6 +5604,7 @@
   <div id="excavator-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeReportToHub()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">🚜 Excavator Performance Report</div>
       <div class="topbar-user">
         <button class="action-btn primary" id="ex-download-all-btn" onclick="downloadAllExcavatorPdfs()"
@@ -5659,6 +5711,7 @@
   <div id="lf-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeLfPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">⚖ Load Factor Analysis</div>
       <div class="topbar-user">
         <span style="font-size:12px;color:var(--text-muted);" id="lf-date-label"></span>
@@ -5875,6 +5928,7 @@
   <div id="summary-page" style="display:none; min-height:100vh; background:var(--bg);">
     <div class="topbar">
       <button class="action-btn" onclick="closeSummaryReport()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">Summary Report</div>
       <div class="topbar-user">
         <span id="sr-date-label" style="font-size:12px; color:var(--text-muted);"></span>
@@ -6022,6 +6076,7 @@
   <div id="cutoff-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeCutoffPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">⏱ Cutoff Time Check</div>
       <div class="topbar-user" style="display:flex;align-items:center;gap:12px;">
         <span style="font-size:12px;color:var(--text-muted);" id="cutoff-date-label"></span>
@@ -6115,6 +6170,7 @@
   <div id="cutoff-distance-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeCutoffDistancePage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">📏 Cutoff: Haul Distance</div>
     </div>
     <div style="padding:24px; max-width:1200px; margin:0 auto;">
@@ -6166,6 +6222,7 @@
   <div id="handover-page" style="display:none; min-height:100vh; background:var(--bg);">
     <div class="topbar">
       <button class="action-btn" onclick="closeHandoverPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">📋 Shift Handover Report</div>
       <div class="topbar-user">
         <span style="font-size:12px;color:var(--text-muted);" id="handover-date-label"></span>
@@ -6308,6 +6365,7 @@
   <div id="reports-hub-page" style="display:none;">
     <div class="topbar">
       <button class="action-btn" onclick="closeReportsHub()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">📊 Reports</div>
     </div>
     <div style="padding:48px 24px;max-width:860px;margin:0 auto;">
@@ -6360,6 +6418,7 @@
   <div id="driver-report-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeReportToHub()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">📊 Driver Performance Report</div>
       <div class="topbar-user">
         <button class="action-btn primary" id="dr-download-all-btn" onclick="downloadAllDriverPdfs()"
@@ -6726,6 +6785,7 @@
   <div id="eq-health-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeEqHealthPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">🔧 Equipment Health</div>
       <div class="topbar-user" style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:12px;color:var(--text-muted);" id="eqh-date-label"></span>
@@ -6878,6 +6938,7 @@
   <div id="haul-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeHaulPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">📍 Haul Distance Manager</div>
       <div class="topbar-user">
         <button class="action-btn" onclick="haulLoad()" style="height:30px;font-size:12px;">↻ Refresh</button>
@@ -7016,6 +7077,7 @@
   <div id="manual-trip-page" style="display:none;min-height:100vh;background:var(--bg);">
     <div class="topbar">
       <button class="action-btn" onclick="closeManualTripPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">✏ Manual Trip Entry</div>
       <div class="topbar-user">
         <span style="font-size:12px;color:var(--text-muted);">Admin only</span>
@@ -7473,17 +7535,108 @@
       </div>
     </div>
   </div>
+  <!-- ── COMPLIANCE PAGE ── -->
+  <div id="compliance-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeCompliancePage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">📋 Shift Readings Compliance</div>
+      <div class="topbar-user">
+        <button class="action-btn primary" onclick="srcExportCsv()" style="height:30px;font-size:12px;">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div style="padding:24px;max-width:1300px;margin:0 auto;">
+
+      <!-- FILTER BAR -->
+      <div class="src-filter-bar">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Date</div>
+            <input type="date" id="src-date" class="date-input" style="height:34px;" onchange="srcFetch()" />
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Shift</div>
+            <div class="dep-shift-pills" id="src-shift-pills">
+              <button class="dep-shift-pill active-all" data-shift="all" onclick="srcSetShift(this,'all')">All</button>
+              <button class="dep-shift-pill" data-shift="A" onclick="srcSetShift(this,'A')">A</button>
+              <button class="dep-shift-pill" data-shift="B" onclick="srcSetShift(this,'B')">B</button>
+              <button class="dep-shift-pill" data-shift="C" onclick="srcSetShift(this,'C')">C</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="dep-filter-label">Equipment</div>
+          <select id="src-eq-filter" class="dep-select" style="min-width:160px;" onchange="srcApplyFilters()">
+            <option value="">All Equipment</option>
+            <option value="__tipper">Tippers</option>
+            <option value="__excavator">Excavators</option>
+            <option value="__other">Others</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- SUMMARY STRIP -->
+      <div class="src-stat-strip">
+        <div class="src-stat-card" data-status="complete" onclick="srcClickStat('complete')">
+          <div class="src-stat-icon" style="color:#16a34a;">✅</div>
+          <div>
+            <div class="src-stat-label">Complete</div>
+            <div class="src-stat-value" id="src-stat-complete" style="color:#16a34a;">—</div>
+          </div>
+        </div>
+        <div class="src-stat-card" data-status="partial" onclick="srcClickStat('partial')">
+          <div class="src-stat-icon" style="color:#d97706;">⚠️</div>
+          <div>
+            <div class="src-stat-label">Partial</div>
+            <div class="src-stat-value" id="src-stat-partial" style="color:#d97706;">—</div>
+          </div>
+        </div>
+        <div class="src-stat-card" data-status="missing" onclick="srcClickStat('missing')">
+          <div class="src-stat-icon" style="color:#dc2626;">❌</div>
+          <div>
+            <div class="src-stat-label">Missing</div>
+            <div class="src-stat-value" id="src-stat-missing" style="color:#dc2626;">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN TABLE -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <table class="src-table">
+          <thead>
+            <tr>
+              <th>Equipment</th>
+              <th>Driver / Operator</th>
+              <th>Shift</th>
+              <th>KMR Opening</th>
+              <th>KMR Closing</th>
+              <th>HMR Opening</th>
+              <th>HMR Closing</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="src-table-body">
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">Select a date to load data</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+  <!-- ── END COMPLIANCE PAGE ── -->
 
   <!-- ── DEPLOYMENTS SECTION START ── -->
   <!-- DEPLOYMENTS PAGE -->
   <div id="deployments-page">
     <div class="topbar">
       <button class="action-btn" onclick="closeDeploymentsPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">🚛 Deployments</div>
       <div class="topbar-user">
         <span style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);" id="dep-sync-label"></span>
         <button class="action-btn" onclick="depRefresh()" style="height:30px;font-size:12px;">↻ Refresh</button>
-
+        <button class="action-btn" onclick="depDownloadPdf()" style="height:30px;font-size:12px;background:var(--accent);color:#fff;border-color:var(--accent);">⬇ PDF</button>
       </div>
     </div>
 
@@ -10195,7 +10348,20 @@
       /* Breakdown alerts */
       #ho-alerts { padding: 0 20px 16px; }
     </style>
-  </head><body>${report.outerHTML}</body></html>`;
+  </head><body>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:0 2px;">
+    <div style="background:#1e1e1e;border-radius:6px;padding:5px 12px;display:inline-block;">
+      <span style="font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;color:#e8a24c;letter-spacing:0.02em;">Tripman</span>
+    </div>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;color:#9b9890;text-transform:uppercase;">${currentCompanyName || ''} &nbsp;·&nbsp; Shift Handover Report</span>
+  </div>
+  ${report.outerHTML}
+  <div style="margin-top:12px;font-size:10px;color:#9b9890;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+    Generated ${new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})}
+    &nbsp;·&nbsp;
+    <span style="background:#1e1e1e;border-radius:4px;padding:2px 7px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:#e8a24c;">Tripman</span>
+  </div>
+  </body></html>`;
       const win = window.open('', '_blank');
       if (win) {
         win.document.write(html);
@@ -11038,7 +11204,14 @@
     .dr-section-header{margin-bottom:6px;}
     .dr-section-toggle{display:none!important;}
   </style>
-  </head><body>${clone.outerHTML}</body></html>`;
+  </head><body>
+  ${clone.outerHTML}
+  <div style="margin-top:14px;font-size:10px;color:#9b9890;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:8px;border-top:1px solid #e2e0d8;padding-top:10px;">
+    Generated ${new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})}
+    &nbsp;·&nbsp;
+    <span style="background:#1e1e1e;border-radius:4px;padding:2px 7px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:#e8a24c;">Tripman</span>
+  </div>
+  </body></html>`;
 
       const win = window.open('', '_blank');
       if (win) {
@@ -13417,6 +13590,13 @@
     function updateAdminUI() {
       const btn = document.getElementById('manual-trip-btn');
       if (btn) btn.style.display = (currentUser && currentUser.is_admin === true) ? 'flex' : 'none';
+      // Compliance page: visible to worker, admin (or is_admin flag)
+      const compBtn = document.getElementById('compliance-btn');
+      if (compBtn) {
+        const role = (currentUser && (currentUser.role || '')).toLowerCase();
+        const allowed = ['worker','admin'];
+        compBtn.style.display = (currentUser && (currentUser.is_admin || allowed.includes(role))) ? 'inline-flex' : 'none';
+      }
     }
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
@@ -16503,8 +16683,9 @@
     let _depExpandedRowId  = null;
     let _depCountUpDone    = false;
     let _depVehicleIdMap   = {};   // vehicle _id → truck_number (fetched once from /api/vehicles)
-    let _depTripCounts     = {};   // truck_number → trip count for current date+shift
-    let _depRawTrips       = [];   // raw trip records for current dep date+shift (for driver modal + heatmap)
+    let _depTripCounts       = {};   // truck_number → trip count for current date+shift
+    let _depDriverTripCounts = {};   // driver_name  → cumulative trip count across ALL trucks (current date+shift)
+    let _depRawTrips         = [];   // raw trip records for current dep date+shift (for driver modal + heatmap)
 
     // Equipment type → badge color  (built-in + overflow palette)
     const _DEP_TYPE_BUILT = {
@@ -16749,8 +16930,9 @@
           truckNumToId[String(num)] = id;
         });
 
-        // Count trips per truck_number by resolving vehicle_id → truck_number
-        const counts = {};
+        // Count trips per truck_number AND per driver (cumulative across all trucks)
+        const counts       = {};
+        const driverCounts = {};
         trips.forEach(t => {
           const vid = t.vehicle_id != null ? String(t.vehicle_id) : null;
           if (!vid) return;
@@ -16758,10 +16940,16 @@
           if (!truckNum) return;
           const key = String(truckNum);
           counts[key] = (counts[key] || 0) + 1;
+          // Cumulative driver count
+          const drvName = (getDriverName(t.driver_id) || '').trim();
+          if (drvName && drvName !== '—') {
+            driverCounts[drvName] = (driverCounts[drvName] || 0) + 1;
+          }
         });
-        _depTripCounts = counts;
-        _depRawTrips   = trips;
-        console.debug('[depTripCounts] vehicle map size:', Object.keys(_depVehicleIdMap).length, '| trips fetched:', trips.length, '| counts:', counts);
+        _depTripCounts       = counts;
+        _depDriverTripCounts = driverCounts;
+        _depRawTrips         = trips;
+        console.debug('[depTripCounts] vehicle map size:', Object.keys(_depVehicleIdMap).length, '| trips fetched:', trips.length, '| counts:', counts, '| driverCounts:', driverCounts);
       } catch (e) { console.warn('[depTripCounts] failed:', e); }
     }
 
@@ -16999,83 +17187,6 @@
       if (headingEl) headingEl.textContent = label;
       if (pulseEl)   pulseEl.style.display  = isLive ? 'inline-block' : 'none';
 
-      // Deduplicate: latest per truck+shift+date
-      const deduped = depGetLatestPerTruck(items);
-      document.getElementById('dep-live-count').textContent = deduped.length;
-
-      const grid = document.getElementById('dep-live-grid');
-      // Separate excavators and other types (tippers, dozers, etc.)
-      // If no excavators found in live data (e.g. filtered past shift, all completed),
-      // fall back to latest-per-excavator from history data so cards always render.
-      let excavators = deduped.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
-      const others   = deduped.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator');
-
-      if (!excavators.length) {
-        // Pull latest version per excavator truck_number from history
-        const histExcMap = new Map();
-        _depFilteredHist
-          .filter(d => (d.equipment_type || '').toLowerCase() === 'excavator')
-          .forEach(d => {
-            const key = d.truck_number;
-            const existing = histExcMap.get(key);
-            if (!existing || new Date(d.deployed_since) > new Date(existing.deployed_since)) {
-              histExcMap.set(key, d);
-            }
-          });
-        excavators = [...histExcMap.values()];
-      }
-
-      // Only show empty state if nothing found in live OR history
-      if (!excavators.length) {
-        const syncLbl = document.getElementById('dep-sync-label').textContent;
-        grid.innerHTML = `
-          <div style="grid-column:1/-1;padding:52px 24px;text-align:center;">
-            <div style="font-size:36px;margin-bottom:12px;opacity:0.3;">🚛</div>
-            <div style="font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">
-              No deployments found</div>
-            <div style="font-size:12px;color:var(--text-muted);">${syncLbl}</div>
-          </div>`;
-        return;
-      }
-
-      // Build tipper lookup from the correct source:
-      // - If viewing today live → use _depLiveData (active deployments)
-      // - If viewing a past date/shift → use _depHistoryData for that same date+shift
-      //   so we show who was ACTUALLY assigned on that date/shift, not today's actives
-      const byTruckNum = {};
-      const byId       = {};
-      const dateVal  = document.getElementById('dep-filter-date').value;
-      const shiftVal = _depCurrentShift;
-      const today    = new Date().toISOString().split('T')[0];
-      const isLiveView = (!dateVal || dateVal === today) && shiftVal === 'all';
-
-      const tipperSource = isLiveView
-        ? _depLiveData.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator')
-        : depGetLatestPerTruck(_depHistoryData.filter(d => {
-            const dType = (d.equipment_type || '').toLowerCase();
-            if (dType === 'excavator') return false;
-            if (dateVal && d.date && d.date !== dateVal) return false;
-            if (shiftVal && shiftVal !== 'all' && d.shift !== shiftVal) return false;
-            return true;
-          }));
-
-      tipperSource.forEach(t => {
-        if (t.truck_number != null) byTruckNum[String(t.truck_number)] = t;
-        if (t._id          != null) byId[String(t._id)]                = t;
-        if (t.id           != null) byId[String(t.id)]                 = t;
-        if (t.vehicle_id   != null) byId[String(t.vehicle_id)]         = t;
-      });
-
-      // Resolve tippers for an excavator record.
-      // Tries (in order):
-      //   1. exc.tippers  – fully-embedded tipper objects from the API
-      //   2. exc.truck_ids – vehicle ObjectIDs resolved via _depVehicleIdMap → truck_number → deployment record
-      //   3. exc.truck_ids – direct truck_number or deployment _id lookup (fallback)
-      function resolveAssignedTippers(exc) {
-        // 1. Embedded tippers array
-        if (Array.isArray(exc.tippers) && exc.tippers.length) {
-          return exc.tippers;
-        }
         // 2. truck_ids: resolve vehicle ObjectID → truck_number → tipper deployment record
         if (Array.isArray(exc.truck_ids) && exc.truck_ids.length) {
           return exc.truck_ids
@@ -17094,6 +17205,107 @@
 
       // Track tippers nested inside an excavator so we don't double-render
       const assignedTipper = new Set();
+
+      // ── Pre-pass: fill assignedTipper before orphan detection ─────────────────
+      // We need the full set before the card-rendering loop so orphan detection works.
+      excavators.forEach(exc => {
+        const _preMat  = !!(exc.material && exc.material.trim()) || !!(exc.material_type && exc.material_type.trim());
+        const _preTids = Array.isArray(exc.truck_ids) && exc.truck_ids.length > 0;
+        const _preMine = exc.entry_type ? exc.entry_type !== 'production' : (!_preMat && !_preTids);
+        if (!_preMine) {
+          resolveAssignedTippers(exc).forEach(t => {
+            if (t.truck_number != null) assignedTipper.add(String(t.truck_number));
+          });
+        }
+      });
+
+      // ── Orphaned / shifted tippers detection ───────────────────────────────────
+      // _currentTruckToExc  : truck_number → current excavator (from active excCards)
+      // _truckAllExcavators : truck_number → Set<excavator_truck_number> (all history)
+      const _currentTruckToExc  = {};
+      const _truckAllExcavators = {};
+
+      // Build current assignment map from the pre-pass (same detection as pre-pass)
+      excavators.forEach(exc => {
+        const _mat  = !!(exc.material && exc.material.trim()) || !!(exc.material_type && exc.material_type.trim());
+        const _tids = Array.isArray(exc.truck_ids) && exc.truck_ids.length > 0;
+        const _mine = exc.entry_type ? exc.entry_type !== 'production' : (!_mat && !_tids);
+        if (!_mine) {
+          resolveAssignedTippers(exc).forEach(t => {
+            if (t.truck_number != null) _currentTruckToExc[String(t.truck_number)] = String(exc.truck_number ?? '');
+          });
+        }
+      });
+
+      // Build full historical map: truck → every excavator it ever appeared under
+      [..._depLiveData, ..._depHistoryData].forEach(rec => {
+        if ((rec.equipment_type || '').toLowerCase() !== 'excavator') return;
+        if (!Array.isArray(rec.truck_ids)) return;
+        const excKey = String(rec.truck_number ?? '');
+        if (!excKey) return;
+        rec.truck_ids.forEach(tid => {
+          const num = _depVehicleIdMap[String(tid)];
+          if (!num) return;
+          const key = String(num);
+          if (!_truckAllExcavators[key]) _truckAllExcavators[key] = new Set();
+          _truckAllExcavators[key].add(excKey);
+        });
+      });
+
+      // Helper: get driver name (most frequent) for a truck from raw trips
+      function _orphanDriverFor(truckNum) {
+        const cnt = {};
+        _depRawTrips.forEach(t => {
+          const vid = t.vehicle_id != null ? String(t.vehicle_id) : null;
+          if (!vid || String(_depVehicleIdMap[vid] || '') !== truckNum) return;
+          const drv = getDriverName(t.driver_id) || '';
+          if (drv && drv !== '—') cnt[drv] = (cnt[drv] || 0) + 1;
+        });
+        return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || '—';
+      }
+
+      // Group by excavator:
+      // status='removed'  → truck was under this exc, is now not deployed at all
+      // status='shifted'  → truck was under this exc, is now under a different exc
+      const _orphanedByExc = {}; // excKey → [{truck_number, driver_name, location, trips, driverTrips, status, newExc}]
+
+      function _orphanPush(excKey, entry) {
+        if (!_orphanedByExc[excKey]) _orphanedByExc[excKey] = [];
+        // Avoid duplicate entries for same truck under same excavator
+        if (!_orphanedByExc[excKey].some(x => x.truck_number === entry.truck_number && x.status === entry.status)) {
+          _orphanedByExc[excKey].push(entry);
+        }
+      }
+
+      function _orphanEntry(truckNum, oldExcKey, status, newExc) {
+        const tripCount = _depTripCounts[truckNum] || 0;
+        const driverName = _orphanDriverFor(truckNum);
+        const tipRec  = byTruckNum[truckNum] || {};
+        const loc     = tipRec.location || tipRec.working_location || tipRec.area || tipRec.pit || tipRec.source_location || '';
+        const drvTotal = driverName && driverName !== '—' ? (_depDriverTripCounts[driverName] ?? tripCount) : tripCount;
+        return { truck_number: truckNum, driver_name: driverName, location: loc, trips: tripCount, driverTrips: drvTotal, status, newExc: newExc || null };
+      }
+
+      // 1. Removed trucks — have trips but not currently assigned anywhere
+      Object.keys(_depTripCounts).forEach(truckNum => {
+        if (assignedTipper.has(truckNum)) return;
+        if ((_depTripCounts[truckNum] || 0) === 0) return;
+        const allExcs = _truckAllExcavators[truckNum];
+        const oldExcKey = allExcs ? [...allExcs][0] : '__none__';
+        _orphanPush(oldExcKey, _orphanEntry(truckNum, oldExcKey, 'removed', null));
+      });
+
+      // 2. Shifted trucks — currently assigned to excB but also appeared under excA ≠ excB
+      Object.keys(_currentTruckToExc).forEach(truckNum => {
+        const currentExc = _currentTruckToExc[truckNum];
+        const allExcs = _truckAllExcavators[truckNum];
+        if (!allExcs) return;
+        allExcs.forEach(oldExc => {
+          if (oldExc === currentExc) return; // same exc — no shift
+          _orphanPush(oldExc, _orphanEntry(truckNum, oldExc, 'shifted', currentExc));
+        });
+      });
+
 
       // ── Same-shift "driver on multiple equipment" detection ──────────────────
       // Two independent maps: trucks/tippers are only compared against other
@@ -17221,12 +17433,13 @@
           if (!drv || drv === '—') return;
           _hmDriverTrips[drv] = (_hmDriverTrips[drv] || 0) + 1;
         });
+        // Use cumulative driver trips (across ALL trucks) for both the badge and heatmap colour.
+        // This means a driver who switched trucks mid-shift gets credit for all their trips.
         const _hmEffective = assignedItems.map(t => {
-          const tKey    = String(t.truck_number ?? '');
-          const truckT  = _depTripCounts[tKey] ?? 0;
           const drvName = (t.driver_name || '').trim();
-          const drvT    = _hmDriverTrips[drvName] || 0;
-          return Math.max(truckT, drvT);
+          // Primary: cumulative driver count from _depDriverTripCounts (all trucks this date+shift)
+          // Fallback: trips counted within this excavator group from raw trips (_hmDriverTrips)
+          return _depDriverTripCounts[drvName] ?? _hmDriverTrips[drvName] ?? 0;
         });
         const _hmMax     = assignedItems.length ? Math.max(..._hmEffective) : 0;
         const _hmMin     = assignedItems.length ? Math.min(..._hmEffective) : 0;
@@ -17241,8 +17454,11 @@
               const tdRaw   = t.driver_name || '—';
               const td      = tdRaw.replace(/</g,'&lt;');
               const tloc    = depGetLocation(t);
-              const tKey    = String(t.truck_number ?? '');
-              const trips   = _depTripCounts[tKey] ?? 0;
+              // Show cumulative trips by this DRIVER (across all trucks this date+shift)
+              const drvKey  = (t.driver_name || '').trim();
+              const trips   = drvKey && drvKey !== '—'
+                ? (_depDriverTripCounts[drvKey] ?? _hmDriverTrips[drvKey] ?? 0)
+                : 0;
 
               // Heatmap row colour (only when 2+ tippers with different counts)
               let rowBg = '', rowBd = '';
@@ -17294,6 +17510,61 @@
           </div>`;
         }
 
+        // ── Previously-assigned tippers for this excavator ────────────────────────
+        // status='removed' → no longer deployed anywhere   → "Not deployed" pill
+        // status='shifted' → now under a different exc     → "→ EXC-XX" pill
+        // Heatmap is LOCAL: compares only within THIS block (active + prev-assigned).
+        const _excNumKey = String(exc.truck_number ?? '');
+        const _prevHere  = (_orphanedByExc[_excNumKey] || []).sort((a, b) => b.driverTrips - a.driverTrips);
+
+        let orphanedBlock = '';
+        if (_prevHere.length) {
+          // Per-excavator heatmap: active tippers PLUS previously-assigned in this block
+          const _allEffective = [
+            ..._hmEffective,
+            ..._prevHere.map(o => o.driverTrips)
+          ];
+          const _grpMax     = _allEffective.length ? Math.max(..._allEffective) : 0;
+          const _grpMin     = _allEffective.length ? Math.min(..._allEffective) : 0;
+          const _grpAllSame = _allEffective.length <= 1 || _allEffective.every(v => v === _allEffective[0]);
+
+          const _removedCnt = _prevHere.filter(o => o.status === 'removed').length;
+          const _shiftedCnt = _prevHere.filter(o => o.status === 'shifted').length;
+          const _secLabel   = [
+            _removedCnt && `${_removedCnt} not deployed`,
+            _shiftedCnt && `${_shiftedCnt} shifted`
+          ].filter(Boolean).join(' · ');
+
+          orphanedBlock = `
+            <div style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(150,150,150,0.35);">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:5px;">Previously assigned — ${_secLabel}</div>
+              ${_prevHere.map(o => {
+                const eff = o.driverTrips;
+                let oRowBg = '', oRowBd = '';
+                if (!_grpAllSame) {
+                  if      (eff >= _grpMax) { oRowBg = 'rgba(34,197,94,0.14)';  oRowBd = 'rgba(34,197,94,0.40)'; }
+                  else if (eff <= _grpMin) { oRowBg = 'rgba(239,68,68,0.14)';  oRowBd = 'rgba(239,68,68,0.40)'; }
+                  else                     { oRowBg = 'rgba(234,179,8,0.14)';   oRowBd = 'rgba(234,179,8,0.40)'; }
+                }
+                const oRowStyle  = oRowBg ? `background:${oRowBg};border-color:${oRowBd};` : '';
+                const oLocSpan   = o.location ? `<span class="dep-tipper-loc" title="${o.location.replace(/"/g,"'")}">📍 ${o.location.replace(/</g,'&lt;')}</span>` : '';
+                const oTripBadge = `<span style="font-family:var(--font-mono);font-size:11px;font-weight:700;${o.trips>0?'background:#eafaf1;color:#1e8449;':'background:rgba(255,255,255,0.06);color:var(--text-muted);'}border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0;">${o.trips} trip${o.trips!==1?'s':''}</span>`;
+                const oStatusPill = o.status === 'shifted'
+                  ? `<span style="font-size:10px;font-weight:700;background:#e8eef5;color:#1a3a5c;border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0;">→ ${(o.newExc||'?').replace(/</g,'&lt;')}</span>`
+                  : `<span style="font-size:10px;font-weight:600;background:rgba(239,68,68,0.10);color:rgba(180,30,30,0.85);border-radius:4px;padding:1px 6px;white-space:nowrap;flex-shrink:0;">Not deployed</span>`;
+                const oDrvRaw  = o.driver_name || '—';
+                const oDrvSpan = oDrvRaw !== '—'
+                  ? `<span class="entity-link dep-tipper-driver" onclick="event.stopPropagation();depOpenDriverTripsModal('${oDrvRaw.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/</g,'&lt;')}',event)">${oDrvRaw.replace(/</g,'&lt;')}</span>`
+                  : `<span class="dep-tipper-driver">—</span>`;
+                return `<div class="dep-tipper-row" style="${oRowStyle}opacity:0.82;" onclick="event.stopPropagation();depOpenHistoryModal('${o.truck_number.replace(/'/g,"\\'")}')">
+                  <span class="dep-tipper-num" style="text-decoration:line-through;opacity:0.5;">${o.truck_number.replace(/</g,'&lt;')}</span>
+                  ${oDrvSpan}
+                  <span style="display:flex;align-items:center;gap:4px;margin-left:auto;">${oLocSpan}${oStatusPill}${oTripBadge}</span>
+                </div>`;
+              }).join('')}
+            </div>`;
+        }
+
         return `<div class="dep-live-card dep-exc-card" onclick="depOpenHistoryModal('${excNum}')">
           <span class="dep-card-hist-hint">history ↗</span>
           <div class="dep-card-badges">
@@ -17311,9 +17582,11 @@
           ${locRow}
           ${mineDevBlock}
           ${tippersBlock}
+          ${orphanedBlock}
           ${editedFooter}
         </div>`;
       });
+
 
       // Only excavator cards render — tippers appear nested inside, never standalone
       grid.innerHTML = excCards.join('');
@@ -17744,6 +18017,240 @@
       overlay.style.display = 'flex';
     }
 
+    // ── PDF Export ────────────────────────────────────────────────────────────────
+    // Builds a print-ready HTML page (A4 landscape) with 3 excavator cards per
+    // page (1 row of 3).  Opens in a popup and triggers window.print() so the
+    // user can save as PDF from the browser's native print dialog.
+    function depDownloadPdf() {
+      // ── Gather the excavator cards currently displayed ────────────────────────
+      const dedupedLive = depGetLatestPerTruck(_depFilteredLive);
+      let excavators = dedupedLive.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
+
+      // Fallback to history if live is empty (past shift)
+      if (!excavators.length) {
+        const histExcMap = new Map();
+        _depFilteredHist
+          .filter(d => (d.equipment_type || '').toLowerCase() === 'excavator')
+          .forEach(d => {
+            const key = d.truck_number;
+            const existing = histExcMap.get(key);
+            if (!existing || new Date(d.deployed_since) > new Date(existing.deployed_since)) {
+              histExcMap.set(key, d);
+            }
+          });
+        excavators = [...histExcMap.values()];
+      }
+
+      if (!excavators.length) {
+        alert('No deployment data to export. Please load data first.');
+        return;
+      }
+
+      // ── Header meta ───────────────────────────────────────────────────────────
+      const dateVal  = document.getElementById('dep-filter-date').value;
+      const shiftVal = _depCurrentShift;
+      const today    = new Date().toISOString().split('T')[0];
+
+      const dateLabel = dateVal
+        ? new Date(dateVal + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      const shiftLabel = shiftVal && shiftVal !== 'all' ? `Shift ${shiftVal}` : 'All Shifts';
+
+      const generatedAt = new Date().toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
+
+      // ── Build tipper lookup (same logic as live cards) ────────────────────────
+      const isLiveView = (!dateVal || dateVal === today) && shiftVal === 'all';
+      const tipperSource = isLiveView
+        ? _depLiveData.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator')
+        : depGetLatestPerTruck(_depHistoryData.filter(d => {
+            if ((d.equipment_type || '').toLowerCase() === 'excavator') return false;
+            if (dateVal && d.date && d.date !== dateVal) return false;
+            if (shiftVal && shiftVal !== 'all' && d.shift !== shiftVal) return false;
+            return true;
+          }));
+
+      const byTruckNum = {};
+      const byId       = {};
+      tipperSource.forEach(t => {
+        if (t.truck_number != null) byTruckNum[String(t.truck_number)] = t;
+        if (t._id          != null) byId[String(t._id)]                = t;
+      });
+
+      function pdfResolveTippers(exc) {
+        if (Array.isArray(exc.tippers) && exc.tippers.length) return exc.tippers;
+        if (Array.isArray(exc.truck_ids) && exc.truck_ids.length) {
+          return exc.truck_ids.map(tid => {
+            const num = _depVehicleIdMap[String(tid)];
+            if (num) return byTruckNum[String(num)];
+            return byTruckNum[String(tid)] || byId[String(tid)];
+          }).filter(Boolean);
+        }
+        return [];
+      }
+
+      // ── Build shift colour for header accent ──────────────────────────────────
+      const shiftAccent = shiftVal === 'A' ? '#27ae60'
+        : shiftVal === 'B' ? '#8e44ad'
+        : shiftVal === 'C' ? '#e67e22'
+        : '#1a3a5c';
+
+      // ── Render one card to HTML string ────────────────────────────────────────
+      function renderPdfCard(exc) {
+        const hasMaterial = !!(exc.material && exc.material.trim()) || !!(exc.material_type && exc.material_type.trim());
+        const hasTruckIds = Array.isArray(exc.truck_ids) && exc.truck_ids.length > 0;
+        const isMineDevMode = exc.entry_type ? exc.entry_type !== 'production' : (!hasMaterial && !hasTruckIds);
+
+        const depTypeColors = {
+          tipper:    { bg: '#e8eef5', text: '#1a3a5c' },
+          excavator: { bg: '#fef6e7', text: '#7a5000' },
+          dozer:     { bg: '#e8f4fb', text: '#1a4a6b' },
+          drill:     { bg: '#fdecea', text: '#8b1a1a' },
+          dumper:    { bg: '#eafaf1', text: '#1e8449' },
+          grader:    { bg: '#fef5e7', text: '#935116' },
+        };
+        const tc = depTypeColors[(exc.equipment_type || '').toLowerCase()] || { bg: '#f0f0ee', text: '#4a4a4a' };
+
+        const shiftColors = { A: { bg: '#eafaf1', text: '#1e8449' }, B: { bg: '#f5eef8', text: '#6c3483' }, C: { bg: '#fef5e7', text: '#935116' } };
+        const sc = shiftColors[exc.shift] || { bg: '#f0f0ee', text: '#6b6860' };
+
+        const modeBadge = isMineDevMode
+          ? `<span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:#fef3c7;color:#92400e;border-radius:3px;padding:2px 6px;">Mine Dev</span>`
+          : `<span style="font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:#eafaf1;color:#1e8449;border-radius:3px;padding:2px 6px;">Production</span>`;
+
+        const loc = exc.location || exc.working_location || exc.area || exc.pit || exc.source_location || '';
+        const locRow = loc ? `<div style="font-size:11px;color:#6b6860;margin-bottom:4px;"><span style="color:#9b9890;min-width:54px;display:inline-block;">Location</span> 📍 ${loc}</div>` : '';
+
+        const assignedItems = isMineDevMode ? [] : pdfResolveTippers(exc);
+
+        const tippersHtml = assignedItems.length ? `
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #e2e0d8;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#9b9890;margin-bottom:5px;">Tippers (${assignedItems.length})</div>
+            ${assignedItems.map(t => {
+              const drvName = (t.driver_name || '').trim();
+              const trips   = drvName && drvName !== '—' ? (_depDriverTripCounts[drvName] ?? 0) : 0;
+              const tripStyle = trips > 0 ? 'background:#eafaf1;color:#1e8449;' : 'background:#f0f0ee;color:#9b9890;';
+              return `<div style="display:flex;align-items:center;gap:6px;padding:4px 7px;border-radius:5px;background:#f5f4f0;border:1px solid #e2e0d8;margin-bottom:3px;">
+                <span style="font-family:monospace;font-size:11px;font-weight:700;color:#1a3a5c;min-width:52px;">${t.truck_number || '—'}</span>
+                <span style="font-size:11px;color:#6b6860;flex:1;">${t.driver_name || '—'}</span>
+                <span style="font-family:monospace;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;${tripStyle}">${trips} trip${trips !== 1 ? 's' : ''}</span>
+              </div>`;
+            }).join('')}
+          </div>` : '';
+
+        // Mine Dev narration block
+        let mineDevHtml = '';
+        if (isMineDevMode) {
+          const narration = (exc.narration || '').trim();
+          const rawWorkType = (exc.work_type || '').toLowerCase().trim();
+          let workLabel = rawWorkType === 'company' ? 'Company Work' : rawWorkType === 'department' ? 'Department Work' : exc.work_type || '';
+          mineDevHtml = `<div style="margin-top:10px;padding-top:8px;border-top:1px solid #e2e0d8;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#9b9890;margin-bottom:4px;">Mine Development${workLabel ? ' · ' + workLabel : ''}</div>
+            ${narration ? `<div style="font-size:11px;color:#1a1917;">${narration}</div>` : ''}
+          </div>`;
+        }
+
+        const typeName = (exc.equipment_type || 'Unknown').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        return `
+        <div style="background:#ffffff;border:1px solid #e2e0d8;border-radius:8px;padding:14px;break-inside:avoid;">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:8px;flex-wrap:wrap;">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;padding:2px 7px;border-radius:3px;background:${tc.bg};color:${tc.text};">${typeName}</span>
+            <span style="font-size:9px;font-weight:700;font-family:monospace;padding:2px 7px;border-radius:3px;background:${sc.bg};color:${sc.text};">${exc.shift || '—'}</span>
+            ${modeBadge}
+          </div>
+          <div style="font-family:monospace;font-size:18px;font-weight:600;color:#1a1917;margin-bottom:7px;line-height:1.2;">${exc.truck_number || '—'}</div>
+          <div style="font-size:11px;color:#6b6860;margin-bottom:4px;"><span style="color:#9b9890;min-width:54px;display:inline-block;">Driver</span> ${exc.driver_name || '—'}</div>
+          ${!isMineDevMode ? `<div style="font-size:11px;color:#6b6860;margin-bottom:4px;"><span style="color:#9b9890;min-width:54px;display:inline-block;">Material</span> ${exc.material || '—'}</div>` : ''}
+          ${locRow}
+          ${tippersHtml}
+          ${mineDevHtml}
+        </div>`;
+      }
+
+      // ── Chunk excavators into rows of 3 (1 row per page) ──────────────────────
+      const pages = [];
+      for (let i = 0; i < excavators.length; i += 3) {
+        pages.push(excavators.slice(i, i + 3));
+      }
+      const totalPages = pages.length;
+
+      const pagesHtml = pages.map((row, pi) => `
+        <div class="pdf-page">
+          <!-- Page header -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid ${shiftAccent};">
+            <div>
+              <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#9b9890;margin-bottom:3px;">Tripman — Deployments Report</div>
+              <div style="font-size:20px;font-weight:700;color:#1a1917;line-height:1;">${dateLabel}</div>
+              <div style="font-size:12px;color:#6b6860;margin-top:3px;">
+                Shift: <strong style="color:${shiftAccent};">${shiftLabel}</strong>
+                &nbsp;·&nbsp;
+                ${excavators.length} Excavator${excavators.length !== 1 ? 's' : ''} Deployed
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:9px;color:#9b9890;">Generated ${generatedAt}</div>
+              <div style="font-size:10px;color:#9b9890;margin-top:4px;">Page ${pi + 1} of ${totalPages}</div>
+            </div>
+          </div>
+          <!-- Cards row (up to 3) -->
+          <div style="display:grid;grid-template-columns:repeat(${row.length},1fr);gap:14px;">
+            ${row.map(exc => renderPdfCard(exc)).join('')}
+          </div>
+        </div>`
+      ).join('');
+
+      // ── Open print window ─────────────────────────────────────────────────────
+      const win = window.open('', '_blank', 'width=1100,height=800');
+      if (!win) { alert('Popup blocked. Please allow popups for this site and try again.'); return; }
+
+      win.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Deployments — ${dateLabel} · ${shiftLabel}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f4f0; color: #1a1917; font-size: 13px; }
+    .pdf-page {
+      width: 100%;
+      padding: 28px 32px;
+      background: #f5f4f0;
+      page-break-after: always;
+      break-after: page;
+    }
+    .pdf-page:last-child { page-break-after: avoid; break-after: avoid; }
+    @media print {
+      body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .pdf-page {
+        background: #fff;
+        page-break-after: always;
+        break-after: page;
+        padding: 0;
+      }
+      .pdf-page:last-child { page-break-after: avoid; break-after: avoid; }
+      .no-print { display: none !important; }
+    }
+    @page { size: A4 landscape; margin: 14mm 18mm; }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#1a3a5c;color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;z-index:99;font-family:sans-serif;font-size:13px;">
+    <span>📄 Deployments PDF — ${dateLabel} · ${shiftLabel} · ${excavators.length} excavator${excavators.length !== 1 ? 's' : ''}</span>
+    <button onclick="window.print()" style="background:#fff;color:#1a3a5c;border:none;border-radius:6px;padding:6px 18px;font-weight:700;cursor:pointer;font-size:13px;">🖨 Print / Save as PDF</button>
+  </div>
+  <div style="padding-top:52px;">
+    ${pagesHtml}
+  </div>
+</body>
+</html>`);
+      win.document.close();
+      // Give browser a moment to render, then auto-open print dialog
+      setTimeout(() => { try { win.print(); } catch(e) {} }, 700);
+    }
+
     /* ── DEPLOYMENTS SECTION END ── */
 
     /* ── AUTO-REFRESH SYSTEM ─────────────────────────────────────────────────
@@ -17884,6 +18391,311 @@
       });
       obs.observe(appEl, { attributes: true, attributeFilter: ['style'] });
     })();
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SHIFT READINGS COMPLIANCE
+    // ─────────────────────────────────────────────────────────────────────────────
+    let _srcAllData       = [];   // raw deployment records from API
+    let _srcFiltered      = [];   // after all filters applied
+    let _srcStatusFilter  = '';   // '', 'complete', 'partial', 'missing'
+    let _srcCurrentShift  = 'all';
+
+    function openCompliancePage() {
+      const role = (currentUser && (currentUser.role || '')).toLowerCase();
+      const allowed = ['worker','admin'];
+      if (!currentUser || (!currentUser.is_admin && !allowed.includes(role))) {
+        showToast('Access restricted to workers and admins'); return;
+      }
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('compliance-page').style.display = 'block';
+      // Default date to today
+      const dateEl = document.getElementById('src-date');
+      if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+      srcFetch();
+    }
+
+    function closeCompliancePage() {
+      document.getElementById('compliance-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    function srcSetShift(btn, shift) {
+      _srcCurrentShift = shift;
+      document.querySelectorAll('#src-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active', 'active-all'));
+      btn.classList.add(shift === 'all' ? 'active-all' : 'active');
+      srcApplyFilters();
+    }
+
+    function srcClickStat(status) {
+      _srcStatusFilter = (_srcStatusFilter === status) ? '' : status;
+      document.querySelectorAll('.src-stat-card').forEach(c => {
+        c.classList.toggle('src-stat-active', c.dataset.status === _srcStatusFilter);
+      });
+      srcRenderTable();
+    }
+
+    async function srcFetch() {
+      const date  = document.getElementById('src-date').value;
+      const eqType = document.getElementById('src-eq-filter').value;
+      const p = new URLSearchParams();
+      if (date) p.set('date', date);
+      const summaryUrl  = `${API}/deployments/summary?${p}`;
+      const readingsUrl = `${API}/shift-readings?${p}`;
+      document.getElementById('src-table-body').innerHTML =
+        `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
+      try {
+        const [summaryRes, readingsRes] = await Promise.all([
+          apiFetch(summaryUrl),
+          apiFetch(readingsUrl)
+        ]);
+        if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
+        const data = await summaryRes.json();
+
+        // shift_readings call is best-effort: if it fails, still show
+        // deployment rows (as "missing") rather than blanking the page.
+        let readingsData = [];
+        if (readingsRes.ok) {
+          readingsData = await readingsRes.json();
+          if (!Array.isArray(readingsData)) readingsData = [];
+        }
+
+        // Build lookup keyed on truck_number|SHIFT|date so it matches
+        // whatever /deployments/summary uses for truck_number (machine_number
+        // for excavators, vehicle_number for tippers).
+        const readingsMap = {};
+        readingsData.forEach(r => {
+          const key = `${r.truck_number}|${(r.shift || '').toUpperCase()}|${r.date}`;
+          readingsMap[key] = r;
+        });
+
+        const live    = Array.isArray(data.live)    ? data.live    : [];
+        const history = Array.isArray(data.history) ? data.history : [];
+        _srcAllData = [...live, ...history].map(d => {
+          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}`;
+          const match = readingsMap[key];
+          if (match) {
+            d.reading_status = match.reading_status;
+            // Backend stores readings as nested { HMR: {...}, KMR: {...} }
+            // sub-objects; flatten them here into the flat field names the
+            // table renderer (srcRenderTable) already expects.
+            const hmr = (match.readings && match.readings.HMR) || {};
+            const kmr = (match.readings && match.readings.KMR) || {};
+            d.hmr_opening_added     = hmr.opening_added;
+            d.hmr_opening_value     = hmr.opening_value;
+            d.hmr_opening_timestamp = hmr.opening_ts;
+            d.hmr_opening_by        = hmr.opening_by;
+            d.hmr_closing_added     = hmr.closing_added;
+            d.hmr_closing_value     = hmr.closing_value;
+            d.hmr_closing_timestamp = hmr.closing_ts;
+            d.hmr_closing_by        = hmr.closing_by;
+            d.kmr_opening_added     = kmr.opening_added;
+            d.kmr_opening_value     = kmr.opening_value;
+            d.kmr_opening_timestamp = kmr.opening_ts;
+            d.kmr_opening_by        = kmr.opening_by;
+            d.kmr_closing_added     = kmr.closing_added;
+            d.kmr_closing_value     = kmr.closing_value;
+            d.kmr_closing_timestamp = kmr.closing_ts;
+            d.kmr_closing_by        = kmr.closing_by;
+          }
+          return d;
+        });
+
+        // Populate equipment filter dropdown
+        srcPopulateEqFilter();
+        srcApplyFilters();
+      } catch(e) {
+        document.getElementById('src-table-body').innerHTML =
+          `<tr><td colspan="9" style="text-align:center;padding:28px;color:#c0392b;">⚠ Could not load data. Check your connection.</td></tr>`;
+      }
+    }
+
+    function srcPopulateEqFilter() {
+      const types = [...new Set(_srcAllData.map(d => depFmtType(d.equipment_type || '')).filter(Boolean))].sort();
+      const sel = document.getElementById('src-eq-filter');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">All Equipment</option>' +
+        '<option value="__tipper">Tippers</option>' +
+        '<option value="__excavator">Excavators</option>' +
+        '<option value="__other">Others</option>';
+      if (prev) sel.value = prev;
+    }
+
+    function srcIsTipper(d) {
+      const t = (d.equipment_type || d.vehicle_type || '').toLowerCase();
+      return t.includes('tipper') || t.includes('truck') || t.includes('dumper');
+    }
+
+    function srcIsExcavator(d) {
+      const t = (d.equipment_type || d.vehicle_type || '').toLowerCase();
+      return t.includes('excavator') || t.includes('dozer') || t.includes('grader') || t.includes('drill');
+    }
+
+    function srcGetStatus(d) {
+      if (d.reading_status) return d.reading_status.toLowerCase();
+      // Derive from fields if status not set
+      const hasKmrO = d.kmr_opening_added;
+      const hasKmrC = d.kmr_closing_added;
+      const hasHmrO = d.hmr_opening_added;
+      const hasHmrC = d.hmr_closing_added;
+      const isTipper = srcIsTipper(d);
+      let filled = 0, total = 0;
+      if (isTipper) {
+        total += 2; // KMR open + close
+        if (hasKmrO) filled++;
+        if (hasKmrC) filled++;
+      }
+      total += 2; // HMR open + close for all
+      if (hasHmrO) filled++;
+      if (hasHmrC) filled++;
+      if (filled === 0) return 'missing';
+      if (filled === total) return 'complete';
+      return 'partial';
+    }
+
+    function srcGetEquipmentCode(d) {
+      return d.truck_number || d.equipment_code || d.vehicle_number ||
+        (d.equipment_id ? d.equipment_id.slice(-6).toUpperCase() : '—');
+    }
+
+    function srcGetPersonName(d) {
+      return d.driver_name || d.operator_name || d.worker_name || d.added_by || '—';
+    }
+
+    function srcApplyFilters() {
+      const shift  = _srcCurrentShift;
+      const eqType = document.getElementById('src-eq-filter').value;
+      _srcFiltered = _srcAllData.filter(d => {
+        if (shift && shift !== 'all' && (d.shift || '').toUpperCase() !== shift) return false;
+        if (eqType === '__tipper'    && !srcIsTipper(d))    return false;
+        if (eqType === '__excavator' && !srcIsExcavator(d)) return false;
+        if (eqType === '__other'     && (srcIsTipper(d) || srcIsExcavator(d))) return false;
+        return true;
+      });
+      srcUpdateStats();
+      srcRenderTable();
+    }
+
+    function srcUpdateStats() {
+      const counts = { complete: 0, partial: 0, missing: 0 };
+      _srcFiltered.forEach(d => { const s = srcGetStatus(d); if (counts[s] !== undefined) counts[s]++; });
+      document.getElementById('src-stat-complete').textContent = counts.complete;
+      document.getElementById('src-stat-partial').textContent  = counts.partial;
+      document.getElementById('src-stat-missing').textContent  = counts.missing;
+    }
+
+    function srcFmtVal(added, val) {
+      if (!added) return '<span style="color:var(--text-muted);">—</span>';
+      return `<span style="font-family:var(--font-mono);">${val !== undefined && val !== null ? val : '—'}</span>`;
+    }
+
+    function srcFmtValTip(added, val, ts, by) {
+      if (!added) return '<span style="color:var(--text-muted);">—</span>';
+      const display = (val !== undefined && val !== null) ? val : '—';
+      const tsStr   = ts ? new Date(ts).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '';
+      const tip = [tsStr, by ? `By: ${by}` : ''].filter(Boolean).join('  ·  ');
+      return `<span class="src-val-tip" title="${tip}" style="font-family:var(--font-mono);border-bottom:1px dashed var(--border-strong);cursor:default;">${display}</span>`;
+    }
+
+    function srcStatusPill(status) {
+      if (status === 'complete') return '<span class="src-pill src-pill-complete">Complete</span>';
+      if (status === 'partial')  return '<span class="src-pill src-pill-partial">Partial</span>';
+      return '<span class="src-pill src-pill-missing">Missing</span>';
+    }
+
+    const SRC_STATUS_ORDER = { missing: 0, partial: 1, complete: 2 };
+
+    function srcRenderTable() {
+      const tbody = document.getElementById('src-table-body');
+      const statusFilter = _srcStatusFilter;
+      let rows = _srcFiltered.slice();
+      if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>`;
+        return;
+      }
+
+      // Sort: missing → partial → complete, then equipment code ascending
+      rows.sort((a, b) => {
+        const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
+        const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
+        if (sa !== sb) return sa - sb;
+        return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      tbody.innerHTML = rows.map(d => {
+        const status = srcGetStatus(d);
+        const isTip  = srcIsTipper(d);
+        const rowBg  = status === 'complete' ? 'background:#f0fdf4;' :
+                       status === 'partial'  ? 'background:#fffbeb;' :
+                                              'background:#fff5f5;';
+        const kmrOpen  = isTip
+          ? srcFmtValTip(d.kmr_opening_added,  d.kmr_opening_value,  d.kmr_opening_timestamp,  d.kmr_opening_by)
+          : '<span style="color:var(--text-muted);">—</span>';
+        const kmrClose = isTip
+          ? srcFmtValTip(d.kmr_closing_added,  d.kmr_closing_value,  d.kmr_closing_timestamp,  d.kmr_closing_by)
+          : '<span style="color:var(--text-muted);">—</span>';
+        const hmrOpen  = srcFmtValTip(d.hmr_opening_added,  d.hmr_opening_value,  d.hmr_opening_timestamp,  d.hmr_opening_by);
+        const hmrClose = srcFmtValTip(d.hmr_closing_added,  d.hmr_closing_value,  d.hmr_closing_timestamp,  d.hmr_closing_by);
+        return `<tr style="${rowBg}border-bottom:1px solid var(--border);">
+          <td style="font-family:var(--font-mono);font-weight:600;">${srcGetEquipmentCode(d)}</td>
+          <td>${srcGetPersonName(d)}</td>
+          <td><span class="dep-shift-badge">${d.shift || '—'}</span></td>
+          <td class="src-reading-cell">${kmrOpen}</td>
+          <td class="src-reading-cell">${kmrClose}</td>
+          <td class="src-reading-cell">${hmrOpen}</td>
+          <td class="src-reading-cell">${hmrClose}</td>
+          <td>${srcStatusPill(status)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function srcExportCsv() {
+      const statusFilter = _srcStatusFilter;
+      let rows = _srcFiltered.slice();
+      if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
+      rows.sort((a, b) => {
+        const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
+        const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
+        if (sa !== sb) return sa - sb;
+        return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
+      const date = document.getElementById('src-date').value || 'unknown';
+      const esc  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = [
+        `${currentCompanyName || 'Tripman'} — Shift Readings Compliance`,
+        `Date: ${date}  ·  Shift: ${_srcCurrentShift === 'all' ? 'All' : _srcCurrentShift}  ·  Generated: ${new Date().toLocaleString('en-IN')}`,
+        '',
+        'Equipment,Driver/Operator,Shift,KMR Opening,KMR Closing,HMR Opening,HMR Closing,Status,KMR Open Timestamp,KMR Open By,KMR Close Timestamp,KMR Close By,HMR Open Timestamp,HMR Open By,HMR Close Timestamp,HMR Close By',
+        ...rows.map(d => {
+          const isTip = srcIsTipper(d);
+          return [
+            esc(srcGetEquipmentCode(d)),
+            esc(srcGetPersonName(d)),
+            esc(d.shift || ''),
+            esc(isTip && d.kmr_opening_added ? d.kmr_opening_value : ''),
+            esc(isTip && d.kmr_closing_added ? d.kmr_closing_value : ''),
+            esc(d.hmr_opening_added ? d.hmr_opening_value : ''),
+            esc(d.hmr_closing_added ? d.hmr_closing_value : ''),
+            esc(srcGetStatus(d)),
+            esc(isTip ? (d.kmr_opening_timestamp || '') : ''),
+            esc(isTip ? (d.kmr_opening_added ? (d.added_by || '') : '') : ''),
+            esc(isTip ? (d.kmr_closing_timestamp || '') : ''),
+            esc(isTip ? (d.kmr_closing_added ? (d.added_by || '') : '') : ''),
+            esc(d.hmr_opening_timestamp || ''),
+            esc(d.hmr_opening_added ? (d.added_by || '') : ''),
+            esc(d.hmr_closing_timestamp || ''),
+            esc(d.hmr_closing_added ? (d.added_by || '') : ''),
+          ].join(',');
+        })
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Tripman_ShiftCompliance_${date}.csv`;
+      a.click();
+      showToast('CSV downloaded');
+    }
 
     /* ── AUTO-REFRESH SYSTEM END ── */
 
