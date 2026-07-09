@@ -5461,22 +5461,27 @@
           <div class="stat-card stat-total">
             <div class="stat-label">Total Trips</div>
             <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-sub" id="stat-total-cum" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
           </div>
           <div class="stat-card stat-coal">
             <div class="stat-label">Coal</div>
             <div class="stat-value" id="stat-coal">0</div>
+            <div class="stat-sub" id="stat-coal-cum" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
           </div>
           <div class="stat-card stat-softob">
             <div class="stat-label">Soft OB</div>
             <div class="stat-value" id="stat-softob">0</div>
+            <div class="stat-sub" id="stat-softob-cum" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
           </div>
           <div class="stat-card stat-hardob">
             <div class="stat-label">Hard OB</div>
             <div class="stat-value" id="stat-hardob">0</div>
+            <div class="stat-sub" id="stat-hardob-cum" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
           </div>
           <div class="stat-card stat-rehandling">
             <div class="stat-label">Rehandling</div>
             <div class="stat-value" id="stat-rehandling">0</div>
+            <div class="stat-sub" id="stat-rehandling-cum" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
           </div>
           <div class="stat-card stat-loadfactor" onclick="openLfPage()" title="Click to open Load Factor Analysis">
             <div class="stat-label">Load Factor</div>
@@ -5513,16 +5518,19 @@
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Shift A</div>
               <div class="dash-btn-count" id="dash-count-shift-A">0</div>
+              <div class="dash-btn-cum" id="dash-cum-shift-A" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
             <div class="dash-btn shift-b" id="dash-shift-B" onclick="selectDash('shift','B')">
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Shift B</div>
               <div class="dash-btn-count" id="dash-count-shift-B">0</div>
+              <div class="dash-btn-cum" id="dash-cum-shift-B" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
             <div class="dash-btn shift-c" id="dash-shift-C" onclick="selectDash('shift','C')">
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Shift C</div>
               <div class="dash-btn-count" id="dash-count-shift-C">0</div>
+              <div class="dash-btn-cum" id="dash-cum-shift-C" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
           </div>
           <div class="dash-section-label">By Excavator <span
@@ -5537,22 +5545,26 @@
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Coal</div>
               <div class="dash-btn-count" id="dash-count-mat-Coal">0</div>
+              <div class="dash-btn-cum" id="dash-cum-mat-Coal" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
             <div class="dash-btn mat-softob-btn" id="dash-mat-Soft OB" onclick="selectDash('material','Soft OB')">
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Soft OB</div>
               <div class="dash-btn-count" id="dash-count-mat-Soft OB">0</div>
+              <div class="dash-btn-cum" id="dash-cum-mat-Soft OB" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
             <div class="dash-btn mat-hardob-btn" id="dash-mat-Hard OB" onclick="selectDash('material','Hard OB')">
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Hard OB</div>
               <div class="dash-btn-count" id="dash-count-mat-Hard OB">0</div>
+              <div class="dash-btn-cum" id="dash-cum-mat-Hard OB" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
             <div class="dash-btn mat-rehandling-btn" id="dash-mat-Rehandling"
               onclick="selectDash('material','Rehandling')">
               <div class="dash-alert-dot"></div>
               <div class="dash-btn-label">Rehandling</div>
               <div class="dash-btn-count" id="dash-count-mat-Rehandling">0</div>
+              <div class="dash-btn-cum" id="dash-cum-mat-Rehandling" style="font-size:10px;opacity:0.7;margin-top:1px;"></div>
             </div>
           </div>
         </div>
@@ -8301,6 +8313,36 @@
       if (rawDataVisible) renderTable();
     }
 
+    // ── Cubic metre helper ────────────────────────────────────────────────────────
+    // Qualifying trucks: vehicle.capacity_m3 is 19, 19.5 (or volume_m3 / cum_capacity)
+    // Factor: 14.5 m³ per qualifying trip
+    const CUM_FACTOR       = 14.5;   // m³ credited per trip
+    const CUM_CAP_MIN      = 19;     // inclusive lower bound (cu^m)
+    const CUM_CAP_MAX      = 19.5;   // inclusive upper bound (cu^m)
+
+    function getVehicleCumCap(vehicleId) {
+      const v = allVehicles.find(x => x._id === vehicleId);
+      if (!v) return null;
+      // Try every plausible field name the backend might use
+      const raw = v.capacity_m3 ?? v.volume_m3 ?? v.cum_capacity ?? v.capacity_cum ?? null;
+      return raw != null ? parseFloat(raw) : null;
+    }
+
+    function isCumQualifyingTrip(trip) {
+      const cap = getVehicleCumCap(trip.vehicle_id);
+      return cap != null && cap >= CUM_CAP_MIN && cap <= CUM_CAP_MAX;
+    }
+
+    function calcCumM3(trips) {
+      const qualCount = trips.filter(isCumQualifyingTrip).length;
+      return qualCount * CUM_FACTOR;
+    }
+
+    function fmtCum(m3) {
+      if (!m3) return '';
+      return m3.toLocaleString('en-IN', { maximumFractionDigits: 0 }) + ' m³';
+    }
+
     function updateStats() {
       const totals = { Coal: 0, 'Soft OB': 0, 'Hard OB': 0, Rehandling: 0 };
       filteredTrips.forEach(t => { if (totals[t.material_type] !== undefined) totals[t.material_type]++; });
@@ -8310,6 +8352,13 @@
       document.getElementById('stat-hardob').textContent = totals['Hard OB'];
       document.getElementById('stat-rehandling').textContent = totals['Rehandling'];
       document.getElementById('result-count').innerHTML = `Showing <strong>${filteredTrips.length}</strong> trip${filteredTrips.length !== 1 ? 's' : ''}`;
+      // Cubic metre sub-labels
+      const setC = (id, trips) => { const el = document.getElementById(id); if (el) el.textContent = fmtCum(calcCumM3(trips)); };
+      setC('stat-total-cum',      filteredTrips);
+      setC('stat-coal-cum',       filteredTrips.filter(t => t.material_type === 'Coal'));
+      setC('stat-softob-cum',     filteredTrips.filter(t => t.material_type === 'Soft OB'));
+      setC('stat-hardob-cum',     filteredTrips.filter(t => t.material_type === 'Hard OB'));
+      setC('stat-rehandling-cum', filteredTrips.filter(t => t.material_type === 'Rehandling'));
       lfUpdateHomeStat();
     }
 
@@ -9179,6 +9228,8 @@
         const tripsInShift = filteredTrips.filter(t => t.shift === s);
         const el = document.getElementById(`dash-count-shift-${s}`);
         if (el) el.textContent = tripsInShift.length;
+        const cumEl = document.getElementById(`dash-cum-shift-${s}`);
+        if (cumEl) cumEl.textContent = fmtCum(calcCumM3(tripsInShift));
         const hasAlert = checkBreakdownAlerts(tripsInShift).length > 0;
         const btn = document.getElementById(`dash-shift-${s}`);
         if (btn) btn.classList.toggle('has-alert', hasAlert);
@@ -9187,6 +9238,8 @@
         const tripsInMat = filteredTrips.filter(t => t.material_type === m);
         const el = document.getElementById(`dash-count-mat-${m}`);
         if (el) el.textContent = tripsInMat.length;
+        const cumEl = document.getElementById(`dash-cum-mat-${m}`);
+        if (cumEl) cumEl.textContent = fmtCum(calcCumM3(tripsInMat));
         const hasAlert = checkBreakdownAlerts(tripsInMat).length > 0;
         const btn = document.getElementById(`dash-mat-${m}`);
         if (btn) btn.classList.toggle('has-alert', hasAlert);
@@ -11724,10 +11777,13 @@
           const label = m.machine_number || m.machine_id || mid;
           const cnt = counts[mid] || 0;
           const model = m.model ? m.model.replace('VOLVO ', '').replace('CATERPILLAR ', 'CAT ') : '';
+          const excTrips = filteredTrips.filter(t => t.machine_id === mid);
+          const cumStr = fmtCum(calcCumM3(excTrips));
           return `<div class="dash-btn-ex" onclick="openExcavatorPageFor('${mid}')">
         <div class="dash-btn-label">${label}</div>
         <div class="dash-btn-count">${cnt}</div>
         <div class="dash-ex-sub">${model}</div>
+        ${cumStr ? `<div style="font-size:10px;opacity:0.7;margin-top:1px;">${cumStr}</div>` : ''}
       </div>`;
         }).join('');
     }
