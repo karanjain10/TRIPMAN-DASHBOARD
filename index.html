@@ -18641,7 +18641,11 @@
 
         const live    = Array.isArray(data.live)    ? data.live    : [];
         const history = Array.isArray(data.history) ? data.history : [];
-        _srcAllData = [...live, ...history].map(d => {
+
+        // Merge live + history, then enrich with readings, then deduplicate
+        // so each truck_number|shift|date combination yields exactly ONE row.
+        // We keep whichever entry has more reading data (readings-enriched wins).
+        const enriched = [...live, ...history].map(d => {
           const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}`;
           const match = readingsMap[key];
           if (match) {
@@ -18670,6 +18674,25 @@
           }
           return d;
         });
+
+        // Deduplicate: one row per (truck_number | shift | date).
+        // When duplicates exist, prefer the entry that has reading data.
+        const dedupMap = {};
+        enriched.forEach(d => {
+          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}`;
+          if (!dedupMap[key]) {
+            dedupMap[key] = d;
+          } else {
+            // Score by number of reading fields that are truthy
+            const score = r =>
+              [r.hmr_opening_added, r.hmr_closing_added,
+               r.kmr_opening_added, r.kmr_closing_added].filter(Boolean).length;
+            if (score(d) > score(dedupMap[key])) {
+              dedupMap[key] = d;
+            }
+          }
+        });
+        _srcAllData = Object.values(dedupMap);
 
         // Populate equipment filter dropdown
         srcPopulateEqFilter();
