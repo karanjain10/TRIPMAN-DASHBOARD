@@ -4847,6 +4847,187 @@
     .src-pill-missing  { background: #fee2e2; color: #dc2626; }
     .src-val-tip:hover { opacity: .75; }
 
+    /* ── Admin Compliance — override badge, edit btn, modals ──────────────── */
+    .src-edit-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-family: var(--font-main);
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .src-edit-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .src-admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      background: #ede9fe;
+      color: #6d28d9;
+      cursor: default;
+      margin-left: 6px;
+      letter-spacing: .02em;
+      border: 1px solid #ddd6fe;
+      position: relative;
+    }
+    .src-admin-badge:hover .src-admin-tooltip { display: block; }
+    .src-admin-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1917;
+      color: #f0f0f0;
+      font-size: 11px;
+      font-weight: 400;
+      border-radius: 6px;
+      padding: 8px 11px;
+      white-space: nowrap;
+      z-index: 9999;
+      pointer-events: none;
+      min-width: 210px;
+      text-align: left;
+      line-height: 1.6;
+      box-shadow: 0 4px 14px rgba(0,0,0,.32);
+      font-family: var(--font-main);
+    }
+    .src-admin-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #1a1917;
+    }
+    /* Shared modal overlay */
+    #src-edit-modal, #src-create-modal, #src-audit-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 9500;
+      align-items: center;
+      justify-content: center;
+    }
+    #src-edit-modal.open, #src-create-modal.open, #src-audit-modal.open { display: flex; }
+    .src-modal-box {
+      background: var(--surface);
+      border-radius: 12px;
+      width: 580px;
+      max-width: 96vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,.18);
+    }
+    .src-modal-box-wide { width: 840px; }
+    .src-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .src-modal-title { font-size: 14px; font-weight: 700; color: var(--accent); }
+    .src-modal-close {
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+      background: none;
+      border: none;
+    }
+    .src-modal-close:hover { background: var(--border); color: var(--text-primary); }
+    .src-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .src-modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    .src-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .src-form-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 0; }
+    .src-form-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+    .src-form-input {
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      background: var(--surface);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .src-form-input:focus { border-color: var(--accent); }
+    .src-form-textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
+      font-size: 13px;
+      font-family: var(--font-main);
+      color: var(--text-primary);
+      background: var(--surface);
+      outline: none;
+      resize: vertical;
+      min-height: 70px;
+      transition: border-color .15s;
+    }
+    .src-form-textarea:focus { border-color: var(--accent); }
+    .src-modal-error {
+      color: #dc2626;
+      font-size: 12px;
+      margin-top: 12px;
+      padding: 8px 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      display: none;
+    }
+    .src-modal-error.visible { display: block; }
+    /* Audit table */
+    .src-audit-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .src-audit-table thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    .src-audit-table tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .src-audit-table tbody tr:last-child td { border-bottom: none; }
+    .src-audit-action-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+    .src-audit-action-edit   { background: #ede9fe; color: #6d28d9; }
+    .src-audit-action-create { background: #dcfce7; color: #16a34a; }
+    .src-diff-toggle { font-size: 11px; color: var(--accent); cursor: pointer; text-decoration: underline; white-space: nowrap; user-select: none; }
+    .src-diff-body { display: none; margin-top: 6px; background: var(--bg); border-radius: 5px; padding: 6px 8px; border: 1px solid var(--border); }
+    .src-diff-body.open { display: block; }
+    .src-diff-row { font-size: 11px; font-family: var(--font-mono); margin-bottom: 3px; }
+    .src-diff-before { color: #dc2626; text-decoration: line-through; }
+    .src-diff-after  { color: #16a34a; }
+
     .dep-filter-field {
       display: flex;
       flex-direction: column;
@@ -7553,7 +7734,9 @@
       <button class="action-btn" onclick="closeCompliancePage()" style="margin-right:8px;">← Back</button>
       <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">📋 Shift Readings Compliance</div>
-      <div class="topbar-user">
+      <div class="topbar-user" style="gap:8px;">
+        <button class="action-btn" id="src-audit-btn" onclick="srcOpenAuditModal()" style="height:30px;font-size:12px;display:none;">🕵 Audit Log</button>
+        <button class="action-btn" id="src-create-btn" onclick="srcOpenCreateModal()" style="height:30px;font-size:12px;display:none;">✚ Log Missed Entry</button>
         <button class="action-btn primary" onclick="srcExportCsv()" style="height:30px;font-size:12px;">⬇ Export CSV</button>
       </div>
     </div>
@@ -7626,6 +7809,7 @@
               <th>HMR Opening</th>
               <th>HMR Closing</th>
               <th>Status</th>
+              <th id="src-th-actions" style="display:none;">Actions</th>
             </tr>
           </thead>
           <tbody id="src-table-body">
@@ -7637,6 +7821,158 @@
     </div>
   </div>
   <!-- ── END COMPLIANCE PAGE ── -->
+
+  <!-- ── ADMIN COMPLIANCE MODALS (fixed, body-level so display:none on parent doesn't hide them) ── -->
+
+  <!-- Edit Reading Modal -->
+  <div id="src-edit-modal" onclick="if(event.target===this)srcCloseEditModal()">
+    <div class="src-modal-box">
+      <div class="src-modal-header">
+        <div class="src-modal-title" id="src-edit-modal-title">✏ Edit Reading</div>
+        <button class="src-modal-close" onclick="srcCloseEditModal()">✕</button>
+      </div>
+      <div class="src-modal-body">
+        <div class="src-form-row" id="src-edit-kmr-row">
+          <div class="src-form-field">
+            <label class="src-form-label">KMR Opening</label>
+            <input type="number" id="src-edit-kmr-open" class="src-form-input" placeholder="e.g. 12345" step="0.1" />
+          </div>
+          <div class="src-form-field">
+            <label class="src-form-label">KMR Closing</label>
+            <input type="number" id="src-edit-kmr-close" class="src-form-input" placeholder="e.g. 12360" step="0.1" />
+          </div>
+        </div>
+        <div class="src-form-row">
+          <div class="src-form-field">
+            <label class="src-form-label">HMR Opening</label>
+            <input type="number" id="src-edit-hmr-open" class="src-form-input" placeholder="e.g. 4200" step="0.1" />
+          </div>
+          <div class="src-form-field">
+            <label class="src-form-label">HMR Closing</label>
+            <input type="number" id="src-edit-hmr-close" class="src-form-input" placeholder="e.g. 4212" step="0.1" />
+          </div>
+        </div>
+        <div class="src-form-field" style="margin-bottom:0;">
+          <label class="src-form-label">Reason for Override <span style="color:#dc2626;">*</span></label>
+          <textarea id="src-edit-reason" class="src-form-textarea" placeholder="Required — explain why this reading is being corrected…" oninput="srcEditReasonInput()"></textarea>
+        </div>
+        <div id="src-edit-error" class="src-modal-error"></div>
+      </div>
+      <div class="src-modal-footer">
+        <button class="action-btn" onclick="srcCloseEditModal()">Cancel</button>
+        <button class="action-btn primary" id="src-edit-save-btn" onclick="srcSaveEditModal()" disabled style="opacity:.5;cursor:not-allowed;">Save Override</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Missed Entry Modal -->
+  <div id="src-create-modal" onclick="if(event.target===this)srcCloseCreateModal()">
+    <div class="src-modal-box">
+      <div class="src-modal-header">
+        <div class="src-modal-title">✚ Log Missed Entry</div>
+        <button class="src-modal-close" onclick="srcCloseCreateModal()">✕</button>
+      </div>
+      <div class="src-modal-body">
+        <div class="src-form-row">
+          <div class="src-form-field">
+            <label class="src-form-label">Equipment (Truck #) <span style="color:#dc2626;">*</span></label>
+            <input type="text" id="src-create-truck" class="src-form-input" placeholder="e.g. TK-101" list="src-create-truck-list" oninput="srcCreateOnTruckInput()" />
+            <datalist id="src-create-truck-list"></datalist>
+          </div>
+          <div class="src-form-field">
+            <label class="src-form-label">Date</label>
+            <input type="date" id="src-create-date" class="src-form-input" />
+          </div>
+        </div>
+        <div class="src-form-field" style="margin-bottom:14px;">
+          <label class="src-form-label">Shift <span style="color:#dc2626;">*</span></label>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <button class="dep-shift-pill" id="src-create-shift-A" onclick="srcCreatePickShift('A')" type="button">A</button>
+            <button class="dep-shift-pill" id="src-create-shift-B" onclick="srcCreatePickShift('B')" type="button">B</button>
+            <button class="dep-shift-pill" id="src-create-shift-C" onclick="srcCreatePickShift('C')" type="button">C</button>
+          </div>
+        </div>
+        <div class="src-form-row" id="src-create-kmr-row" style="display:none;">
+          <div class="src-form-field">
+            <label class="src-form-label">KMR Opening</label>
+            <input type="number" id="src-create-kmr-open" class="src-form-input" placeholder="e.g. 12345" step="0.1" />
+          </div>
+          <div class="src-form-field">
+            <label class="src-form-label">KMR Closing</label>
+            <input type="number" id="src-create-kmr-close" class="src-form-input" placeholder="e.g. 12360" step="0.1" />
+          </div>
+        </div>
+        <div class="src-form-row">
+          <div class="src-form-field">
+            <label class="src-form-label">HMR Opening</label>
+            <input type="number" id="src-create-hmr-open" class="src-form-input" placeholder="e.g. 4200" step="0.1" />
+          </div>
+          <div class="src-form-field">
+            <label class="src-form-label">HMR Closing</label>
+            <input type="number" id="src-create-hmr-close" class="src-form-input" placeholder="e.g. 4212" step="0.1" />
+          </div>
+        </div>
+        <div class="src-form-field" style="margin-bottom:14px;">
+          <label class="src-form-label">Driver / Operator Name (optional)</label>
+          <input type="text" id="src-create-driver" class="src-form-input" placeholder="Name on this entry" style="font-family:var(--font-main);" />
+        </div>
+        <div class="src-form-field" style="margin-bottom:0;">
+          <label class="src-form-label">Reason <span style="color:#dc2626;">*</span></label>
+          <textarea id="src-create-reason" class="src-form-textarea" placeholder="Required — e.g. Driver submitted on paper, missed digital entry…" oninput="srcCreateCheckSubmit()"></textarea>
+        </div>
+        <div id="src-create-error" class="src-modal-error"></div>
+      </div>
+      <div class="src-modal-footer">
+        <button class="action-btn" onclick="srcCloseCreateModal()">Cancel</button>
+        <button class="action-btn primary" id="src-create-submit-btn" onclick="srcSubmitCreateModal()" disabled style="opacity:.5;cursor:not-allowed;">Submit Entry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Log Modal -->
+  <div id="src-audit-modal" onclick="if(event.target===this)srcCloseAuditModal()">
+    <div class="src-modal-box src-modal-box-wide">
+      <div class="src-modal-header">
+        <div class="src-modal-title">🕵 Audit Log — Shift Readings</div>
+        <button class="src-modal-close" onclick="srcCloseAuditModal()">✕</button>
+      </div>
+      <div class="src-modal-body">
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+          <div class="src-form-field" style="flex:1;min-width:140px;">
+            <label class="src-form-label">Filter by Equipment</label>
+            <input type="text" id="src-audit-equip-filter" class="src-form-input" placeholder="Truck #…" style="height:32px;" />
+          </div>
+          <div class="src-form-field" style="flex:1;min-width:140px;">
+            <label class="src-form-label">Filter by Performed By</label>
+            <input type="text" id="src-audit-by-filter" class="src-form-input" placeholder="Name…" style="height:32px;" />
+          </div>
+          <button class="action-btn" onclick="srcFetchAuditLog()" style="height:32px;font-size:12px;flex-shrink:0;">Apply</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="src-audit-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Equipment</th>
+                <th>Shift / Date</th>
+                <th>Performed By</th>
+                <th>Reason</th>
+                <th>Changes</th>
+              </tr>
+            </thead>
+            <tbody id="src-audit-table-body">
+              <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="src-modal-footer">
+        <button class="action-btn" onclick="srcCloseAuditModal()">Close</button>
+      </div>
+    </div>
+  </div>
+  <!-- ── END ADMIN COMPLIANCE MODALS ── -->
 
   <!-- ── DEPLOYMENTS SECTION START ── -->
   <!-- DEPLOYMENTS PAGE -->
@@ -18567,6 +18903,7 @@
     let _srcFiltered      = [];   // after all filters applied
     let _srcStatusFilter  = '';   // '', 'complete', 'partial', 'missing'
     let _srcCurrentShift  = 'all';
+    let _srcRenderedRows  = [];   // rows currently in the DOM (for onclick index lookup)
 
     function openCompliancePage() {
       const role = (currentUser && (currentUser.role || '')).toLowerCase();
@@ -18579,6 +18916,7 @@
       // Default date to today
       const dateEl = document.getElementById('src-date');
       if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+      srcShowAdminButtons();
       srcFetch();
     }
 
@@ -18646,7 +18984,15 @@
           const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}`;
           const match = readingsMap[key];
           if (match) {
-            d.reading_status = match.reading_status;
+            d.reading_status     = match.reading_status;
+            // Carry the DB id and admin-override metadata forward so the table
+            // can render Edit buttons and override badges.
+            d._reading_id        = match._id || match.id || match.reading_id || null;
+            d.is_admin_override  = match.is_admin_override  || false;
+            d.created_by_admin   = match.created_by_admin   || false;
+            d.overridden_by_name = match.overridden_by_name || '';
+            d.override_timestamp = match.override_timestamp || '';
+            d.override_reason    = match.override_reason    || '';
             // Backend stores readings as nested { HMR: {...}, KMR: {...} }
             // sub-objects; flatten them here into the flat field names the
             // table renderer (srcRenderTable) already expects.
@@ -18857,7 +19203,7 @@
         `${currentCompanyName || 'Tripman'} — Shift Readings Compliance`,
         `Date: ${date}  ·  Shift: ${_srcCurrentShift === 'all' ? 'All' : _srcCurrentShift}  ·  Generated: ${new Date().toLocaleString('en-IN')}`,
         '',
-        'Equipment,Driver/Operator,Shift,KMR Opening,KMR Closing,HMR Opening,HMR Closing,Status,KMR Open Timestamp,KMR Open By,KMR Close Timestamp,KMR Close By,HMR Open Timestamp,HMR Open By,HMR Close Timestamp,HMR Close By',
+        'Equipment,Driver/Operator,Shift,KMR Opening,KMR Closing,HMR Opening,HMR Closing,Status,Admin Override,KMR Open Timestamp,KMR Open By,KMR Close Timestamp,KMR Close By,HMR Open Timestamp,HMR Open By,HMR Close Timestamp,HMR Close By',
         ...rows.map(d => {
           const isTip = srcIsTipper(d);
           return [
@@ -18869,6 +19215,7 @@
             esc(d.hmr_opening_added ? d.hmr_opening_value : ''),
             esc(d.hmr_closing_added ? d.hmr_closing_value : ''),
             esc(srcGetStatus(d)),
+            esc(d.is_admin_override ? 'Yes' : ''),
             esc(isTip ? (d.kmr_opening_timestamp || '') : ''),
             esc(isTip ? (d.kmr_opening_added ? (d.added_by || '') : '') : ''),
             esc(isTip ? (d.kmr_closing_timestamp || '') : ''),
@@ -18886,6 +19233,365 @@
       a.download = `Tripman_ShiftCompliance_${date}.csv`;
       a.click();
       showToast('CSV downloaded');
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────────
+    // ADMIN COMPLIANCE HELPERS
+    // ───────────────────────────────────────────────────────────────────────────────
+
+    function srcIsAdminOrOwner() {
+      if (!currentUser) return false;
+      const role = (currentUser.role || '').toLowerCase();
+      return !!(currentUser.is_admin || role === 'admin' || role === 'owner');
+    }
+
+    function srcShowAdminButtons() {
+      const isAdmin = srcIsAdminOrOwner();
+      ['src-create-btn', 'src-audit-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isAdmin ? 'inline-flex' : 'none';
+      });
+    }
+
+    // ── Edit modal ──────────────────────────────────────────────────────────────────────────
+    let _srcEditReadingId = null;
+    let _srcEditRowIdx    = null;
+
+    function srcOpenEditModal(idx) {
+      const d = _srcRenderedRows[idx];
+      if (!d) return;
+      _srcEditReadingId = d._reading_id;
+      _srcEditRowIdx    = idx;
+      const isTip = srcIsTipper(d);
+
+      document.getElementById('src-edit-modal-title').textContent =
+        `✏ Edit Reading — ${srcGetEquipmentCode(d)}  Shift ${d.shift || ''}`;
+
+      // Show KMR fields only for tippers
+      document.getElementById('src-edit-kmr-row').style.display = isTip ? '' : 'none';
+      document.getElementById('src-edit-kmr-open').value  = d.kmr_opening_value ?? '';
+      document.getElementById('src-edit-kmr-close').value = d.kmr_closing_value ?? '';
+      document.getElementById('src-edit-hmr-open').value  = d.hmr_opening_value ?? '';
+      document.getElementById('src-edit-hmr-close').value = d.hmr_closing_value ?? '';
+
+      // Reset reason + save button
+      document.getElementById('src-edit-reason').value = '';
+      const saveBtn = document.getElementById('src-edit-save-btn');
+      saveBtn.disabled = true;
+      saveBtn.style.opacity = '.5';
+      saveBtn.style.cursor  = 'not-allowed';
+      saveBtn.textContent   = 'Save Override';
+
+      // Clear error
+      const errEl = document.getElementById('src-edit-error');
+      errEl.textContent = '';
+      errEl.classList.remove('visible');
+
+      document.getElementById('src-edit-modal').classList.add('open');
+    }
+
+    function srcCloseEditModal() {
+      document.getElementById('src-edit-modal').classList.remove('open');
+    }
+
+    function srcEditReasonInput() {
+      const val = document.getElementById('src-edit-reason').value.trim();
+      const saveBtn = document.getElementById('src-edit-save-btn');
+      saveBtn.disabled = !val;
+      saveBtn.style.opacity = val ? '1' : '.5';
+      saveBtn.style.cursor  = val ? 'pointer' : 'not-allowed';
+    }
+
+    async function srcSaveEditModal() {
+      const reason = document.getElementById('src-edit-reason').value.trim();
+      if (!reason) { showToast('Please enter a reason for the override.'); return; }
+      if (!_srcEditReadingId) { showToast('No reading ID found — cannot save.'); return; }
+
+      const d = _srcRenderedRows[_srcEditRowIdx];
+      const isTip = d && srcIsTipper(d);
+
+      // Build payload: only changed fields + override_reason
+      const payload = { override_reason: reason };
+      const hmrOpen  = document.getElementById('src-edit-hmr-open').value;
+      const hmrClose = document.getElementById('src-edit-hmr-close').value;
+      if (hmrOpen  !== '' && hmrOpen  !== String(d.hmr_opening_value ?? '')) payload.hmr_opening_value  = parseFloat(hmrOpen);
+      if (hmrClose !== '' && hmrClose !== String(d.hmr_closing_value ?? '')) payload.hmr_closing_value = parseFloat(hmrClose);
+      if (isTip) {
+        const kmrOpen  = document.getElementById('src-edit-kmr-open').value;
+        const kmrClose = document.getElementById('src-edit-kmr-close').value;
+        if (kmrOpen  !== '' && kmrOpen  !== String(d.kmr_opening_value ?? '')) payload.kmr_opening_value  = parseFloat(kmrOpen);
+        if (kmrClose !== '' && kmrClose !== String(d.kmr_closing_value ?? '')) payload.kmr_closing_value = parseFloat(kmrClose);
+      }
+
+      const saveBtn = document.getElementById('src-edit-save-btn');
+      saveBtn.disabled    = true;
+      saveBtn.textContent = 'Saving…';
+      saveBtn.style.opacity = '.7';
+
+      try {
+        const res = await apiFetch(`${API}/shift-readings/${_srcEditReadingId}/admin-override`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('✅ Reading updated');
+          // Update local data in-place so we don't need a full re-fetch
+          if (d) {
+            if ('hmr_opening_value'  in payload) { d.hmr_opening_value  = payload.hmr_opening_value;  d.hmr_opening_added  = true; }
+            if ('hmr_closing_value'  in payload) { d.hmr_closing_value  = payload.hmr_closing_value;  d.hmr_closing_added  = true; }
+            if ('kmr_opening_value'  in payload) { d.kmr_opening_value  = payload.kmr_opening_value;  d.kmr_opening_added  = true; }
+            if ('kmr_closing_value'  in payload) { d.kmr_closing_value  = payload.kmr_closing_value;  d.kmr_closing_added  = true; }
+            d.is_admin_override  = true;
+            d.override_reason    = reason;
+            d.overridden_by_name = (currentUser && (currentUser.name || currentUser.worker_id)) || 'Admin';
+            d.override_timestamp = new Date().toISOString();
+            d.reading_status     = null; // let srcGetStatus() re-derive from fields
+          }
+          srcCloseEditModal();
+          srcApplyFilters();
+        } else {
+          let msg = `Error ${res.status}`;
+          try { const body = await res.json(); msg = body.detail || body.message || body.error || msg; } catch(_) {}
+          const errEl = document.getElementById('src-edit-error');
+          errEl.textContent = msg;
+          errEl.classList.add('visible');
+        }
+      } catch(e) {
+        const errEl = document.getElementById('src-edit-error');
+        errEl.textContent = 'Network error — check connection.';
+        errEl.classList.add('visible');
+      } finally {
+        saveBtn.textContent   = 'Save Override';
+        saveBtn.style.opacity = '1';
+        srcEditReasonInput(); // re-evaluate disabled state from current reason field
+      }
+    }
+
+    // ── Create (missed entry) modal ───────────────────────────────────────────────────────
+    let _srcCreateShift = '';
+
+    function srcOpenCreateModal() {
+      if (!srcIsAdminOrOwner()) return;
+      _srcCreateShift = '';
+
+      // Populate equipment datalist from currently-loaded data
+      const dl = document.getElementById('src-create-truck-list');
+      const trucks = [...new Set(_srcAllData.map(d => srcGetEquipmentCode(d)).filter(v => v && v !== '—'))].sort();
+      dl.innerHTML = trucks.map(t => `<option value="${t}">`).join('');
+
+      // Default date from filter
+      const dateVal = document.getElementById('src-date').value;
+      document.getElementById('src-create-date').value = dateVal || new Date().toISOString().split('T')[0];
+
+      // Reset all fields
+      document.getElementById('src-create-truck').value  = '';
+      document.getElementById('src-create-driver').value = '';
+      ['src-create-hmr-open','src-create-hmr-close','src-create-kmr-open','src-create-kmr-close'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('src-create-reason').value = '';
+      document.getElementById('src-create-kmr-row').style.display = 'none';
+      ['A','B','C'].forEach(s =>
+        document.getElementById(`src-create-shift-${s}`).classList.remove('active-A','active-B','active-C')
+      );
+
+      const submitBtn = document.getElementById('src-create-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '.5';
+      submitBtn.style.cursor  = 'not-allowed';
+      submitBtn.textContent   = 'Submit Entry';
+
+      const errEl = document.getElementById('src-create-error');
+      errEl.textContent = '';
+      errEl.classList.remove('visible');
+
+      document.getElementById('src-create-modal').classList.add('open');
+    }
+
+    function srcCloseCreateModal() {
+      document.getElementById('src-create-modal').classList.remove('open');
+    }
+
+    function srcCreatePickShift(shift) {
+      _srcCreateShift = shift;
+      ['A','B','C'].forEach(s => {
+        const btn = document.getElementById(`src-create-shift-${s}`);
+        btn.classList.remove('active-A','active-B','active-C');
+        if (s === shift) btn.classList.add(`active-${s}`);
+      });
+      srcCreateCheckSubmit();
+    }
+
+    function srcCreateOnTruckInput() {
+      // Show KMR fields if the entered truck number matches a known tipper
+      const truck = document.getElementById('src-create-truck').value.trim();
+      const existing = _srcAllData.find(d => srcGetEquipmentCode(d) === truck);
+      const isTip = existing ? srcIsTipper(existing) : false;
+      document.getElementById('src-create-kmr-row').style.display = isTip ? '' : 'none';
+      srcCreateCheckSubmit();
+    }
+
+    function srcCreateCheckSubmit() {
+      const truck  = document.getElementById('src-create-truck').value.trim();
+      const reason = document.getElementById('src-create-reason').value.trim();
+      const ok = !!(truck && _srcCreateShift && reason);
+      const btn = document.getElementById('src-create-submit-btn');
+      btn.disabled = !ok;
+      btn.style.opacity = ok ? '1' : '.5';
+      btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
+    }
+
+    async function srcSubmitCreateModal() {
+      const truck  = document.getElementById('src-create-truck').value.trim();
+      const date   = document.getElementById('src-create-date').value;
+      const driver = document.getElementById('src-create-driver').value.trim();
+      const reason = document.getElementById('src-create-reason').value.trim();
+      if (!truck || !_srcCreateShift || !reason) {
+        showToast('Please fill all required fields.');
+        return;
+      }
+
+      const hmrOpen  = document.getElementById('src-create-hmr-open').value;
+      const hmrClose = document.getElementById('src-create-hmr-close').value;
+      const kmrOpen  = document.getElementById('src-create-kmr-open').value;
+      const kmrClose = document.getElementById('src-create-kmr-close').value;
+
+      const payload = {
+        truck_number:    truck,
+        shift:           _srcCreateShift,
+        date:            date,
+        override_reason: reason
+      };
+      if (driver)   payload.driver_name       = driver;
+      if (hmrOpen)  payload.hmr_opening_value  = parseFloat(hmrOpen);
+      if (hmrClose) payload.hmr_closing_value  = parseFloat(hmrClose);
+      if (kmrOpen)  payload.kmr_opening_value  = parseFloat(kmrOpen);
+      if (kmrClose) payload.kmr_closing_value  = parseFloat(kmrClose);
+
+      const submitBtn = document.getElementById('src-create-submit-btn');
+      submitBtn.disabled    = true;
+      submitBtn.textContent = 'Submitting…';
+      submitBtn.style.opacity = '.7';
+
+      try {
+        const res = await apiFetch(`${API}/shift-readings/admin-create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('✅ Missed entry logged successfully');
+          srcCloseCreateModal();
+          srcFetch(); // re-fetch to include the new row with correct server-generated fields
+        } else {
+          let msg = `Error ${res.status}`;
+          try { const body = await res.json(); msg = body.detail || body.message || body.error || msg; } catch(_) {}
+          const errEl = document.getElementById('src-create-error');
+          errEl.textContent = msg;
+          errEl.classList.add('visible');
+        }
+      } catch(e) {
+        const errEl = document.getElementById('src-create-error');
+        errEl.textContent = 'Network error — check connection.';
+        errEl.classList.add('visible');
+      } finally {
+        submitBtn.textContent   = 'Submit Entry';
+        submitBtn.style.opacity = '1';
+        srcCreateCheckSubmit();
+      }
+    }
+
+    // ── Audit log modal ─────────────────────────────────────────────────────────────────────────
+
+    function srcOpenAuditModal() {
+      if (!srcIsAdminOrOwner()) return;
+      document.getElementById('src-audit-equip-filter').value = '';
+      document.getElementById('src-audit-by-filter').value    = '';
+      document.getElementById('src-audit-modal').classList.add('open');
+      srcFetchAuditLog();
+    }
+
+    function srcCloseAuditModal() {
+      document.getElementById('src-audit-modal').classList.remove('open');
+    }
+
+    async function srcFetchAuditLog() {
+      const equipF = document.getElementById('src-audit-equip-filter').value.trim();
+      const byF    = document.getElementById('src-audit-by-filter').value.trim();
+      const date   = document.getElementById('src-date').value;
+
+      const p = new URLSearchParams();
+      if (date)   p.set('date',          date);
+      if (equipF) p.set('truck_number',   equipF);
+      if (byF)    p.set('performed_by',   byF);
+
+      const tbody = document.getElementById('src-audit-table-body');
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Loading…</td></tr>`;
+
+      try {
+        const res = await apiFetch(`${API}/shift-reading-audit-logs?${p}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const arr  = Array.isArray(json) ? json : (json.items || json.results || json.data || []);
+
+        if (arr.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">No audit entries found for the current filters</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = arr.map((entry, i) => {
+          const ts    = entry.timestamp || entry.created_at || entry.performed_at || '';
+          const tsStr = ts
+            ? new Date(ts).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:true })
+            : '—';
+          const action = (entry.action || '').toUpperCase();
+          const badgeCls   = action.includes('CREATE') ? 'src-audit-action-create' : 'src-audit-action-edit';
+          const badgeLabel = action.includes('CREATE') ? 'ADMIN CREATE' : 'ADMIN EDIT';
+          const equip    = entry.truck_number || entry.equipment_code || '—';
+          const shiftDate = [entry.shift, entry.date].filter(Boolean).join(' · ') || '—';
+          const by       = entry.performed_by_name || entry.performed_by || '—';
+          const reason   = entry.override_reason || entry.reason || '—';
+
+          // Build diff block from changed_fields
+          let diffHtml = '—';
+          const changed = entry.changed_fields || entry.changes || {};
+          const changedKeys = Object.keys(changed);
+          if (changedKeys.length > 0) {
+            const diffId = `src-diff-${i}`;
+            diffHtml = `<span class="src-diff-toggle" onclick="srcToggleDiff(this)">▶ ${changedKeys.length} field${changedKeys.length !== 1 ? 's' : ''}</span>
+              <div class="src-diff-body" id="${diffId}">
+                ${changedKeys.map(k => {
+                  const before = changed[k] && (changed[k].before !== undefined ? changed[k].before : (changed[k].from !== undefined ? changed[k].from : '—'));
+                  const after  = changed[k] && (changed[k].after  !== undefined ? changed[k].after  : (changed[k].to   !== undefined ? changed[k].to   : '—'));
+                  return `<div class="src-diff-row"><strong>${k}:</strong> <span class="src-diff-before">${before}</span> → <span class="src-diff-after">${after}</span></div>`;
+                }).join('')}
+              </div>`;
+          }
+
+          return `<tr>
+            <td style="white-space:nowrap;font-size:11px;font-family:var(--font-mono);">${tsStr}</td>
+            <td><span class="src-audit-action-badge ${badgeCls}">${badgeLabel}</span></td>
+            <td style="font-family:var(--font-mono);font-weight:600;">${equip}</td>
+            <td style="font-size:11px;">${shiftDate}</td>
+            <td>${by}</td>
+            <td style="font-size:11px;max-width:200px;word-break:break-word;">${reason}</td>
+            <td>${diffHtml}</td>
+          </tr>`;
+        }).join('');
+
+      } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#dc2626;">⚠ Could not load audit log. Check connection.</td></tr>`;
+      }
+    }
+
+    function srcToggleDiff(el) {
+      const body = el.nextElementSibling;
+      body.classList.toggle('open');
+      el.textContent = el.textContent.replace(
+        body.classList.contains('open') ? '▶' : '▼',
+        body.classList.contains('open') ? '▼' : '▶'
+      );
     }
 
     /* ── AUTO-REFRESH SYSTEM END ── */
