@@ -19459,17 +19459,18 @@
       const isTip = d && srcIsTipper(d);
 
       // Build payload: only changed fields + override_reason
-      const payload = { override_reason: reason };
+      const readings = {};
       const hmrOpen  = document.getElementById('src-edit-hmr-open').value;
       const hmrClose = document.getElementById('src-edit-hmr-close').value;
-      if (hmrOpen  !== '' && hmrOpen  !== String(d.hmr_opening_value ?? '')) payload.hmr_opening_value  = parseFloat(hmrOpen);
-      if (hmrClose !== '' && hmrClose !== String(d.hmr_closing_value ?? '')) payload.hmr_closing_value = parseFloat(hmrClose);
+      if (hmrOpen  !== '' && hmrOpen  !== String(d.hmr_opening_value ?? '')) srcAddReading(readings, 'HMR', 'opening_value', hmrOpen);
+      if (hmrClose !== '' && hmrClose !== String(d.hmr_closing_value ?? '')) srcAddReading(readings, 'HMR', 'closing_value', hmrClose);
       if (isTip) {
         const kmrOpen  = document.getElementById('src-edit-kmr-open').value;
         const kmrClose = document.getElementById('src-edit-kmr-close').value;
-        if (kmrOpen  !== '' && kmrOpen  !== String(d.kmr_opening_value ?? '')) payload.kmr_opening_value  = parseFloat(kmrOpen);
-        if (kmrClose !== '' && kmrClose !== String(d.kmr_closing_value ?? '')) payload.kmr_closing_value = parseFloat(kmrClose);
+        if (kmrOpen  !== '' && kmrOpen  !== String(d.kmr_opening_value ?? '')) srcAddReading(readings, 'KMR', 'opening_value', kmrOpen);
+        if (kmrClose !== '' && kmrClose !== String(d.kmr_closing_value ?? '')) srcAddReading(readings, 'KMR', 'closing_value', kmrClose);
       }
+      const payload = { override_reason: reason, readings };
 
       const saveBtn = document.getElementById('src-edit-save-btn');
       saveBtn.disabled    = true;
@@ -19486,10 +19487,12 @@
           showToast('✅ Reading updated');
           // Update local data in-place so we don't need a full re-fetch
           if (d) {
-            if ('hmr_opening_value'  in payload) { d.hmr_opening_value  = payload.hmr_opening_value;  d.hmr_opening_added  = true; }
-            if ('hmr_closing_value'  in payload) { d.hmr_closing_value  = payload.hmr_closing_value;  d.hmr_closing_added  = true; }
-            if ('kmr_opening_value'  in payload) { d.kmr_opening_value  = payload.kmr_opening_value;  d.kmr_opening_added  = true; }
-            if ('kmr_closing_value'  in payload) { d.kmr_closing_value  = payload.kmr_closing_value;  d.kmr_closing_added  = true; }
+            const hmrReadings = payload.readings.HMR || {};
+            const kmrReadings = payload.readings.KMR || {};
+            if ('opening_value' in hmrReadings) { d.hmr_opening_value = hmrReadings.opening_value; d.hmr_opening_added = true; }
+            if ('closing_value' in hmrReadings) { d.hmr_closing_value = hmrReadings.closing_value; d.hmr_closing_added = true; }
+            if ('opening_value' in kmrReadings) { d.kmr_opening_value = kmrReadings.opening_value; d.kmr_opening_added = true; }
+            if ('closing_value' in kmrReadings) { d.kmr_closing_value = kmrReadings.closing_value; d.kmr_closing_added = true; }
             d.is_admin_override  = true;
             d.override_reason    = reason;
             d.overridden_by_name = (currentUser && (currentUser.name || currentUser.worker_id)) || 'Admin';
@@ -19863,8 +19866,11 @@
       try {
         if (d._reading_id) {
           // ── PATCH: update existing reading ────────────────────────────────
-          const payload = { override_reason: reason };
-          payload[_srcPopField + '_value'] = parseFloat(val);
+          const metric = _srcPopField.startsWith('hmr_') ? 'HMR' : 'KMR';
+          const readingField = _srcPopField.endsWith('_opening') ? 'opening_value' : 'closing_value';
+          const readings = {};
+          srcAddReading(readings, metric, readingField, val);
+          const payload = { override_reason: reason, readings };
           res = await apiFetch(API + '/shift-readings/' + d._reading_id + '/admin-override', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
