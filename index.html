@@ -19075,9 +19075,11 @@
             d._reading_id        = match._id || match.id || match.reading_id || null;
             d.is_admin_override  = match.is_admin_override  || false;
             d.created_by_admin   = match.created_by_admin   || false;
+            d.overridden_by      = match.overridden_by      || '';
             d.overridden_by_name = match.overridden_by_name || '';
             d.override_timestamp = match.override_timestamp || '';
             d.override_reason    = match.override_reason    || '';
+            d.original_values    = match.original_values    || {};
             d.vehicle_id         = match.vehicle_id || d.vehicle_id || null;
             d.driver_id          = match.driver_id  || d.driver_id  || null;
             // Backend stores readings as nested { HMR: {...}, KMR: {...} }
@@ -19185,6 +19187,43 @@
       return d.driver_name || d.operator_name || d.worker_name || d.added_by || '—';
     }
 
+    function srcFormatTimestamp(timestamp) {
+      return timestamp
+        ? new Date(timestamp).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true })
+        : '';
+    }
+
+    function srcDisplayAdminName(value) {
+      if (!value) return '';
+      const currentIds = currentUser
+        ? [currentUser._id, currentUser.id, currentUser.user_id, currentUser.worker_id, currentUser.username]
+        : [];
+      const isCurrentUser = currentIds.filter(Boolean).some(id => String(id) === String(value));
+      if (isCurrentUser && currentUser) {
+        return currentUser.name || currentUser.full_name || currentUser.worker_name || value;
+      }
+      const matchingWorker = allWorkers.find(worker =>
+        String(worker._id || '') === String(value) || String(worker.worker_id || '') === String(value)
+      );
+      if (matchingWorker && matchingWorker.name) return matchingWorker.name;
+      return value;
+    }
+
+    function srcGetOverrideName(row) {
+      return srcDisplayAdminName(row.overridden_by_name || row.overridden_by);
+    }
+
+    function srcGetReadingValue(values, field) {
+      if (!values || typeof values !== 'object') return undefined;
+      const flatField = `${field}_value`;
+      if (Object.prototype.hasOwnProperty.call(values, flatField)) return values[flatField];
+      if (Object.prototype.hasOwnProperty.call(values, field)) return values[field];
+      const [metric, boundary] = field.split('_');
+      const readings = values.readings || values;
+      const nested = readings[metric.toUpperCase()];
+      return nested && typeof nested === 'object' ? nested[`${boundary}_value`] : undefined;
+    }
+
     function srcApplyFilters() {
       const shift  = _srcCurrentShift;
       const eqType = document.getElementById('src-eq-filter').value;
@@ -19212,11 +19251,20 @@
       return `<span style="font-family:var(--font-mono);">${val !== undefined && val !== null ? val : '—'}</span>`;
     }
 
-    function srcFmtValTip(added, val, ts, by) {
+    function srcFmtValTip(added, val, ts, by, row, field) {
       if (!added) return '<span style="color:var(--text-muted);">—</span>';
       const display = (val !== undefined && val !== null) ? val : '—';
-      const tsStr   = ts ? new Date(ts).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true }) : '';
-      const tip = [tsStr, by ? `By: ${by}` : ''].filter(Boolean).join('  ·  ');
+      const isOverride = row && (row.is_admin_override || row.created_by_admin);
+      const originalValue = isOverride ? srcGetReadingValue(row.original_values, field) : undefined;
+      const tip = isOverride
+        ? [
+            row.created_by_admin && !row.is_admin_override ? 'Created by admin' : 'Admin override',
+            srcGetOverrideName(row) ? `By: ${srcGetOverrideName(row)}` : '',
+            row.override_timestamp ? `At: ${srcFormatTimestamp(row.override_timestamp)}` : '',
+            row.override_reason ? `Reason: ${row.override_reason}` : '',
+            originalValue !== undefined && originalValue !== null ? `Original: ${originalValue}` : ''
+          ].filter(Boolean).join('\n')
+        : [srcFormatTimestamp(ts), by ? `By: ${by}` : ''].filter(Boolean).join('  ·  ');
       return `<span class="src-val-tip" title="${tip}" style="font-family:var(--font-mono);border-bottom:1px dashed var(--border-strong);cursor:default;">${display}</span>`;
     }
 
@@ -19260,15 +19308,15 @@
         if (d.is_admin_override || d.created_by_admin) {
           const tl = [];
           if (d.created_by_admin && !d.is_admin_override) tl.push('Created by admin');
-          if (d.overridden_by_name) tl.push('By: ' + d.overridden_by_name);
-          if (d.override_timestamp) tl.push('At: ' + new Date(d.override_timestamp).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true}));
+          if (srcGetOverrideName(d)) tl.push('By: ' + srcGetOverrideName(d));
+          if (d.override_timestamp) tl.push('At: ' + srcFormatTimestamp(d.override_timestamp));
           if (d.override_reason)    tl.push('Reason: ' + d.override_reason);
           adminBadge = '<span class="src-admin-badge">\u270f Edited<span class="src-admin-tooltip">' + tl.join('<br>') + '</span></span>';
         }
 
         const canEdit = isAdmin; // allow click on all rows; save() branches PATCH vs POST
         const mkCell = (field, added, val, ts, by, show) => {
-          const inner = show ? srcFmtValTip(added, val, ts, by) : '<span style="color:var(--text-muted);">\u2014</span>';
+          const inner = show ? srcFmtValTip(added, val, ts, by, d, field) : '<span style="color:var(--text-muted);">\u2014</span>';
           if (canEdit && show) {
             return '<td class="src-reading-cell" data-editable="1" onclick="srcCellClick(event,' + idx + ',\'' + field + '\')">' + inner + '</td>';
           }
@@ -19391,6 +19439,18 @@
       return readings;
     }
 
+    function srcSetLocalOverrideMetadata(row, reason, originalValues, response) {
+      const responseData = response && typeof response === 'object' ? response : {};
+      const currentAdminId = currentUser && (currentUser._id || currentUser.id || currentUser.user_id || currentUser.worker_id);
+      const currentAdminName = currentUser && (currentUser.name || currentUser.full_name || currentUser.worker_name || currentUser.worker_id);
+      row.is_admin_override  = responseData.is_admin_override ?? true;
+      row.original_values    = responseData.original_values || Object.assign({}, originalValues, row.original_values || {});
+      row.overridden_by      = responseData.overridden_by || currentAdminId || row.overridden_by || '';
+      row.overridden_by_name = responseData.overridden_by_name || currentAdminName || row.overridden_by_name || '';
+      row.override_reason    = responseData.override_reason || reason;
+      row.override_timestamp = responseData.override_timestamp || new Date().toISOString();
+    }
+
     function srcShowAdminButtons() {
       const isAdmin = srcIsAdminOrOwner();
       ['src-create-btn', 'src-audit-btn'].forEach(id => {
@@ -19484,19 +19544,18 @@
           body: JSON.stringify(payload)
         });
         if (res.ok) {
+          const body = await res.json().catch(() => ({}));
           showToast('✅ Reading updated');
           // Update local data in-place so we don't need a full re-fetch
           if (d) {
             const hmrReadings = payload.readings.HMR || {};
             const kmrReadings = payload.readings.KMR || {};
-            if ('opening_value' in hmrReadings) { d.hmr_opening_value = hmrReadings.opening_value; d.hmr_opening_added = true; }
-            if ('closing_value' in hmrReadings) { d.hmr_closing_value = hmrReadings.closing_value; d.hmr_closing_added = true; }
-            if ('opening_value' in kmrReadings) { d.kmr_opening_value = kmrReadings.opening_value; d.kmr_opening_added = true; }
-            if ('closing_value' in kmrReadings) { d.kmr_closing_value = kmrReadings.closing_value; d.kmr_closing_added = true; }
-            d.is_admin_override  = true;
-            d.override_reason    = reason;
-            d.overridden_by_name = (currentUser && (currentUser.name || currentUser.worker_id)) || 'Admin';
-            d.override_timestamp = new Date().toISOString();
+            const originalValues = {};
+            if ('opening_value' in hmrReadings) { originalValues.hmr_opening_value = d.hmr_opening_value; d.hmr_opening_value = hmrReadings.opening_value; d.hmr_opening_added = true; }
+            if ('closing_value' in hmrReadings) { originalValues.hmr_closing_value = d.hmr_closing_value; d.hmr_closing_value = hmrReadings.closing_value; d.hmr_closing_added = true; }
+            if ('opening_value' in kmrReadings) { originalValues.kmr_opening_value = d.kmr_opening_value; d.kmr_opening_value = kmrReadings.opening_value; d.kmr_opening_added = true; }
+            if ('closing_value' in kmrReadings) { originalValues.kmr_closing_value = d.kmr_closing_value; d.kmr_closing_value = kmrReadings.closing_value; d.kmr_closing_added = true; }
+            srcSetLocalOverrideMetadata(d, reason, originalValues, body);
             d.reading_status     = null; // let srcGetStatus() re-derive from fields
           }
           srcCloseEditModal();
@@ -19691,6 +19750,51 @@
       document.getElementById('src-audit-modal').classList.remove('open');
     }
 
+    function srcIdsMatch(firstId, secondId) {
+      return firstId !== undefined && firstId !== null &&
+        secondId !== undefined && secondId !== null && String(firstId) === String(secondId);
+    }
+
+    function srcGetAuditEquipmentCode(entry) {
+      const directCode = entry.truck_number || entry.equipment_code || entry.vehicle_number;
+      if (directCode) return directCode;
+      const entryIds = [entry.vehicle_id, entry.equipment_id, entry.truck_id, entry.machine_id, entry.reading_id];
+      const matchingRow = _srcAllData.find(row => entryIds.some(entryId =>
+        [row.vehicle_id, row.equipment_id, row.truck_id, row.machine_id, row._reading_id]
+          .some(rowId => srcIdsMatch(entryId, rowId))
+      ));
+      return matchingRow ? srcGetEquipmentCode(matchingRow) : '—';
+    }
+
+    function srcBuildAuditChanges(entry) {
+      const explicitChanges = entry.changed_fields || entry.changes;
+      if (explicitChanges && typeof explicitChanges === 'object' && Object.keys(explicitChanges).length > 0) {
+        return explicitChanges;
+      }
+
+      const beforeValues = entry.before || entry.original_values || entry.before_values || {};
+      const afterValues = entry.after || entry.new_values || entry.updated_values || entry.readings || {};
+      const changes = {};
+      ['hmr_opening', 'hmr_closing', 'kmr_opening', 'kmr_closing'].forEach(field => {
+        const before = srcGetReadingValue(beforeValues, field);
+        const after = srcGetReadingValue(afterValues, field);
+        if (before !== undefined || after !== undefined) {
+          if (String(before ?? '') !== String(after ?? '')) {
+            changes[`${field}_value`] = { before: before ?? '—', after: after ?? '—' };
+          }
+        }
+      });
+      return changes;
+    }
+
+    function srcFormatAuditField(field) {
+      return field.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
+    }
+
+    function srcFormatAuditValue(value) {
+      return value !== null && typeof value === 'object' ? JSON.stringify(value) : value;
+    }
+
     async function srcFetchAuditLog() {
       const equipF = document.getElementById('src-audit-equip-filter').value.trim();
       const byF    = document.getElementById('src-audit-by-filter').value.trim();
@@ -19723,23 +19827,23 @@
           const action = (entry.action || '').toUpperCase();
           const badgeCls   = action.includes('CREATE') ? 'src-audit-action-create' : 'src-audit-action-edit';
           const badgeLabel = action.includes('CREATE') ? 'ADMIN CREATE' : 'ADMIN EDIT';
-          const equip    = entry.truck_number || entry.equipment_code || '—';
+          const equip    = srcGetAuditEquipmentCode(entry);
           const shiftDate = [entry.shift, entry.date].filter(Boolean).join(' · ') || '—';
-          const by       = entry.performed_by_name || entry.performed_by || '—';
+          const by       = srcDisplayAdminName(entry.performed_by_name || entry.performed_by || entry.overridden_by_name || entry.overridden_by) || '—';
           const reason   = entry.override_reason || entry.reason || '—';
 
           // Build diff block from changed_fields
           let diffHtml = '—';
-          const changed = entry.changed_fields || entry.changes || {};
+          const changed = srcBuildAuditChanges(entry);
           const changedKeys = Object.keys(changed);
           if (changedKeys.length > 0) {
             const diffId = `src-diff-${i}`;
             diffHtml = `<span class="src-diff-toggle" onclick="srcToggleDiff(this)">▶ ${changedKeys.length} field${changedKeys.length !== 1 ? 's' : ''}</span>
               <div class="src-diff-body" id="${diffId}">
-                ${changedKeys.map(k => {
-                  const before = changed[k] && (changed[k].before !== undefined ? changed[k].before : (changed[k].from !== undefined ? changed[k].from : '—'));
-                  const after  = changed[k] && (changed[k].after  !== undefined ? changed[k].after  : (changed[k].to   !== undefined ? changed[k].to   : '—'));
-                  return `<div class="src-diff-row"><strong>${k}:</strong> <span class="src-diff-before">${before}</span> → <span class="src-diff-after">${after}</span></div>`;
+                ${changedKeys.map(field => {
+                  const before = changed[field] && (changed[field].before !== undefined ? changed[field].before : (changed[field].from !== undefined ? changed[field].from : '—'));
+                  const after  = changed[field] && (changed[field].after  !== undefined ? changed[field].after  : (changed[field].to   !== undefined ? changed[field].to   : '—'));
+                  return `<div class="src-diff-row"><strong>${srcFormatAuditField(field)}:</strong> <span class="src-diff-before">${srcFormatAuditValue(before)}</span> → <span class="src-diff-after">${srcFormatAuditValue(after)}</span></div>`;
                 }).join('')}
               </div>`;
           }
@@ -19908,12 +20012,10 @@
         if (res.ok) {
           const body = await res.json().catch(() => ({}));
           // Update local data in-place
+          const originalValues = { [_srcPopField + '_value']: d[_srcPopField + '_value'] };
           d[_srcPopField + '_value'] = parseFloat(val);
           d[_srcPopField + '_added'] = true;
-          d.is_admin_override  = true;
-          d.override_reason    = reason;
-          d.overridden_by_name = (currentUser && (currentUser.name || currentUser.worker_id)) || 'Admin';
-          d.override_timestamp = new Date().toISOString();
+          srcSetLocalOverrideMetadata(d, reason, originalValues, body);
           // If a new reading was created, store its ID so future edits PATCH
           if (!d._reading_id && (body._id || body.id || body.reading_id)) {
             d._reading_id = body._id || body.id || body.reading_id;
