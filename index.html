@@ -19050,13 +19050,19 @@
           if (!Array.isArray(readingsData)) readingsData = [];
         }
 
-        // Build lookup keyed on truck_number|SHIFT|date so it matches
-        // whatever /deployments/summary uses for truck_number (machine_number
-        // for excavators, vehicle_number for tippers).
+        // Prefer the stable vehicle ObjectId supplied by both endpoints. Keep
+        // the truck-number key as a fallback for legacy records.
+        const srcReadingKeys = record => {
+          const shift = (record.shift || '').toUpperCase();
+          const date = record.date || '';
+          const keys = [];
+          if (record.vehicle_id) keys.push(`vehicle:${record.vehicle_id}|${shift}|${date}`);
+          if (record.truck_number) keys.push(`truck:${record.truck_number}|${shift}|${date}`);
+          return keys;
+        };
         const readingsMap = {};
-        readingsData.forEach(r => {
-          const key = `${r.truck_number}|${(r.shift || '').toUpperCase()}|${r.date}`;
-          readingsMap[key] = r;
+        readingsData.forEach(reading => {
+          srcReadingKeys(reading).forEach(key => { readingsMap[key] = reading; });
         });
 
         const live    = Array.isArray(data.live)    ? data.live    : [];
@@ -19066,8 +19072,7 @@
         // so each truck_number|shift|date combination yields exactly ONE row.
         // We keep whichever entry has more reading data (readings-enriched wins).
         const enriched = [...live, ...history].map(d => {
-          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}`;
-          const match = readingsMap[key];
+          const match = srcReadingKeys(d).map(key => readingsMap[key]).find(Boolean);
           if (match) {
             d.reading_status     = match.reading_status;
             // Carry the DB id and admin-override metadata forward so the table
