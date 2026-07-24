@@ -19263,7 +19263,7 @@
           adminBadge = '<span class="src-admin-badge">\u270f Edited<span class="src-admin-tooltip">' + tl.join('<br>') + '</span></span>';
         }
 
-        const canEdit = isAdmin && !!d._reading_id;
+        const canEdit = isAdmin; // allow click on all rows; save() branches PATCH vs POST
         const mkCell = (field, added, val, ts, by, show) => {
           const inner = show ? srcFmtValTip(added, val, ts, by) : '<span style="color:var(--text-muted);">\u2014</span>';
           if (canEdit && show) {
@@ -19719,17 +19719,22 @@
       if (!_srcEditModeOn) return;
       event.stopPropagation();
       const d = _srcRenderedRows[idx];
-      if (!d || !d._reading_id) return;
+      if (!d) return;
+
       _srcPopRowIdx = idx;
       _srcPopField  = field;
 
       const valMap = { hmr_opening: d.hmr_opening_value, hmr_closing: d.hmr_closing_value,
                        kmr_opening: d.kmr_opening_value, kmr_closing: d.kmr_closing_value };
-      const cur = valMap[field];
+      const cur     = valMap[field];
+      const hasVal  = cur != null && cur !== '';
+      const isNew   = !d._reading_id; // no existing reading — will POST
 
-      document.getElementById('src-pop-field-label').textContent = SRC_FIELD_LABELS[field] || field;
-      document.getElementById('src-pop-current').textContent = 'Current: ' + (cur != null ? cur : '—');
-      document.getElementById('src-pop-input').value = (cur != null) ? cur : '';
+      document.getElementById('src-pop-field-label').textContent =
+        (isNew ? '➕ Add ' : '✏ Edit ') + (SRC_FIELD_LABELS[field] || field);
+      document.getElementById('src-pop-current').textContent =
+        isNew ? 'No reading submitted yet' : 'Current: ' + (hasVal ? cur : '—');
+      document.getElementById('src-pop-input').value = hasVal ? cur : '';
       document.getElementById('src-pop-reason').value = '';
       document.getElementById('src-pop-step1').style.display = 'flex';
       document.getElementById('src-pop-step2').classList.remove('open');
@@ -19773,34 +19778,63 @@
       const reason = document.getElementById('src-pop-reason').value.trim();
       if (!val || !reason) return;
       const d = _srcRenderedRows[_srcPopRowIdx];
-      if (!d || !d._reading_id) return;
-
-      const payload = { override_reason: reason };
-      payload[_srcPopField + '_value'] = parseFloat(val);
+      if (!d) return;
 
       const saveBtn = document.getElementById('src-pop-save-btn');
-      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving\u2026';
       const errEl = document.getElementById('src-pop-error');
       errEl.textContent = ''; errEl.classList.remove('visible');
 
+      const fieldLabel = SRC_FIELD_LABELS[_srcPopField] || _srcPopField;
+      let res;
+
       try {
-        const res = await apiFetch(API + '/shift-readings/' + d._reading_id + '/admin-override', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        if (d._reading_id) {
+          // ── PATCH: update existing reading ────────────────────────────────
+          const payload = { override_reason: reason };
+          payload[_srcPopField + '_value'] = parseFloat(val);
+          res = await apiFetch(API + '/shift-readings/' + d._reading_id + '/admin-override', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } else {
+          // ── POST: create a new admin reading for this deployment ───────────
+          const date = document.getElementById('src-date').value;
+          const truck = d.truck_number || d.equipment_id || srcGetEquipmentCode(d);
+          const payload = {
+            truck_number:   truck,
+            shift:          d.shift || '',
+            date:           date,
+            override_reason: reason
+          };
+          payload[_srcPopField + '_value'] = parseFloat(val);
+          // Include driver info if available
+          if (d.worker_id || d.driver_id) payload.worker_id = d.worker_id || d.driver_id;
+          res = await apiFetch(API + '/shift-readings/admin-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        }
+
         if (res.ok) {
-          const fieldLabel = SRC_FIELD_LABELS[_srcPopField] || _srcPopField;
+          const body = await res.json().catch(() => ({}));
+          // Update local data in-place
           d[_srcPopField + '_value'] = parseFloat(val);
           d[_srcPopField + '_added'] = true;
           d.is_admin_override  = true;
           d.override_reason    = reason;
           d.overridden_by_name = (currentUser && (currentUser.name || currentUser.worker_id)) || 'Admin';
           d.override_timestamp = new Date().toISOString();
-          d.reading_status     = null;
+          // If a new reading was created, store its ID so future edits PATCH
+          if (!d._reading_id && (body._id || body.id || body.reading_id)) {
+            d._reading_id = body._id || body.id || body.reading_id;
+          }
+          d.reading_status = null; // let srcGetStatus() re-derive
           srcCellPopClose();
           srcApplyFilters();
-          showToast('✅ ' + fieldLabel + ' updated');
+          showToast('\u2705 ' + fieldLabel + ' ' + (d._reading_id ? 'updated' : 'saved'));
         } else {
           let msg = 'Error ' + res.status;
           try { const b = await res.json(); msg = b.detail || b.message || b.error || msg; } catch(_e) {}
@@ -19808,7 +19842,7 @@
           saveBtn.disabled = false; saveBtn.textContent = 'Save';
         }
       } catch(e) {
-        errEl.textContent = 'Network error — check connection.';
+        errEl.textContent = 'Network error \u2014 check connection.';
         errEl.classList.add('visible');
         saveBtn.disabled = false; saveBtn.textContent = 'Save';
       }
