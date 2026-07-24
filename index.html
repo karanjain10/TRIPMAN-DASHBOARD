@@ -4847,20 +4847,75 @@
     .src-pill-missing  { background: #fee2e2; color: #dc2626; }
     .src-val-tip:hover { opacity: .75; }
 
-    /* ── Admin Compliance — override badge, edit btn, modals ──────────────── */
-    .src-edit-btn {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 2px 8px;
-      font-size: 11px;
-      cursor: pointer;
-      color: var(--text-muted);
-      font-family: var(--font-main);
-      transition: all .15s;
-      white-space: nowrap;
+    /* ── Admin Compliance — toggle switch, editable cells, inline popover ── */
+    .src-toggle-track {
+      display: inline-block; width: 38px; height: 22px;
+      background: var(--border-strong); border-radius: 11px;
+      position: relative; transition: background .2s; flex-shrink: 0;
     }
-    .src-edit-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .src-toggle-track.on { background: var(--accent); }
+    .src-toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+      transition: left .2s;
+    }
+    .src-toggle-track.on .src-toggle-thumb { left: 19px; }
+    body.src-edit-mode .src-reading-cell[data-editable="1"] {
+      cursor: pointer;
+      background: rgba(59,130,246,.06);
+      border-radius: 4px;
+      outline: 1.5px dashed rgba(59,130,246,.4);
+      outline-offset: -2px;
+      transition: background .15s;
+    }
+    body.src-edit-mode .src-reading-cell[data-editable="1"]:hover {
+      background: rgba(59,130,246,.13);
+      outline-color: var(--accent);
+    }
+    #src-cell-popover {
+      display: none; position: fixed; z-index: 9600;
+      background: var(--surface); border: 1px solid var(--border-strong);
+      border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      padding: 14px 16px; min-width: 230px; max-width: 290px;
+    }
+    #src-cell-popover.open { display: block; }
+    .src-pop-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+    .src-pop-current { font-size: 12px; color: var(--text-secondary); font-family: var(--font-mono); margin: 4px 0 10px; }
+    .src-pop-confirm { display: flex; gap: 8px; }
+    .src-pop-edit-row { display: none; }
+    .src-pop-edit-row.open { display: block; margin-top: 10px; }
+    .src-pop-input {
+      width: 100%; height: 34px; padding: 0 10px; box-sizing: border-box;
+      border: 1px solid var(--border-strong); border-radius: 7px;
+      font-size: 14px; font-family: var(--font-mono); font-weight: 600;
+      color: var(--text-primary); background: var(--surface); outline: none;
+      transition: border-color .15s; margin-bottom: 8px;
+    }
+    .src-pop-input:focus { border-color: var(--accent); }
+    .src-pop-reason {
+      width: 100%; padding: 7px 10px; box-sizing: border-box;
+      border: 1px solid var(--border-strong); border-radius: 7px;
+      font-size: 12px; font-family: var(--font-main); color: var(--text-primary);
+      background: var(--surface); outline: none; resize: vertical; min-height: 52px;
+      transition: border-color .15s; margin-bottom: 8px;
+    }
+    .src-pop-reason:focus { border-color: var(--accent); }
+    .src-pop-btn-row { display: flex; gap: 8px; }
+    .src-pop-save {
+      flex: 1; height: 32px; background: var(--accent); color: #fff;
+      border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: var(--font-main); transition: opacity .15s;
+    }
+    .src-pop-save:disabled { opacity: .4; cursor: not-allowed; }
+    .src-pop-cancel {
+      height: 32px; padding: 0 14px; background: none;
+      border: 1px solid var(--border-strong); border-radius: 6px;
+      font-size: 13px; cursor: pointer; color: var(--text-muted); font-family: var(--font-main);
+    }
+    .src-pop-cancel:hover { background: var(--border); }
+    .src-pop-error { font-size: 11px; color: #dc2626; margin-top: 5px; display: none; }
+    .src-pop-error.visible { display: block; }
     .src-admin-badge {
       display: inline-flex;
       align-items: center;
@@ -7737,6 +7792,11 @@
       <div class="topbar-user" style="gap:8px;">
         <button class="action-btn" id="src-audit-btn" onclick="srcOpenAuditModal()" style="height:30px;font-size:12px;display:none;">🕵 Audit Log</button>
         <button class="action-btn" id="src-create-btn" onclick="srcOpenCreateModal()" style="height:30px;font-size:12px;display:none;">✚ Log Missed Entry</button>
+        <label id="src-edit-toggle-wrap" style="display:none;align-items:center;gap:7px;cursor:pointer;user-select:none;padding:0 4px;" title="Enable edit mode — click any reading cell to update it">
+          <span style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.04em;">EDIT MODE</span>
+          <span class="src-toggle-track" id="src-toggle-track"><span class="src-toggle-thumb"></span></span>
+          <input type="checkbox" id="src-edit-toggle-cb" style="display:none;" onchange="srcHandleEditToggle(this.checked)">
+        </label>
         <button class="action-btn primary" onclick="srcExportCsv()" style="height:30px;font-size:12px;">⬇ Export CSV</button>
       </div>
     </div>
@@ -7973,6 +8033,30 @@
     </div>
   </div>
   <!-- ── END ADMIN COMPLIANCE MODALS ── -->
+
+  <!-- ── Inline cell-edit popover ── -->
+  <div id="src-cell-popover">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="src-pop-field-label" id="src-pop-field-label">HMR Opening</div>
+      <button onclick="srcCellPopClose()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);line-height:1;padding:0 2px;">✕</button>
+    </div>
+    <div class="src-pop-current" id="src-pop-current">Current: —</div>
+    <div class="src-pop-confirm" id="src-pop-step1">
+      <button class="action-btn primary" onclick="srcCellPopConfirm()" style="height:30px;font-size:12px;flex:1;">Yes, edit this</button>
+      <button class="action-btn" onclick="srcCellPopClose()" style="height:30px;font-size:12px;">Cancel</button>
+    </div>
+    <div class="src-pop-edit-row" id="src-pop-step2">
+      <input type="number" id="src-pop-input" class="src-pop-input" placeholder="New value" step="0.01" oninput="srcCellPopCheckSave()" />
+      <textarea id="src-pop-reason" class="src-pop-reason" placeholder="Reason for change (required)…" oninput="srcCellPopCheckSave()"></textarea>
+      <div class="src-pop-btn-row">
+        <button class="src-pop-save" id="src-pop-save-btn" onclick="srcCellPopSave()" disabled>Save</button>
+        <button class="src-pop-cancel" onclick="srcCellPopClose()">Cancel</button>
+      </div>
+      <div class="src-pop-error" id="src-pop-error"></div>
+    </div>
+  </div>
+  <!-- ── END inline cell-edit popover ── -->
+
 
   <!-- ── DEPLOYMENTS SECTION START ── -->
   <!-- DEPLOYMENTS PAGE -->
@@ -19146,44 +19230,58 @@
       const statusFilter = _srcStatusFilter;
       let rows = _srcFiltered.slice();
       if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
+      const isAdmin = srcIsAdminOrOwner();
 
       if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>';
+        _srcRenderedRows = [];
         return;
       }
 
-      // Sort: missing → partial → complete, then equipment code ascending
       rows.sort((a, b) => {
         const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
         const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
         if (sa !== sb) return sa - sb;
         return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
       });
+      _srcRenderedRows = rows;
 
-      tbody.innerHTML = rows.map(d => {
+      tbody.innerHTML = rows.map((d, idx) => {
         const status = srcGetStatus(d);
         const isTip  = srcIsTipper(d);
         const rowBg  = status === 'complete' ? 'background:#f0fdf4;' :
                        status === 'partial'  ? 'background:#fffbeb;' :
-                                              'background:#fff5f5;';
-        const kmrOpen  = isTip
-          ? srcFmtValTip(d.kmr_opening_added,  d.kmr_opening_value,  d.kmr_opening_timestamp,  d.kmr_opening_by)
-          : '<span style="color:var(--text-muted);">—</span>';
-        const kmrClose = isTip
-          ? srcFmtValTip(d.kmr_closing_added,  d.kmr_closing_value,  d.kmr_closing_timestamp,  d.kmr_closing_by)
-          : '<span style="color:var(--text-muted);">—</span>';
-        const hmrOpen  = srcFmtValTip(d.hmr_opening_added,  d.hmr_opening_value,  d.hmr_opening_timestamp,  d.hmr_opening_by);
-        const hmrClose = srcFmtValTip(d.hmr_closing_added,  d.hmr_closing_value,  d.hmr_closing_timestamp,  d.hmr_closing_by);
-        return `<tr style="${rowBg}border-bottom:1px solid var(--border);">
-          <td style="font-family:var(--font-mono);font-weight:600;">${srcGetEquipmentCode(d)}</td>
-          <td>${srcGetPersonName(d)}</td>
-          <td><span class="dep-shift-badge">${d.shift || '—'}</span></td>
-          <td class="src-reading-cell">${kmrOpen}</td>
-          <td class="src-reading-cell">${kmrClose}</td>
-          <td class="src-reading-cell">${hmrOpen}</td>
-          <td class="src-reading-cell">${hmrClose}</td>
-          <td>${srcStatusPill(status)}</td>
-        </tr>`;
+                                               'background:#fff5f5;';
+
+        let adminBadge = '';
+        if (d.is_admin_override || d.created_by_admin) {
+          const tl = [];
+          if (d.created_by_admin && !d.is_admin_override) tl.push('Created by admin');
+          if (d.overridden_by_name) tl.push('By: ' + d.overridden_by_name);
+          if (d.override_timestamp) tl.push('At: ' + new Date(d.override_timestamp).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true}));
+          if (d.override_reason)    tl.push('Reason: ' + d.override_reason);
+          adminBadge = '<span class="src-admin-badge">\u270f Edited<span class="src-admin-tooltip">' + tl.join('<br>') + '</span></span>';
+        }
+
+        const canEdit = isAdmin && !!d._reading_id;
+        const mkCell = (field, added, val, ts, by, show) => {
+          const inner = show ? srcFmtValTip(added, val, ts, by) : '<span style="color:var(--text-muted);">\u2014</span>';
+          if (canEdit && show) {
+            return '<td class="src-reading-cell" data-editable="1" onclick="srcCellClick(event,' + idx + ',\'' + field + '\')">' + inner + '</td>';
+          }
+          return '<td class="src-reading-cell" data-editable="0">' + inner + '</td>';
+        };
+
+        return '<tr style="' + rowBg + 'border-bottom:1px solid var(--border);">' +
+          '<td style="font-family:var(--font-mono);font-weight:600;">' + srcGetEquipmentCode(d) + adminBadge + '</td>' +
+          '<td>' + srcGetPersonName(d) + '</td>' +
+          '<td><span class="dep-shift-badge">' + (d.shift || '\u2014') + '</span></td>' +
+          mkCell('kmr_opening', d.kmr_opening_added, d.kmr_opening_value, d.kmr_opening_timestamp, d.kmr_opening_by, isTip) +
+          mkCell('kmr_closing', d.kmr_closing_added, d.kmr_closing_value, d.kmr_closing_timestamp, d.kmr_closing_by, isTip) +
+          mkCell('hmr_opening', d.hmr_opening_added, d.hmr_opening_value, d.hmr_opening_timestamp, d.hmr_opening_by, true) +
+          mkCell('hmr_closing', d.hmr_closing_added, d.hmr_closing_value, d.hmr_closing_timestamp, d.hmr_closing_by, true) +
+          '<td>' + srcStatusPill(status) + '</td>' +
+          '</tr>';
       }).join('');
     }
 
@@ -19251,6 +19349,8 @@
         const el = document.getElementById(id);
         if (el) el.style.display = isAdmin ? 'inline-flex' : 'none';
       });
+      const toggleWrap = document.getElementById('src-edit-toggle-wrap');
+      if (toggleWrap) toggleWrap.style.display = isAdmin ? 'inline-flex' : 'none';
     }
 
     // ── Edit modal ──────────────────────────────────────────────────────────────────────────
@@ -19593,6 +19693,133 @@
         body.classList.contains('open') ? '▼' : '▶'
       );
     }
+
+    // ── Edit Mode toggle ─────────────────────────────────────────────────────────────────────────────
+    let _srcEditModeOn = false;
+
+    function srcHandleEditToggle(on) {
+      _srcEditModeOn = on;
+      const track = document.getElementById('src-toggle-track');
+      if (track) track.classList.toggle('on', on);
+      document.body.classList.toggle('src-edit-mode', on);
+      if (!on) srcCellPopClose();
+      srcRenderTable();
+    }
+
+    // ── Inline cell-edit popover ──────────────────────────────────────────────────────────────────
+    let _srcPopRowIdx = null;
+    let _srcPopField  = null;
+
+    const SRC_FIELD_LABELS = {
+      hmr_opening: 'HMR Opening', hmr_closing: 'HMR Closing',
+      kmr_opening: 'KMR Opening', kmr_closing: 'KMR Closing',
+    };
+
+    function srcCellClick(event, idx, field) {
+      if (!_srcEditModeOn) return;
+      event.stopPropagation();
+      const d = _srcRenderedRows[idx];
+      if (!d || !d._reading_id) return;
+      _srcPopRowIdx = idx;
+      _srcPopField  = field;
+
+      const valMap = { hmr_opening: d.hmr_opening_value, hmr_closing: d.hmr_closing_value,
+                       kmr_opening: d.kmr_opening_value, kmr_closing: d.kmr_closing_value };
+      const cur = valMap[field];
+
+      document.getElementById('src-pop-field-label').textContent = SRC_FIELD_LABELS[field] || field;
+      document.getElementById('src-pop-current').textContent = 'Current: ' + (cur != null ? cur : '—');
+      document.getElementById('src-pop-input').value = (cur != null) ? cur : '';
+      document.getElementById('src-pop-reason').value = '';
+      document.getElementById('src-pop-step1').style.display = 'flex';
+      document.getElementById('src-pop-step2').classList.remove('open');
+      const errEl = document.getElementById('src-pop-error');
+      errEl.textContent = ''; errEl.classList.remove('visible');
+      const saveBtn = document.getElementById('src-pop-save-btn');
+      saveBtn.disabled = true; saveBtn.textContent = 'Save';
+
+      const pop = document.getElementById('src-cell-popover');
+      pop.classList.add('open');
+      const rect = event.currentTarget.getBoundingClientRect();
+      const popW = 260;
+      let left = rect.left, top = rect.bottom + 6;
+      if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 12;
+      if (top + 220 > window.innerHeight) top = rect.top - 225;
+      pop.style.left = left + 'px';
+      pop.style.top  = top  + 'px';
+    }
+
+    function srcCellPopClose() {
+      const pop = document.getElementById('src-cell-popover');
+      if (pop) pop.classList.remove('open');
+      _srcPopRowIdx = null; _srcPopField = null;
+    }
+
+    function srcCellPopConfirm() {
+      document.getElementById('src-pop-step1').style.display = 'none';
+      document.getElementById('src-pop-step2').classList.add('open');
+      setTimeout(() => { const inp = document.getElementById('src-pop-input'); if (inp) { inp.focus(); inp.select(); } }, 50);
+    }
+
+    function srcCellPopCheckSave() {
+      const ok = document.getElementById('src-pop-input').value.trim() !== '' &&
+                 document.getElementById('src-pop-reason').value.trim() !== '';
+      const btn = document.getElementById('src-pop-save-btn');
+      btn.disabled = !ok;
+    }
+
+    async function srcCellPopSave() {
+      const val    = document.getElementById('src-pop-input').value.trim();
+      const reason = document.getElementById('src-pop-reason').value.trim();
+      if (!val || !reason) return;
+      const d = _srcRenderedRows[_srcPopRowIdx];
+      if (!d || !d._reading_id) return;
+
+      const payload = { override_reason: reason };
+      payload[_srcPopField + '_value'] = parseFloat(val);
+
+      const saveBtn = document.getElementById('src-pop-save-btn');
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+      const errEl = document.getElementById('src-pop-error');
+      errEl.textContent = ''; errEl.classList.remove('visible');
+
+      try {
+        const res = await apiFetch(API + '/shift-readings/' + d._reading_id + '/admin-override', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const fieldLabel = SRC_FIELD_LABELS[_srcPopField] || _srcPopField;
+          d[_srcPopField + '_value'] = parseFloat(val);
+          d[_srcPopField + '_added'] = true;
+          d.is_admin_override  = true;
+          d.override_reason    = reason;
+          d.overridden_by_name = (currentUser && (currentUser.name || currentUser.worker_id)) || 'Admin';
+          d.override_timestamp = new Date().toISOString();
+          d.reading_status     = null;
+          srcCellPopClose();
+          srcApplyFilters();
+          showToast('✅ ' + fieldLabel + ' updated');
+        } else {
+          let msg = 'Error ' + res.status;
+          try { const b = await res.json(); msg = b.detail || b.message || b.error || msg; } catch(_e) {}
+          errEl.textContent = msg; errEl.classList.add('visible');
+          saveBtn.disabled = false; saveBtn.textContent = 'Save';
+        }
+      } catch(e) {
+        errEl.textContent = 'Network error — check connection.';
+        errEl.classList.add('visible');
+        saveBtn.disabled = false; saveBtn.textContent = 'Save';
+      }
+    }
+
+    // Close popover on outside click
+    document.addEventListener('click', function srcPopOutsideClick(e) {
+      const pop = document.getElementById('src-cell-popover');
+      if (pop && pop.classList.contains('open') && !pop.contains(e.target)) srcCellPopClose();
+    });
+
 
     /* ── AUTO-REFRESH SYSTEM END ── */
 
