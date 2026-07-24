@@ -4914,7 +4914,7 @@
       font-size: 13px; cursor: pointer; color: var(--text-muted); font-family: var(--font-main);
     }
     .src-pop-cancel:hover { background: var(--border); }
-    .src-pop-error { font-size: 11px; color: #dc2626; margin-top: 5px; display: none; }
+    .src-pop-error { font-size: 11px; color: #dc2626; margin-top: 5px; display: none; white-space: pre-line; }
     .src-pop-error.visible { display: block; }
     .src-admin-badge {
       display: inline-flex;
@@ -5056,6 +5056,7 @@
       border: 1px solid #fecaca;
       border-radius: 6px;
       display: none;
+      white-space: pre-line;
     }
     .src-modal-error.visible { display: block; }
     /* Audit table */
@@ -7973,8 +7974,8 @@
           </div>
         </div>
         <div class="src-form-field" style="margin-bottom:14px;">
-          <label class="src-form-label">Driver / Operator Name (optional)</label>
-          <input type="text" id="src-create-driver" class="src-form-input" placeholder="Name on this entry" style="font-family:var(--font-main);" />
+          <label class="src-form-label">Assigned Driver / Operator</label>
+          <input type="text" id="src-create-driver" class="src-form-input" placeholder="Select an assigned equipment row" style="font-family:var(--font-main);" readonly />
         </div>
         <div class="src-form-field" style="margin-bottom:0;">
           <label class="src-form-label">Reason <span style="color:#dc2626;">*</span></label>
@@ -19077,6 +19078,8 @@
             d.overridden_by_name = match.overridden_by_name || '';
             d.override_timestamp = match.override_timestamp || '';
             d.override_reason    = match.override_reason    || '';
+            d.vehicle_id         = match.vehicle_id || d.vehicle_id || null;
+            d.driver_id          = match.driver_id  || d.driver_id  || null;
             // Backend stores readings as nested { HMR: {...}, KMR: {...} }
             // sub-objects; flatten them here into the flat field names the
             // table renderer (srcRenderTable) already expects.
@@ -19343,6 +19346,51 @@
       return !!(currentUser.is_admin || role === 'admin' || role === 'owner');
     }
 
+    function srcFormatApiError(payload, fallback) {
+      if (!payload || typeof payload !== 'object') return fallback;
+      const detail = payload.detail;
+      if (Array.isArray(detail)) {
+        const messages = detail.map(issue => {
+          if (!issue || typeof issue !== 'object') return String(issue || '');
+          const location = Array.isArray(issue.loc)
+            ? issue.loc.filter(segment => segment !== 'body').join('.')
+            : '';
+          const message = issue.msg || issue.message || 'Invalid value';
+          return location ? `${location}: ${message}` : message;
+        }).filter(Boolean);
+        return messages.join('\n') || fallback;
+      }
+      if (typeof detail === 'string') return detail;
+      if (typeof payload.message === 'string') return payload.message;
+      if (typeof payload.error === 'string') return payload.error;
+      return fallback;
+    }
+
+    async function srcGetApiErrorMessage(response, fallback) {
+      try {
+        return srcFormatApiError(await response.json(), fallback);
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    function srcAddReading(readings, metric, field, rawValue) {
+      if (rawValue === '') return;
+      const value = Number(rawValue);
+      if (!Number.isFinite(value)) return;
+      if (!readings[metric]) readings[metric] = {};
+      readings[metric][field] = value;
+    }
+
+    function srcBuildCreateReadings(values) {
+      const readings = {};
+      srcAddReading(readings, 'HMR', 'opening_value', values.hmrOpening);
+      srcAddReading(readings, 'HMR', 'closing_value', values.hmrClosing);
+      srcAddReading(readings, 'KMR', 'opening_value', values.kmrOpening);
+      srcAddReading(readings, 'KMR', 'closing_value', values.kmrClosing);
+      return readings;
+    }
+
     function srcShowAdminButtons() {
       const isAdmin = srcIsAdminOrOwner();
       ['src-create-btn', 'src-audit-btn'].forEach(id => {
@@ -19451,8 +19499,7 @@
           srcCloseEditModal();
           srcApplyFilters();
         } else {
-          let msg = `Error ${res.status}`;
-          try { const body = await res.json(); msg = body.detail || body.message || body.error || msg; } catch(_) {}
+          const msg = await srcGetApiErrorMessage(res, `Error ${res.status}`);
           const errEl = document.getElementById('src-edit-error');
           errEl.textContent = msg;
           errEl.classList.add('visible');
@@ -19520,15 +19567,26 @@
         btn.classList.remove('active-A','active-B','active-C');
         if (s === shift) btn.classList.add(`active-${s}`);
       });
+      srcCreateOnTruckInput();
       srcCreateCheckSubmit();
+    }
+
+    function srcGetCreateDeployment() {
+      const truck = document.getElementById('src-create-truck').value.trim();
+      if (!truck) return null;
+      const shift = _srcCreateShift;
+      return _srcAllData.find(d =>
+        srcGetEquipmentCode(d) === truck &&
+        (!shift || (d.shift || '').toUpperCase() === shift)
+      ) || null;
     }
 
     function srcCreateOnTruckInput() {
       // Show KMR fields if the entered truck number matches a known tipper
-      const truck = document.getElementById('src-create-truck').value.trim();
-      const existing = _srcAllData.find(d => srcGetEquipmentCode(d) === truck);
+      const existing = srcGetCreateDeployment();
       const isTip = existing ? srcIsTipper(existing) : false;
       document.getElementById('src-create-kmr-row').style.display = isTip ? '' : 'none';
+      document.getElementById('src-create-driver').value = existing ? srcGetPersonName(existing) : '';
       srcCreateCheckSubmit();
     }
 
@@ -19545,7 +19603,6 @@
     async function srcSubmitCreateModal() {
       const truck  = document.getElementById('src-create-truck').value.trim();
       const date   = document.getElementById('src-create-date').value;
-      const driver = document.getElementById('src-create-driver').value.trim();
       const reason = document.getElementById('src-create-reason').value.trim();
       if (!truck || !_srcCreateShift || !reason) {
         showToast('Please fill all required fields.');
@@ -19557,17 +19614,34 @@
       const kmrOpen  = document.getElementById('src-create-kmr-open').value;
       const kmrClose = document.getElementById('src-create-kmr-close').value;
 
+      const deployment = srcGetCreateDeployment();
+      const errEl = document.getElementById('src-create-error');
+      if (!deployment || !deployment.vehicle_id || !deployment.driver_id) {
+        errEl.textContent = 'Select an equipment assignment with a vehicle and driver/operator.';
+        errEl.classList.add('visible');
+        return;
+      }
+
+      const readings = srcBuildCreateReadings({
+        hmrOpening: hmrOpen,
+        hmrClosing: hmrClose,
+        kmrOpening: srcIsTipper(deployment) ? kmrOpen : '',
+        kmrClosing: srcIsTipper(deployment) ? kmrClose : ''
+      });
+      if (Object.keys(readings).length === 0) {
+        errEl.textContent = 'Enter at least one HMR or KMR reading.';
+        errEl.classList.add('visible');
+        return;
+      }
+
       const payload = {
-        truck_number:    truck,
+        vehicle_id:      deployment.vehicle_id,
+        driver_id:       deployment.driver_id,
         shift:           _srcCreateShift,
         date:            date,
-        override_reason: reason
+        override_reason: reason,
+        readings
       };
-      if (driver)   payload.driver_name       = driver;
-      if (hmrOpen)  payload.hmr_opening_value  = parseFloat(hmrOpen);
-      if (hmrClose) payload.hmr_closing_value  = parseFloat(hmrClose);
-      if (kmrOpen)  payload.kmr_opening_value  = parseFloat(kmrOpen);
-      if (kmrClose) payload.kmr_closing_value  = parseFloat(kmrClose);
 
       const submitBtn = document.getElementById('src-create-submit-btn');
       submitBtn.disabled    = true;
@@ -19585,9 +19659,7 @@
           srcCloseCreateModal();
           srcFetch(); // re-fetch to include the new row with correct server-generated fields
         } else {
-          let msg = `Error ${res.status}`;
-          try { const body = await res.json(); msg = body.detail || body.message || body.error || msg; } catch(_) {}
-          const errEl = document.getElementById('src-create-error');
+          const msg = await srcGetApiErrorMessage(res, `Error ${res.status}`);
           errEl.textContent = msg;
           errEl.classList.add('visible');
         }
@@ -19800,17 +19872,26 @@
           });
         } else {
           // ── POST: create a new admin reading for this deployment ───────────
+          if (!d.vehicle_id || !d.driver_id) {
+            errEl.textContent = 'This deployment is missing its vehicle or driver/operator assignment.';
+            errEl.classList.add('visible');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            return;
+          }
           const date = document.getElementById('src-date').value;
-          const truck = d.truck_number || d.equipment_id || srcGetEquipmentCode(d);
+          const metric = _srcPopField.startsWith('hmr_') ? 'HMR' : 'KMR';
+          const readingField = _srcPopField.endsWith('_opening') ? 'opening_value' : 'closing_value';
+          const readings = {};
+          srcAddReading(readings, metric, readingField, val);
           const payload = {
-            truck_number:   truck,
+            vehicle_id:     d.vehicle_id,
+            driver_id:      d.driver_id,
             shift:          d.shift || '',
             date:           date,
-            override_reason: reason
+            override_reason: reason,
+            readings
           };
-          payload[_srcPopField + '_value'] = parseFloat(val);
-          // Include driver info if available
-          if (d.worker_id || d.driver_id) payload.worker_id = d.worker_id || d.driver_id;
           res = await apiFetch(API + '/shift-readings/admin-create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -19836,8 +19917,7 @@
           srcApplyFilters();
           showToast('\u2705 ' + fieldLabel + ' ' + (d._reading_id ? 'updated' : 'saved'));
         } else {
-          let msg = 'Error ' + res.status;
-          try { const b = await res.json(); msg = b.detail || b.message || b.error || msg; } catch(_e) {}
+          const msg = await srcGetApiErrorMessage(res, 'Error ' + res.status);
           errEl.textContent = msg; errEl.classList.add('visible');
           saveBtn.disabled = false; saveBtn.textContent = 'Save';
         }
