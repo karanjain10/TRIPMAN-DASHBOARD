@@ -12980,19 +12980,6 @@
 
     function lfOverallForEntry(e) { return e ? e.overall_lf : null; }
 
-    // ── Compute denominator (Σ capacity_m3) from allTrips for a given month+material
-    function lfComputeDenom(periodYYYYMM, tripMat) {
-      return allTrips.reduce((sum, t) => {
-        if (!t.timestamp && !t.mining_date) return sum;
-        const d = t.mining_date || t.timestamp.split('T')[0];
-        const ym = d.slice(0, 7); // 'YYYY-MM'
-        if (ym !== periodYYYYMM) return sum;
-        if (t.material_type !== tripMat) return sum;
-        const v = allVehicles.find(x => x._id === t.vehicle_id);
-        return sum + (v && v.capacity_tonnes ? parseFloat(v.capacity_tonnes) : 0);
-      }, 0);
-    }
-
     // ── Convert surveyed qty → m³
     function lfToM3(qty, unit, density) {
       if (!qty || qty <= 0) return 0;
@@ -13039,40 +13026,6 @@
 
       const btn = document.getElementById('lf-save-btn');
       btn.disabled = true;
-      btn.textContent = 'Fetching trips…';
-
-      // Fetch trips for the full month so lfComputeDenom has real data
-      let periodTrips = [];
-      try {
-        const startDate = period + '-01';
-        const year = parseInt(period.slice(0, 4));
-        const month = parseInt(period.slice(5, 7));
-        const lastDay = new Date(year, month, 0).getDate();
-        const endDate = period + '-' + String(lastDay).padStart(2, '0');
-        periodTrips = await fetchAllTripsForRange(startDate, endDate);
-      } catch (e) {
-        showToast('Failed to fetch trips for period');
-        btn.disabled = false;
-        btn.textContent = lfEditId ? 'Update entry' : 'Save entry';
-        return;
-      }
-
-      // Fetch vehicles if not already loaded (needed for capacity_m3 lookup)
-      if (!allVehicles.length) {
-        try {
-          const vres = await apiFetch(`${API}/vehicles`);
-          allVehicles = await vres.json();
-        } catch (e) {
-          showToast('Failed to fetch vehicle data');
-          btn.disabled = false;
-          btn.textContent = lfEditId ? 'Update entry' : 'Save entry';
-          return;
-        }
-      }
-
-      // Temporarily swap allTrips so lfComputeDenom works correctly
-      const _savedTrips = allTrips;
-      allTrips = periodTrips;
       btn.textContent = 'Saving…';
 
       const payload = { period, saved_at: new Date().toISOString() };
@@ -13081,19 +13034,8 @@
         const qty = parseFloat(document.getElementById(`lf-${m.key}-qty`).value) || 0;
         const unit = document.getElementById(`lf-${m.key}-unit`).value;
         const density = parseFloat(document.getElementById(`lf-${m.key}-density`).value) || 1;
-        const vol_m3 = Math.round(lfToM3(qty, unit, density) * 100) / 100;
-        const cap_m3 = Math.round(lfComputeDenom(period, m.tripMat) * 100) / 100;
-        const lf = cap_m3 > 0 ? Math.round((vol_m3 / cap_m3) * 1000) / 10 : 0;
-        payload[m.key] = { qty, unit, density, vol_m3, cap_m3, lf };
+        payload[m.key] = { qty, unit, density };
       });
-
-      // Restore original allTrips
-      allTrips = _savedTrips;
-
-      // Weighted overall (by denominator weight)
-      const totalCap = LF_MATS.reduce((s, m) => s + (payload[m.key].cap_m3 || 0), 0);
-      const totalVol = LF_MATS.reduce((s, m) => s + (payload[m.key].vol_m3 || 0), 0);
-      payload.overall_lf = totalCap > 0 ? Math.round((totalVol / totalCap) * 1000) / 10 : 0;
 
       try {
         let res;
@@ -13129,6 +13071,30 @@
       }
       btn.disabled = false;
       btn.textContent = lfEditId ? 'Update entry' : 'Save entry';
+    }
+
+    async function lfRecomputeEntry(id, button) {
+      if (!id) return;
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Recomputing…';
+      }
+      try {
+        const res = await apiFetch(`${LF_API}/${id}/recompute`, { method: 'POST' });
+        if (!res.ok) throw new Error('API error');
+        const saved = await res.json();
+        const idx = lfEntries.findIndex(entry => (entry._id || entry.id) === id);
+        if (idx !== -1) lfEntries[idx] = saved;
+        lfRender();
+        lfUpdateHomeStat();
+        showToast('Entry recomputed');
+      } catch (e) {
+        showToast('Failed to recompute — check connection');
+        if (button) {
+          button.disabled = false;
+          button.textContent = 'Recompute';
+        }
+      }
     }
 
     async function lfDeleteEntry(id) {
@@ -13225,6 +13191,8 @@
       <td style="padding:8px 10px;font-family:var(--font-mono);font-weight:700;color:#0f766e;">${e.overall_lf != null ? e.overall_lf + '%' : '—'}</td>
       <td style="padding:8px 10px;white-space:nowrap;">
         <span style="cursor:pointer;font-size:11px;color:var(--accent);text-decoration:underline dotted;" onclick="lfEditEntry('${id}')">Edit</span>
+        &nbsp;
+        <button type="button" style="padding:0;border:0;background:none;cursor:pointer;font-size:11px;color:#0f766e;text-decoration:underline dotted;" onclick="lfRecomputeEntry('${id}', this)">Recompute</button>
         &nbsp;
         <span style="cursor:pointer;font-size:11px;color:var(--hardob);text-decoration:underline dotted;" onclick="lfDeleteEntry('${id}')">Del</span>
       </td>
