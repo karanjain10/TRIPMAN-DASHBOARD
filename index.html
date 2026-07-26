@@ -19526,6 +19526,17 @@
       _srcFlagReviewId = null;
     }
 
+    async function srcFlagReviewError(response) {
+      const fallback = `Could not resolve this flag (HTTP ${response.status}).`;
+      const body = await response.json().catch(() => null);
+      const detail = body?.detail ?? body?.message ?? body?.error;
+      if (Array.isArray(detail)) {
+        const messages = detail.map(item => item?.msg || item?.message || String(item)).filter(Boolean);
+        return messages.length ? messages.join(' ') : fallback;
+      }
+      return typeof detail === 'string' && detail.trim() ? detail : fallback;
+    }
+
     async function srcSubmitFlagReview() {
       const note = document.getElementById('src-flag-review-note').value.trim();
       const error = document.getElementById('src-flag-review-error');
@@ -19541,14 +19552,14 @@
         const res = await apiFetch(`${API}/reading-flags/${_srcFlagReviewId}/resolve`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ admin_corrected: false, note })
+          body: JSON.stringify({ admin_corrected: false, resolution_note: note })
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(await srcFlagReviewError(res));
         srcCloseFlagReviewModal();
         await srcRefreshFlagData();
         showToast('Flag marked reviewed');
-      } catch (_) {
-        error.textContent = 'Could not resolve this flag. Please try again.';
+      } catch (submitError) {
+        error.textContent = submitError?.message || 'Could not resolve this flag. Please try again.';
         error.classList.add('visible');
       } finally {
         saveButton.disabled = false;
