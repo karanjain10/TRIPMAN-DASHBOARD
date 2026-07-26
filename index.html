@@ -4908,6 +4908,21 @@
     .src-flag-pagination { display:flex; justify-content:flex-end; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); }
     .src-flag-highlight { animation: srcFlagHighlight 2.4s ease-out; }
     @keyframes srcFlagHighlight { 0%, 35% { box-shadow: inset 0 0 0 2px #f59e0b; background:#fffbeb; } 100% { box-shadow: none; } }
+    /* ── Completed-row stat chips ── */
+    .src-stat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+    .src-stat-chip-hours { background: #dcfce7; color: #15803d; }
+    .src-stat-chip-kms   { background: #dbeafe; color: #1d4ed8; }
+    .src-stat-chip-trips { background: #f3e8ff; color: #7e22ce; }
     @media (max-width: 760px) {
       .src-stat-strip { grid-template-columns: repeat(2, 1fr); }
       .src-flag-filter-grid { grid-template-columns: 1fr; }
@@ -7931,8 +7946,8 @@
       </div>
 
       <!-- MAIN TABLE -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-        <table class="src-table">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto;">
+        <table class="src-table" style="min-width:1180px;">
           <thead>
             <tr>
               <th>Equipment</th>
@@ -7942,12 +7957,15 @@
               <th>KMR Closing</th>
               <th>HMR Opening</th>
               <th>HMR Closing</th>
+              <th>Hours Worked</th>
+              <th>KMs Driven</th>
+              <th>Trips</th>
               <th>Status</th>
               <th id="src-th-actions" style="display:none;">Actions</th>
             </tr>
           </thead>
           <tbody id="src-table-body">
-            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);">Select a date to load data</td></tr>
+            <tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text-muted);">Select a date to load data</td></tr>
           </tbody>
         </table>
       </div>
@@ -19115,6 +19133,8 @@
     let _srcStatusFilter  = '';   // '', 'complete', 'partial', 'missing'
     let _srcCurrentShift  = 'all';
     let _srcRenderedRows  = [];   // rows currently in the DOM (for onclick index lookup)
+    let _srcTripCounts    = new Map(); // date|shift|equipment id -> trip count
+    let _srcTripsLoaded   = false;
     let _srcRowFlags      = [];   // unresolved flags for the visible compliance date
     let _srcFlagsQueue    = [];   // current page of the flags queue
     let _srcFlagsOffset   = 0;
@@ -19575,15 +19595,24 @@
       const summaryUrl  = `${API}/deployments/summary?${p}`;
       const readingsUrl = `${API}/shift-readings?${p}`;
       const rowFlagsPromise = srcFetchRowFlags(date);
+      _srcTripCounts = new Map();
+      _srcTripsLoaded = false;
+      const tripsPromise = date
+        ? fetchAllTripsForRange(date, date)
+          .then(trips => ({ trips, loaded: true }))
+          .catch(() => ({ trips: [], loaded: false }))
+        : Promise.resolve({ trips: [], loaded: false });
       document.getElementById('src-table-body').innerHTML =
-        `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
+        `<tr><td colspan="12" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
       try {
-        const [summaryRes, readingsRes] = await Promise.all([
+        const [summaryRes, readingsRes, tripsResult] = await Promise.all([
           apiFetch(summaryUrl),
-          apiFetch(readingsUrl)
+          apiFetch(readingsUrl),
+          tripsPromise
         ]);
         if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
         const data = await summaryRes.json();
+        if (tripsResult.loaded) srcBuildTripCounts(tripsResult.trips, date);
 
         // shift_readings call is best-effort: if it fails, still show
         // deployment rows (as "missing") rather than blanking the page.
@@ -19683,7 +19712,7 @@
       } catch(e) {
         await rowFlagsPromise;
         document.getElementById('src-table-body').innerHTML =
-          `<tr><td colspan="9" style="text-align:center;padding:28px;color:#c0392b;">⚠ Could not load data. Check your connection.</td></tr>`;
+          `<tr><td colspan="12" style="text-align:center;padding:28px;color:#c0392b;">⚠ Could not load data. Check your connection.</td></tr>`;
       }
     }
 
@@ -19737,6 +19766,61 @@
 
     function srcGetPersonName(d) {
       return d.driver_name || d.operator_name || d.worker_name || d.added_by || '—';
+    }
+
+    function srcTripDate(trip) {
+      const value = trip?.mining_date || trip?.date || trip?.trip_date || trip?.timestamp || '';
+      return value ? String(value).slice(0, 10) : '';
+    }
+
+    function srcTripCountKey(date, shift, equipmentId) {
+      return `${date || ''}|${String(shift || '').toUpperCase()}|${equipmentId || ''}`;
+    }
+
+    function srcRowEquipmentIds(row) {
+      return [row?.vehicle_id, row?.equipment_id, row?.machine_id, row?.truck_id]
+        .filter(Boolean)
+        .map(String);
+    }
+
+    function srcBuildTripCounts(trips, selectedDate) {
+      _srcTripCounts = new Map();
+      (trips || []).forEach(trip => {
+        const tripDate = srcTripDate(trip);
+        const shift = trip?.shift;
+        if (!tripDate || !shift || (selectedDate && tripDate !== selectedDate)) return;
+        const equipmentIds = new Set([trip?.vehicle_id, trip?.machine_id, trip?.equipment_id].filter(Boolean).map(String));
+        equipmentIds.forEach(equipmentId => {
+          const key = srcTripCountKey(tripDate, shift, equipmentId);
+          _srcTripCounts.set(key, (_srcTripCounts.get(key) || 0) + 1);
+        });
+        // Also index by driver_id as a fallback for rows without vehicle_id
+        if (trip?.driver_id) {
+          const driverKey = `driver|${tripDate}|${String(trip.shift || '').toUpperCase()}|${String(trip.driver_id)}`;
+          _srcTripCounts.set(driverKey, (_srcTripCounts.get(driverKey) || 0) + 1);
+        }
+      });
+      _srcTripsLoaded = true;
+    }
+
+    function srcGetTripCount(row) {
+      if (!_srcTripsLoaded) return null;
+      const date = row?.date || document.getElementById('src-date')?.value || '';
+      const shift = row?.shift;
+      const equipmentIds = srcRowEquipmentIds(row);
+      if (!date || !shift) return 0;
+      // Primary lookup: by equipment/vehicle id
+      if (equipmentIds.length) {
+        const byEquip = Math.max(0, ...equipmentIds.map(id => _srcTripCounts.get(srcTripCountKey(date, shift, id)) || 0));
+        if (byEquip > 0) return byEquip;
+      }
+      // Fallback: by driver_id
+      const driverId = row?.driver_id;
+      if (driverId) {
+        const driverKey = `driver|${date}|${String(shift || '').toUpperCase()}|${String(driverId)}`;
+        return _srcTripCounts.get(driverKey) || 0;
+      }
+      return 0;
     }
 
     function srcFormatTimestamp(timestamp) {
@@ -19804,6 +19888,41 @@
       return `<span style="font-family:var(--font-mono);">${val !== undefined && val !== null ? val : '—'}</span>`;
     }
 
+    function srcReadingDelta(openingValue, closingValue) {
+      const opening = Number(openingValue);
+      const closing = Number(closingValue);
+      if (!Number.isFinite(opening) || !Number.isFinite(closing) || closing < opening) return null;
+      return closing - opening;
+    }
+
+    function srcFmtOperation(value, unit, tooltip) {
+      if (!Number.isFinite(Number(value))) return '<span style="color:var(--text-muted);">—</span>';
+      const formatted = Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      return `<span style="font-family:var(--font-mono);" title="${tooltip || ''}">${formatted}${unit ? ` ${unit}` : ''}</span>`;
+    }
+
+    function srcFmtStatChip(value, type, tooltip) {
+      if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+        return '<span style="color:var(--text-muted);">—</span>';
+      }
+      const num = Number(value);
+      let label, cssClass, icon;
+      if (type === 'hours') {
+        label = num.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + ' hrs';
+        cssClass = 'src-stat-chip src-stat-chip-hours';
+        icon = '⏱';
+      } else if (type === 'kms') {
+        label = num.toLocaleString('en-IN', { maximumFractionDigits: 1 }) + ' km';
+        cssClass = 'src-stat-chip src-stat-chip-kms';
+        icon = '🛣';
+      } else {
+        label = num.toLocaleString('en-IN');
+        cssClass = 'src-stat-chip src-stat-chip-trips';
+        icon = '🔁';
+      }
+      return `<span class="${cssClass}" title="${tooltip || ''}">${icon} ${label}</span>`;
+    }
+
     function srcFmtValTip(added, val, ts, by, row, field) {
       if (!added) return '<span style="color:var(--text-muted);">—</span>';
       const display = (val !== undefined && val !== null) ? val : '—';
@@ -19837,7 +19956,7 @@
       const isAdmin = srcIsAdminOrOwner();
 
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>';
         _srcRenderedRows = [];
         return;
       }
@@ -19854,6 +19973,10 @@
         const status = srcGetStatus(d);
         const isTip  = srcIsTipper(d);
         const rowFlags = srcFlagsForRow(d);
+        const isComplete = status === 'complete';
+        const hoursWorked = isComplete ? srcReadingDelta(d.hmr_opening_value, d.hmr_closing_value) : null;
+        const kmsDriven = isComplete && isTip ? srcReadingDelta(d.kmr_opening_value, d.kmr_closing_value) : null;
+        const tripCount = isComplete ? srcGetTripCount(d) : null;
         const rowBg  = status === 'complete' ? 'background:#f0fdf4;' :
                        status === 'partial'  ? 'background:#fffbeb;' :
                                                'background:#fff5f5;';
@@ -19885,6 +20008,15 @@
           mkCell('kmr_closing', d.kmr_closing_added, d.kmr_closing_value, d.kmr_closing_timestamp, d.kmr_closing_by, isTip) +
           mkCell('hmr_opening', d.hmr_opening_added, d.hmr_opening_value, d.hmr_opening_timestamp, d.hmr_opening_by, true) +
           mkCell('hmr_closing', d.hmr_closing_added, d.hmr_closing_value, d.hmr_closing_timestamp, d.hmr_closing_by, true) +
+          '<td class="src-reading-cell">' + (isComplete
+            ? srcFmtStatChip(hoursWorked, 'hours', `HMR: ${d.hmr_opening_value} → ${d.hmr_closing_value}`)
+            : srcFmtOperation(hoursWorked, 'hrs', `HMR: ${d.hmr_opening_value} → ${d.hmr_closing_value}`)) + '</td>' +
+          '<td class="src-reading-cell">' + (isComplete && isTip
+            ? srcFmtStatChip(kmsDriven, 'kms', `KMR: ${d.kmr_opening_value} → ${d.kmr_closing_value}`)
+            : srcFmtOperation(kmsDriven, 'km', isTip ? `KMR: ${d.kmr_opening_value} → ${d.kmr_closing_value}` : '')) + '</td>' +
+          '<td class="src-reading-cell">' + (isComplete
+            ? srcFmtStatChip(tripCount, 'trips', _srcTripsLoaded ? 'Trips for this equipment, shift, and date' : 'Trip count unavailable')
+            : srcFmtOperation(tripCount, '', _srcTripsLoaded ? 'Trips for this equipment, shift, and date' : 'Trip count unavailable')) + '</td>' +
           '<td>' + srcStatusPill(status) + rowFlags.map(srcFlagBadgeHtml).join('') + '</td>' +
           '</tr>';
       }).join('');
