@@ -19169,8 +19169,52 @@
       return { items, total: Number.isFinite(total) ? total : items.length };
     }
 
+    function srcFlagSources(flag) {
+      return [
+        flag,
+        flag?.details,
+        flag?.flag_details,
+        flag?.flag_data,
+        flag?.evidence,
+        flag?.rule,
+        flag?.values,
+        flag?.metrics,
+        flag?.comparison,
+        flag?.calculation,
+        flag?.metadata,
+        flag?.meta,
+        flag?.context,
+        flag?.payload,
+        flag?.data,
+        flag?.reading,
+        flag?.shift_reading,
+        flag?.vehicle,
+        flag?.equipment,
+      ].filter(value => value && typeof value === 'object' && !Array.isArray(value));
+    }
+
+    function srcFlagField(flag, ...keys) {
+      for (const source of srcFlagSources(flag)) {
+        for (const key of keys) {
+          const value = source[key];
+          if (value !== undefined && value !== null && value !== '') return value;
+        }
+      }
+      return undefined;
+    }
+
+    function srcFlagVehicleId(flag) {
+      const nestedVehicle = flag?.vehicle || flag?.equipment;
+      return srcFlagField(flag, 'vehicle_id', 'equipment_id', 'machine_id', 'truck_id') ||
+        nestedVehicle?._id || nestedVehicle?.id || '';
+    }
+
+    function srcFlagDriverId(flag) {
+      return srcFlagField(flag, 'driver_id', 'operator_id', 'worker_id') || '';
+    }
+
     function srcFlagDate(flag) {
-      const value = flag.date || flag.shift_date || flag.reading_date || '';
+      const value = srcFlagField(flag, 'date', 'shift_date', 'reading_date') || '';
       return value ? String(value).slice(0, 10) : '';
     }
 
@@ -19179,7 +19223,12 @@
     }
 
     function srcFlagReadingIds(flag) {
-      return [flag.shift_reading_id, flag.reading_id, flag.shift_id, flag.deployment_id].filter(Boolean);
+      const nestedReading = flag?.reading || flag?.shift_reading;
+      return [
+        srcFlagField(flag, 'shift_reading_id', 'reading_id', 'shift_id', 'deployment_id'),
+        nestedReading?._id,
+        nestedReading?.id,
+      ].filter(Boolean);
     }
 
     function srcFlagRowIds(row) {
@@ -19197,9 +19246,11 @@
       if (flagReadingIds.length && rowReadingIds.length &&
         flagReadingIds.some(flagId => rowReadingIds.some(rowId => srcFlagIdsMatch(flagId, rowId)))) return true;
 
-      const sameVehicle = flag.vehicle_id && row.vehicle_id && srcFlagIdsMatch(flag.vehicle_id, row.vehicle_id);
+      const vehicleId = srcFlagVehicleId(flag);
+      const sameVehicle = vehicleId && row.vehicle_id && srcFlagIdsMatch(vehicleId, row.vehicle_id);
       const sameDate = srcFlagDate(flag) && row.date && srcFlagDate(flag) === String(row.date).slice(0, 10);
-      const sameShift = flag.shift && row.shift && String(flag.shift).toUpperCase() === String(row.shift).toUpperCase();
+      const flagShift = srcFlagField(flag, 'shift', 'shift_code');
+      const sameShift = flagShift && row.shift && String(flagShift).toUpperCase() === String(row.shift).toUpperCase();
       return !!(sameVehicle && sameDate && sameShift);
     }
 
@@ -19212,15 +19263,25 @@
     }
 
     function srcFlagValueSummary(flag) {
-      const actual = flag.flagged_value ?? flag.value ?? flag.actual_value ?? '—';
-      const expected = flag.expected_max ?? flag.max_value ?? flag.allowed_max ?? '—';
-      const unit = flag.unit ? ` ${flag.unit}` : '';
+      const actual = srcFlagField(flag,
+        'flagged_value', 'actual_value', 'observed_value', 'reading_value', 'current_value',
+        'value', 'actual', 'observed', 'flagged', 'actual_delta', 'observed_delta',
+        'hmr_delta', 'kmr_delta', 'delta', 'duration_hours'
+      ) ?? '—';
+      const expected = srcFlagField(flag,
+        'expected_max', 'expected_max_value', 'max_value', 'allowed_max', 'max_allowed',
+        'maximum_value', 'threshold_value', 'threshold', 'expected_value', 'max_hours', 'limit',
+        'expected', 'maximum', 'max', 'expected_limit', 'max_delta'
+      ) ?? '—';
+      const unitValue = srcFlagField(flag, 'unit', 'value_unit', 'measurement_unit');
+      const unit = unitValue ? ` ${unitValue}` : '';
       return `${actual}${unit} vs ${expected}${unit} max`;
     }
 
     function srcFlagDriverName(flag) {
-      if (flag.driver_name || flag.operator_name) return flag.driver_name || flag.operator_name;
-      const id = flag.driver_id || flag.operator_id;
+      const name = srcFlagField(flag, 'driver_name', 'operator_name', 'worker_name', 'driver_display_name');
+      if (name) return name;
+      const id = srcFlagDriverId(flag);
       const person = [...allDrivers, ...allOperators, ...allWorkers].find(candidate =>
         srcFlagIdsMatch(candidate._id || candidate.id, id)
       );
@@ -19228,13 +19289,16 @@
     }
 
     function srcFlagEquipmentName(flag) {
-      if (flag.number_plate || flag.vehicle_number || flag.equipment_code) {
-        return flag.number_plate || flag.vehicle_number || flag.equipment_code;
-      }
-      const row = _srcAllData.find(item => srcFlagIdsMatch(item.vehicle_id, flag.vehicle_id));
+      const directLabel = srcFlagField(flag,
+        'number_plate', 'vehicle_number', 'truck_number', 'machine_number', 'equipment_number',
+        'equipment_code', 'equipment_name', 'vehicle_name', 'display_name', 'label', 'name'
+      );
+      if (directLabel) return directLabel;
+      const vehicleId = srcFlagVehicleId(flag);
+      const row = _srcAllData.find(item => srcFlagIdsMatch(item.vehicle_id, vehicleId));
       if (row) return srcGetEquipmentCode(row);
-      const vehicle = allVehicles.find(item => srcFlagIdsMatch(item._id || item.id, flag.vehicle_id));
-      return vehicle?.number_plate || vehicle?.vehicle_number || flag.vehicle_id || '—';
+      const equipment = [...allVehicles, ...allMachines].find(item => srcFlagIdsMatch(item._id || item.id, vehicleId));
+      return equipment?.number_plate || equipment?.vehicle_number || equipment?.machine_number || vehicleId || '—';
     }
 
     function srcFlagStatus(flag) {
