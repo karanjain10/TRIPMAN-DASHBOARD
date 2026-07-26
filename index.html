@@ -19262,16 +19262,37 @@
       return flagType === 'KMR_IMPLAUSIBLE_SPEED' ? 'src-flag-type-kmr' : 'src-flag-type-hmr';
     }
 
+    function srcFormatFlagNumber(value) {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) return String(value);
+      return Number(numericValue.toFixed(2)).toString();
+    }
+
+    function srcFlagTolerance(flag) {
+      const configuredTolerance = srcFlagField(flag, 'tolerance_hours', 'tolerance', 'allowed_tolerance');
+      if (configuredTolerance !== undefined && Number.isFinite(Number(configuredTolerance))) return Number(configuredTolerance);
+      const messageMatch = String(flag?.message || '').match(/\+\s*([\d.]+)\s*tol\b/i);
+      return messageMatch ? Number(messageMatch[1]) : 0;
+    }
+
     function srcFlagValueSummary(flag) {
+      const hoursWorked = srcFlagField(flag, 'hours_worked');
+      const elapsedHours = srcFlagField(flag, 'elapsed_hours');
+      if (flag.flag_type === 'HMR_IMPOSSIBLE' &&
+        Number.isFinite(Number(hoursWorked)) && Number.isFinite(Number(elapsedHours))) {
+        const expectedMaximum = Number(elapsedHours) + srcFlagTolerance(flag);
+        return `${srcFormatFlagNumber(hoursWorked)} hrs vs ${srcFormatFlagNumber(expectedMaximum)} hrs max`;
+      }
+
       const actual = srcFlagField(flag,
         'flagged_value', 'actual_value', 'observed_value', 'reading_value', 'current_value',
         'value', 'actual', 'observed', 'flagged', 'actual_delta', 'observed_delta',
-        'hmr_delta', 'kmr_delta', 'delta', 'duration_hours'
+        'hmr_delta', 'kmr_delta', 'delta', 'duration_hours', 'hours_worked'
       ) ?? '—';
       const expected = srcFlagField(flag,
         'expected_max', 'expected_max_value', 'max_value', 'allowed_max', 'max_allowed',
         'maximum_value', 'threshold_value', 'threshold', 'expected_value', 'max_hours', 'limit',
-        'expected', 'maximum', 'max', 'expected_limit', 'max_delta'
+        'expected', 'maximum', 'max', 'expected_limit', 'max_delta', 'elapsed_hours'
       ) ?? '—';
       const unitValue = srcFlagField(flag, 'unit', 'value_unit', 'measurement_unit');
       const unit = unitValue ? ` ${unitValue}` : '';
