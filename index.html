@@ -4815,7 +4815,7 @@
     }
     .src-stat-strip {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-bottom: 20px;
     }
@@ -4846,6 +4846,72 @@
     .src-pill-partial  { background: #fef9c3; color: #a16207; }
     .src-pill-missing  { background: #fee2e2; color: #dc2626; }
     .src-val-tip:hover { opacity: .75; }
+    .src-flag-badge {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 5px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      cursor: help;
+      vertical-align: middle;
+    }
+    .src-flag-badge-hmr { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .src-flag-badge-kmr { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .src-flag-panel {
+      margin-top: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .src-flag-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .src-flag-panel-title { font-size: 14px; font-weight: 700; color: var(--accent); }
+    .src-flag-filter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .src-flag-field { display: flex; flex-direction: column; gap: 5px; }
+    .src-flag-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+    .src-flag-select, .src-flag-date, .src-flag-note {
+      height: 34px;
+      padding: 0 9px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text-primary);
+      font: inherit;
+      outline: none;
+    }
+    .src-flag-note { height: auto; min-height: 86px; padding: 8px 10px; resize: vertical; }
+    .src-flag-select:focus, .src-flag-date:focus, .src-flag-note:focus { border-color: var(--accent); }
+    .src-flag-type { display: inline-flex; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+    .src-flag-type-hmr { background:#fee2e2; color:#b91c1c; }
+    .src-flag-type-kmr { background:#fef3c7; color:#92400e; }
+    .src-flag-status { display: inline-flex; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .src-flag-status-open { background:#fee2e2; color:#b91c1c; }
+    .src-flag-status-done { background:#dcfce7; color:#15803d; }
+    .src-flag-empty { padding: 28px; text-align: center; color: #15803d; background: #f0fdf4; font-size: 13px; font-weight: 600; }
+    .src-flag-pagination { display:flex; justify-content:flex-end; align-items:center; gap:10px; padding:12px 18px; border-top:1px solid var(--border); font-size:12px; color:var(--text-muted); }
+    .src-flag-highlight { animation: srcFlagHighlight 2.4s ease-out; }
+    @keyframes srcFlagHighlight { 0%, 35% { box-shadow: inset 0 0 0 2px #f59e0b; background:#fffbeb; } 100% { box-shadow: none; } }
+    @media (max-width: 760px) {
+      .src-stat-strip { grid-template-columns: repeat(2, 1fr); }
+      .src-flag-filter-grid { grid-template-columns: 1fr; }
+    }
 
     /* ── Admin Compliance — toggle switch, editable cells, inline popover ── */
     .src-toggle-track {
@@ -4964,7 +5030,7 @@
       border-top-color: #1a1917;
     }
     /* Shared modal overlay */
-    #src-edit-modal, #src-create-modal, #src-audit-modal {
+    #src-edit-modal, #src-create-modal, #src-audit-modal, #src-flag-review-modal {
       display: none;
       position: fixed;
       inset: 0;
@@ -4973,7 +5039,7 @@
       align-items: center;
       justify-content: center;
     }
-    #src-edit-modal.open, #src-create-modal.open, #src-audit-modal.open { display: flex; }
+    #src-edit-modal.open, #src-create-modal.open, #src-audit-modal.open, #src-flag-review-modal.open { display: flex; }
     .src-modal-box {
       background: var(--surface);
       border-radius: 12px;
@@ -7855,6 +7921,13 @@
             <div class="src-stat-value" id="src-stat-missing" style="color:#dc2626;">—</div>
           </div>
         </div>
+        <div class="src-stat-card" onclick="srcFocusFlagsQueue()" title="View unresolved reading flags for this date">
+          <div class="src-stat-icon" style="color:#b91c1c;">🚩</div>
+          <div>
+            <div class="src-stat-label">Unresolved Flags</div>
+            <div class="src-stat-value" id="src-stat-flags" style="color:#b91c1c;">—</div>
+          </div>
+        </div>
       </div>
 
       <!-- MAIN TABLE -->
@@ -7878,6 +7951,73 @@
           </tbody>
         </table>
       </div>
+
+      <section class="src-flag-panel" id="src-flags-panel">
+        <div class="src-flag-panel-head">
+          <div>
+            <div class="src-flag-panel-title">🚩 Reading Flags Queue</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Review and resolve implausible shift readings.</div>
+          </div>
+          <button class="action-btn" type="button" onclick="srcFetchFlagsQueue(true)" style="height:30px;font-size:12px;">↻ Refresh</button>
+        </div>
+        <div class="src-flag-filter-grid">
+          <div class="src-flag-field">
+            <label class="src-flag-label" for="src-flag-driver">Driver</label>
+            <select class="src-flag-select" id="src-flag-driver" onchange="srcFetchFlagsQueue(true)"><option value="">All drivers</option></select>
+          </div>
+          <div class="src-flag-field">
+            <label class="src-flag-label" for="src-flag-vehicle">Equipment</label>
+            <select class="src-flag-select" id="src-flag-vehicle" onchange="srcFetchFlagsQueue(true)"><option value="">All equipment</option></select>
+          </div>
+          <div class="src-flag-field">
+            <label class="src-flag-label" for="src-flag-type">Flag type</label>
+            <select class="src-flag-select" id="src-flag-type" onchange="srcFetchFlagsQueue(true)">
+              <option value="">All flag types</option>
+              <option value="HMR_IMPOSSIBLE">HMR Impossible</option>
+              <option value="KMR_IMPLAUSIBLE_SPEED">KMR Implausible Speed</option>
+            </select>
+          </div>
+          <div class="src-flag-field">
+            <label class="src-flag-label" for="src-flag-resolved">Status</label>
+            <select class="src-flag-select" id="src-flag-resolved" onchange="srcFetchFlagsQueue(true)">
+              <option value="false" selected>Unresolved</option>
+              <option value="true">Resolved</option>
+              <option value="">All</option>
+            </select>
+          </div>
+          <div class="src-flag-field">
+            <label class="src-flag-label" for="src-flag-date-from">From date</label>
+            <input class="src-flag-date" type="date" id="src-flag-date-from" onchange="srcFetchFlagsQueue(true)">
+          </div>
+          <div class="src-flag-field">
+            <label class="src-flag-label" for="src-flag-date-to">To date</label>
+            <input class="src-flag-date" type="date" id="src-flag-date-to" onchange="srcFetchFlagsQueue(true)">
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="src-table">
+            <thead>
+              <tr>
+                <th>Driver</th>
+                <th>Equipment</th>
+                <th>Flag type</th>
+                <th>Flagged / Expected</th>
+                <th>Flagged at</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="src-flags-body">
+              <tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted);">Loading flags…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="src-flag-pagination">
+          <button class="action-btn" type="button" id="src-flags-prev" onclick="srcChangeFlagsPage(-1)" style="height:30px;font-size:12px;">← Previous</button>
+          <span id="src-flags-page-label">Page 1</span>
+          <button class="action-btn" type="button" id="src-flags-next" onclick="srcChangeFlagsPage(1)" style="height:30px;font-size:12px;">Next →</button>
+        </div>
+      </section>
 
     </div>
   </div>
@@ -8034,6 +8174,24 @@
     </div>
   </div>
   <!-- ── END ADMIN COMPLIANCE MODALS ── -->
+
+  <div id="src-flag-review-modal" onclick="if(event.target===this)srcCloseFlagReviewModal()">
+    <div class="src-modal-box" style="width:480px;">
+      <div class="src-modal-header">
+        <div class="src-modal-title">✓ Mark Reading Flag Reviewed</div>
+        <button class="src-modal-close" type="button" onclick="srcCloseFlagReviewModal()">✕</button>
+      </div>
+      <div class="src-modal-body">
+        <label class="src-form-label" for="src-flag-review-note">Review note <span style="color:#dc2626;">*</span></label>
+        <textarea class="src-flag-note" id="src-flag-review-note" placeholder="Explain why this flagged reading is accepted…"></textarea>
+        <div class="src-modal-error" id="src-flag-review-error"></div>
+      </div>
+      <div class="src-modal-footer">
+        <button class="action-btn" type="button" onclick="srcCloseFlagReviewModal()">Cancel</button>
+        <button class="action-btn primary" type="button" id="src-flag-review-save" onclick="srcSubmitFlagReview()">Mark reviewed</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Inline cell-edit popover ── -->
   <div id="src-cell-popover">
@@ -18957,6 +19115,13 @@
     let _srcStatusFilter  = '';   // '', 'complete', 'partial', 'missing'
     let _srcCurrentShift  = 'all';
     let _srcRenderedRows  = [];   // rows currently in the DOM (for onclick index lookup)
+    let _srcRowFlags      = [];   // unresolved flags for the visible compliance date
+    let _srcFlagsQueue    = [];   // current page of the flags queue
+    let _srcFlagsOffset   = 0;
+    let _srcFlagsTotal    = 0;
+    let _srcFlagsHasMore  = false;
+    let _srcFlagReviewId  = null;
+    const SRC_FLAGS_LIMIT = 25;
 
     function openCompliancePage() {
       const role = (currentUser && (currentUser.role || '')).toLowerCase();
@@ -18970,6 +19135,8 @@
       const dateEl = document.getElementById('src-date');
       if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
       srcShowAdminButtons();
+      srcPopulateFlagFilters();
+      srcFetchFlagsQueue(true);
       srcFetch();
     }
 
@@ -18993,6 +19160,317 @@
       srcRenderTable();
     }
 
+    function srcFlagItems(response) {
+      if (Array.isArray(response)) return { items: response, total: response.length };
+      const items = Array.isArray(response?.items) ? response.items :
+        (Array.isArray(response?.results) ? response.results :
+          (Array.isArray(response?.data) ? response.data : []));
+      const total = Number(response?.total ?? response?.count ?? items.length);
+      return { items, total: Number.isFinite(total) ? total : items.length };
+    }
+
+    function srcFlagDate(flag) {
+      const value = flag.date || flag.shift_date || flag.reading_date || '';
+      return value ? String(value).slice(0, 10) : '';
+    }
+
+    function srcFlagId(flag) {
+      return flag._id || flag.id || flag.flag_id || '';
+    }
+
+    function srcFlagReadingIds(flag) {
+      return [flag.shift_reading_id, flag.reading_id, flag.shift_id, flag.deployment_id].filter(Boolean);
+    }
+
+    function srcFlagRowIds(row) {
+      return [row._reading_id, row.reading_id, row.shift_reading_id, row._id].filter(Boolean);
+    }
+
+    function srcFlagIdsMatch(firstId, secondId) {
+      return firstId !== undefined && firstId !== null && secondId !== undefined && secondId !== null &&
+        String(firstId) === String(secondId);
+    }
+
+    function srcFlagMatchesRow(flag, row) {
+      const flagReadingIds = srcFlagReadingIds(flag);
+      const rowReadingIds = srcFlagRowIds(row);
+      if (flagReadingIds.length && rowReadingIds.length &&
+        flagReadingIds.some(flagId => rowReadingIds.some(rowId => srcFlagIdsMatch(flagId, rowId)))) return true;
+
+      const sameVehicle = flag.vehicle_id && row.vehicle_id && srcFlagIdsMatch(flag.vehicle_id, row.vehicle_id);
+      const sameDate = srcFlagDate(flag) && row.date && srcFlagDate(flag) === String(row.date).slice(0, 10);
+      const sameShift = flag.shift && row.shift && String(flag.shift).toUpperCase() === String(row.shift).toUpperCase();
+      return !!(sameVehicle && sameDate && sameShift);
+    }
+
+    function srcFlagTypeLabel(flagType) {
+      return flagType === 'KMR_IMPLAUSIBLE_SPEED' ? 'KMR speed' : 'HMR impossible';
+    }
+
+    function srcFlagTypeClass(flagType) {
+      return flagType === 'KMR_IMPLAUSIBLE_SPEED' ? 'src-flag-type-kmr' : 'src-flag-type-hmr';
+    }
+
+    function srcFlagValueSummary(flag) {
+      const actual = flag.flagged_value ?? flag.value ?? flag.actual_value ?? '—';
+      const expected = flag.expected_max ?? flag.max_value ?? flag.allowed_max ?? '—';
+      const unit = flag.unit ? ` ${flag.unit}` : '';
+      return `${actual}${unit} vs ${expected}${unit} max`;
+    }
+
+    function srcFlagDriverName(flag) {
+      if (flag.driver_name || flag.operator_name) return flag.driver_name || flag.operator_name;
+      const id = flag.driver_id || flag.operator_id;
+      const person = [...allDrivers, ...allOperators, ...allWorkers].find(candidate =>
+        srcFlagIdsMatch(candidate._id || candidate.id, id)
+      );
+      return person?.name || id || '—';
+    }
+
+    function srcFlagEquipmentName(flag) {
+      if (flag.number_plate || flag.vehicle_number || flag.equipment_code) {
+        return flag.number_plate || flag.vehicle_number || flag.equipment_code;
+      }
+      const row = _srcAllData.find(item => srcFlagIdsMatch(item.vehicle_id, flag.vehicle_id));
+      if (row) return srcGetEquipmentCode(row);
+      const vehicle = allVehicles.find(item => srcFlagIdsMatch(item._id || item.id, flag.vehicle_id));
+      return vehicle?.number_plate || vehicle?.vehicle_number || flag.vehicle_id || '—';
+    }
+
+    function srcFlagStatus(flag) {
+      if (!flag.resolved) return { label: 'Unresolved', className: 'src-flag-status-open' };
+      return {
+        label: flag.admin_corrected ? 'Corrected' : (flag.resolution_note || flag.note ? 'Reviewed' : 'Resolved'),
+        className: 'src-flag-status-done'
+      };
+    }
+
+    function srcFlagBadgeHtml(flag) {
+      const flaggedAt = srcFormatTimestamp(flag.flagged_at || flag.created_at || flag.timestamp);
+      const tooltip = [srcFlagTypeLabel(flag.flag_type), srcFlagValueSummary(flag), flaggedAt].filter(Boolean).join('\n');
+      return `<span class="src-flag-badge ${flag.flag_type === 'KMR_IMPLAUSIBLE_SPEED' ? 'src-flag-badge-kmr' : 'src-flag-badge-hmr'}" title="${tooltip}">${flag.flag_type === 'KMR_IMPLAUSIBLE_SPEED' ? 'KMR' : 'HMR'} ⚑</span>`;
+    }
+
+    function srcFlagsForRow(row) {
+      return _srcRowFlags.filter(flag => !flag.resolved && srcFlagMatchesRow(flag, row));
+    }
+
+    function srcUpdateFlagSummary() {
+      const stat = document.getElementById('src-stat-flags');
+      const visibleFlags = _srcRowFlags.filter(flag => _srcFiltered.some(row => srcFlagMatchesRow(flag, row)));
+      if (stat) stat.textContent = visibleFlags.length;
+    }
+
+    async function srcFetchRowFlags(date) {
+      const params = new URLSearchParams({ resolved: 'false', limit: '500', offset: '0' });
+      if (date) {
+        params.set('date_from', date);
+        params.set('date_to', date);
+      }
+      try {
+        const res = await apiFetch(`${API}/reading-flags?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const response = await res.json();
+        _srcRowFlags = srcFlagItems(response).items;
+      } catch (_) {
+        _srcRowFlags = [];
+      }
+      srcUpdateFlagSummary();
+    }
+
+    function srcPopulateFlagFilters() {
+      const driverSelect = document.getElementById('src-flag-driver');
+      const vehicleSelect = document.getElementById('src-flag-vehicle');
+      if (!driverSelect || !vehicleSelect) return;
+      const previousDriver = driverSelect.value;
+      const previousVehicle = vehicleSelect.value;
+      const drivers = [...allDrivers, ...allOperators, ...allWorkers]
+        .filter(person => person && (person._id || person.id))
+        .map(person => ({ id: person._id || person.id, label: person.name || person.worker_id || person._id || person.id }));
+      const uniqueDrivers = [...new Map(drivers.map(person => [person.id, person])).values()]
+        .sort((first, second) => first.label.localeCompare(second.label));
+      driverSelect.innerHTML = '<option value="">All drivers</option>' +
+        uniqueDrivers.map(person => `<option value="${person.id}">${person.label}</option>`).join('');
+      driverSelect.value = previousDriver;
+
+      const equipment = [...allVehicles, ..._srcAllData]
+        .filter(item => item && (item.vehicle_id || item._id || item.id))
+        .map(item => ({ id: item.vehicle_id || item._id || item.id, label: item.number_plate || item.vehicle_number || srcGetEquipmentCode(item) }));
+      const uniqueEquipment = [...new Map(equipment.map(item => [item.id, item])).values()]
+        .sort((first, second) => first.label.localeCompare(second.label, undefined, { numeric:true, sensitivity:'base' }));
+      vehicleSelect.innerHTML = '<option value="">All equipment</option>' +
+        uniqueEquipment.map(item => `<option value="${item.id}">${item.label}</option>`).join('');
+      vehicleSelect.value = previousVehicle;
+    }
+
+    function srcRenderFlagsQueue() {
+      const tbody = document.getElementById('src-flags-body');
+      const pageLabel = document.getElementById('src-flags-page-label');
+      const previous = document.getElementById('src-flags-prev');
+      const next = document.getElementById('src-flags-next');
+      const resolvedFilter = document.getElementById('src-flag-resolved').value;
+      const isAdmin = srcIsAdminOrOwner();
+      const page = Math.floor(_srcFlagsOffset / SRC_FLAGS_LIMIT) + 1;
+      if (pageLabel) pageLabel.textContent = _srcFlagsTotal ? `Page ${page} · ${_srcFlagsTotal} flags` : `Page ${page}`;
+      if (previous) previous.disabled = _srcFlagsOffset === 0;
+      if (next) next.disabled = !_srcFlagsHasMore;
+
+      if (!_srcFlagsQueue.length) {
+        const label = resolvedFilter === 'false' ? '✓ No unresolved flags' : 'No flags match the selected filters';
+        tbody.innerHTML = `<tr><td colspan="7" class="src-flag-empty">${label}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = _srcFlagsQueue.map(flag => {
+        const id = srcFlagId(flag);
+        const status = srcFlagStatus(flag);
+        const flaggedAt = srcFormatTimestamp(flag.flagged_at || flag.created_at || flag.timestamp) || '—';
+        const canAct = isAdmin && !flag.resolved && id;
+        const actions = canAct
+          ? `<button class="action-btn" type="button" onclick="srcEditFlag('${id}')" style="height:28px;font-size:11px;">Edit shift</button>
+             <button class="action-btn" type="button" onclick="srcOpenFlagReview('${id}')" style="height:28px;font-size:11px;">Mark reviewed</button>`
+          : '—';
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td>${srcFlagDriverName(flag)}</td>
+          <td style="font-family:var(--font-mono);font-weight:600;">${srcFlagEquipmentName(flag)}</td>
+          <td><span class="src-flag-type ${srcFlagTypeClass(flag.flag_type)}">${srcFlagTypeLabel(flag.flag_type)}</span></td>
+          <td style="font-family:var(--font-mono);">${srcFlagValueSummary(flag)}</td>
+          <td style="white-space:nowrap;font-size:11px;">${flaggedAt}</td>
+          <td><span class="src-flag-status ${status.className}" title="${flag.resolution_note || flag.note || ''}">${status.label}</span></td>
+          <td style="white-space:nowrap;display:flex;gap:6px;">${actions}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function srcFetchFlagsQueue(resetPage) {
+      if (resetPage) _srcFlagsOffset = 0;
+      const driverId = document.getElementById('src-flag-driver').value;
+      const vehicleId = document.getElementById('src-flag-vehicle').value;
+      const flagType = document.getElementById('src-flag-type').value;
+      const resolved = document.getElementById('src-flag-resolved').value;
+      const dateFrom = document.getElementById('src-flag-date-from').value;
+      const dateTo = document.getElementById('src-flag-date-to').value;
+      const params = new URLSearchParams({ limit: String(SRC_FLAGS_LIMIT), offset: String(_srcFlagsOffset), sort_by: 'flagged_at', sort_order: 'desc' });
+      if (driverId) params.set('driver_id', driverId);
+      if (vehicleId) params.set('vehicle_id', vehicleId);
+      if (flagType) params.set('flag_type', flagType);
+      if (resolved !== '') params.set('resolved', resolved);
+      if (dateFrom) params.set('date_from', dateFrom);
+      if (dateTo) params.set('date_to', dateTo);
+      const tbody = document.getElementById('src-flags-body');
+      tbody.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted);">Loading flags…</td></tr>';
+      try {
+        const res = await apiFetch(`${API}/reading-flags?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const response = await res.json();
+        const result = srcFlagItems(response);
+        _srcFlagsQueue = result.items.sort((first, second) => new Date(second.flagged_at || 0) - new Date(first.flagged_at || 0));
+        _srcFlagsTotal = result.total;
+        _srcFlagsHasMore = _srcFlagsOffset + _srcFlagsQueue.length < _srcFlagsTotal || _srcFlagsQueue.length === SRC_FLAGS_LIMIT;
+      } catch (_) {
+        _srcFlagsQueue = [];
+        _srcFlagsTotal = 0;
+        _srcFlagsHasMore = false;
+      }
+      srcRenderFlagsQueue();
+    }
+
+    function srcChangeFlagsPage(direction) {
+      const nextOffset = Math.max(0, _srcFlagsOffset + direction * SRC_FLAGS_LIMIT);
+      if (nextOffset === _srcFlagsOffset || (direction > 0 && !_srcFlagsHasMore)) return;
+      _srcFlagsOffset = nextOffset;
+      srcFetchFlagsQueue();
+    }
+
+    function srcFocusFlagsQueue() {
+      const date = document.getElementById('src-date').value;
+      document.getElementById('src-flag-resolved').value = 'false';
+      document.getElementById('src-flag-date-from').value = date;
+      document.getElementById('src-flag-date-to').value = date;
+      srcFetchFlagsQueue(true);
+      document.getElementById('src-flags-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function srcRefreshFlagData() {
+      const date = document.getElementById('src-date').value;
+      await Promise.all([srcFetchRowFlags(date), srcFetchFlagsQueue()]);
+      srcRenderTable();
+    }
+
+    async function srcEditFlag(flagId) {
+      const flag = _srcFlagsQueue.find(item => srcFlagId(item) === flagId);
+      if (!flag) return;
+      const targetDate = srcFlagDate(flag);
+      const dateInput = document.getElementById('src-date');
+      if (targetDate && dateInput.value !== targetDate) {
+        dateInput.value = targetDate;
+        await srcFetch();
+      }
+      const rowIndex = _srcRenderedRows.findIndex(row => srcFlagMatchesRow(flag, row));
+      if (rowIndex === -1) {
+        showToast('Flagged shift is not available in the current compliance view.');
+        return;
+      }
+      const row = _srcRenderedRows[rowIndex];
+      if (!row._reading_id) {
+        showToast('No saved shift reading is available to edit.');
+        return;
+      }
+      const rowElement = document.querySelector(`#src-table-body tr[data-src-row-index="${rowIndex}"]`);
+      if (rowElement) {
+        rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        rowElement.classList.add('src-flag-highlight');
+        setTimeout(() => rowElement.classList.remove('src-flag-highlight'), 2500);
+      }
+      srcOpenEditModal(rowIndex);
+    }
+
+    function srcOpenFlagReview(flagId) {
+      _srcFlagReviewId = flagId;
+      const note = document.getElementById('src-flag-review-note');
+      const error = document.getElementById('src-flag-review-error');
+      note.value = '';
+      error.textContent = '';
+      error.classList.remove('visible');
+      document.getElementById('src-flag-review-modal').classList.add('open');
+      setTimeout(() => note.focus(), 0);
+    }
+
+    function srcCloseFlagReviewModal() {
+      document.getElementById('src-flag-review-modal').classList.remove('open');
+      _srcFlagReviewId = null;
+    }
+
+    async function srcSubmitFlagReview() {
+      const note = document.getElementById('src-flag-review-note').value.trim();
+      const error = document.getElementById('src-flag-review-error');
+      if (!note) {
+        error.textContent = 'Enter a review note before resolving this flag.';
+        error.classList.add('visible');
+        return;
+      }
+      const saveButton = document.getElementById('src-flag-review-save');
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving…';
+      try {
+        const res = await apiFetch(`${API}/reading-flags/${_srcFlagReviewId}/resolve`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ admin_corrected: false, note })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        srcCloseFlagReviewModal();
+        await srcRefreshFlagData();
+        showToast('Flag marked reviewed');
+      } catch (_) {
+        error.textContent = 'Could not resolve this flag. Please try again.';
+        error.classList.add('visible');
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Mark reviewed';
+      }
+    }
+
     async function srcFetch() {
       const date  = document.getElementById('src-date').value;
       const eqType = document.getElementById('src-eq-filter').value;
@@ -19000,6 +19478,7 @@
       if (date) p.set('date', date);
       const summaryUrl  = `${API}/deployments/summary?${p}`;
       const readingsUrl = `${API}/shift-readings?${p}`;
+      const rowFlagsPromise = srcFetchRowFlags(date);
       document.getElementById('src-table-body').innerHTML =
         `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
       try {
@@ -19101,8 +19580,12 @@
 
         // Populate equipment filter dropdown
         srcPopulateEqFilter();
+        srcPopulateFlagFilters();
         srcApplyFilters();
+        await rowFlagsPromise;
+        srcRenderTable();
       } catch(e) {
+        await rowFlagsPromise;
         document.getElementById('src-table-body').innerHTML =
           `<tr><td colspan="9" style="text-align:center;padding:28px;color:#c0392b;">⚠ Could not load data. Check your connection.</td></tr>`;
       }
@@ -19208,6 +19691,7 @@
         return true;
       });
       srcUpdateStats();
+      srcUpdateFlagSummary();
       srcRenderTable();
     }
 
@@ -19273,6 +19757,7 @@
       tbody.innerHTML = rows.map((d, idx) => {
         const status = srcGetStatus(d);
         const isTip  = srcIsTipper(d);
+        const rowFlags = srcFlagsForRow(d);
         const rowBg  = status === 'complete' ? 'background:#f0fdf4;' :
                        status === 'partial'  ? 'background:#fffbeb;' :
                                                'background:#fff5f5;';
@@ -19296,7 +19781,7 @@
           return '<td class="src-reading-cell" data-editable="0">' + inner + '</td>';
         };
 
-        return '<tr style="' + rowBg + 'border-bottom:1px solid var(--border);">' +
+        return '<tr data-src-row-index="' + idx + '" style="' + rowBg + 'border-bottom:1px solid var(--border);">' +
           '<td style="font-family:var(--font-mono);font-weight:600;">' + srcGetEquipmentCode(d) + adminBadge + '</td>' +
           '<td>' + srcGetPersonName(d) + '</td>' +
           '<td><span class="dep-shift-badge">' + (d.shift || '\u2014') + '</span></td>' +
@@ -19304,7 +19789,7 @@
           mkCell('kmr_closing', d.kmr_closing_added, d.kmr_closing_value, d.kmr_closing_timestamp, d.kmr_closing_by, isTip) +
           mkCell('hmr_opening', d.hmr_opening_added, d.hmr_opening_value, d.hmr_opening_timestamp, d.hmr_opening_by, true) +
           mkCell('hmr_closing', d.hmr_closing_added, d.hmr_closing_value, d.hmr_closing_timestamp, d.hmr_closing_by, true) +
-          '<td>' + srcStatusPill(status) + '</td>' +
+          '<td>' + srcStatusPill(status) + rowFlags.map(srcFlagBadgeHtml).join('') + '</td>' +
           '</tr>';
       }).join('');
     }
@@ -19533,6 +20018,7 @@
           }
           srcCloseEditModal();
           srcApplyFilters();
+          await srcRefreshFlagData();
         } else {
           const msg = await srcGetApiErrorMessage(res, `Error ${res.status}`);
           const errEl = document.getElementById('src-edit-error');
@@ -19996,6 +20482,7 @@
           d.reading_status = null; // let srcGetStatus() re-derive
           srcCellPopClose();
           srcApplyFilters();
+          await srcRefreshFlagData();
           showToast('\u2705 ' + fieldLabel + ' ' + (d._reading_id ? 'updated' : 'saved'));
         } else {
           const msg = await srcGetApiErrorMessage(res, 'Error ' + res.status);
