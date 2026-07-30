@@ -19737,6 +19737,49 @@
         });
         _srcAllData = Object.values(dedupMap);
 
+        // ── Orphaned readings ──────────────────────────────────────────────────
+        // A reading is "orphaned" when the driver submitted it for a vehicle that
+        // has no deployment record in the summary (e.g. Shivprasad drove vehicle 62
+        // but only vehicle 23 has a deployment entry). Without this second pass such
+        // readings are invisible because the enrichment loop above only iterates
+        // over deployments.
+        //
+        // Build a set of reading _ids that were already consumed by a deployment row.
+        const consumedReadingIds = new Set(
+          _srcAllData.map(r => r._reading_id).filter(Boolean)
+        );
+
+        readingsData.forEach(reading => {
+          const rid = reading._id || reading.id || reading.reading_id || null;
+          if (rid && consumedReadingIds.has(rid)) return; // already shown
+
+          // Build a synthetic deployment-shaped row from the reading itself.
+          const syntheticRow = {
+            // vehicle / equipment identity
+            truck_number   : reading.truck_number || reading.equipment_code || reading.vehicle_number || null,
+            vehicle_id     : reading.vehicle_id   || null,
+            equipment_type : reading.equipment_type || reading.vehicle_type || '',
+            // shift / date
+            shift : reading.shift || '',
+            date  : reading.date  || '',
+            // driver
+            driver_name    : reading.driver_name    || reading.operator_name || reading.worker_name || '',
+            driver_id      : reading.driver_id      || reading.operator_id   || reading.worker_id   || null,
+            operator_name  : reading.operator_name  || '',
+            // mark it as coming from a reading with no deployment
+            _orphaned_reading: true,
+          };
+          srcEnrichWithReading(syntheticRow, reading);
+
+          // Only add if this reading is not already represented (dedup by reading id).
+          const orphanKey = `${syntheticRow.truck_number}|${(syntheticRow.shift || '').toUpperCase()}|${syntheticRow.date}|${rid}`;
+          if (!dedupMap[orphanKey]) {
+            dedupMap[orphanKey] = syntheticRow;
+            _srcAllData.push(syntheticRow);
+          }
+        });
+
+
         // Populate equipment filter dropdown
         srcPopulateEqFilter();
         srcPopulateFlagFilters();
