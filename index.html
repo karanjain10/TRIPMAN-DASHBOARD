@@ -7886,11 +7886,15 @@
     <div style="padding:24px;max-width:1300px;margin:0 auto;">
 
       <!-- FILTER BAR -->
-      <div class="src-filter-bar">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div class="src-filter-bar" style="flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
           <div class="dep-filter-field">
-            <div class="dep-filter-label">Date</div>
-            <input type="date" id="src-date" class="date-input" style="height:34px;" onchange="srcFetch()" />
+            <div class="dep-filter-label">From Date</div>
+            <input type="date" id="src-date-from" class="date-input" style="height:34px;" onchange="srcFetch()" />
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">To Date</div>
+            <input type="date" id="src-date-to" class="date-input" style="height:34px;" onchange="srcFetch()" />
           </div>
           <div class="dep-filter-field">
             <div class="dep-filter-label">Shift</div>
@@ -7901,15 +7905,27 @@
               <button class="dep-shift-pill" data-shift="C" onclick="srcSetShift(this,'C')">C</button>
             </div>
           </div>
-        </div>
-        <div>
-          <div class="dep-filter-label">Equipment</div>
-          <select id="src-eq-filter" class="dep-select" style="min-width:160px;" onchange="srcApplyFilters()">
-            <option value="">All Equipment</option>
-            <option value="__tipper">Tippers</option>
-            <option value="__excavator">Excavators</option>
-            <option value="__other">Others</option>
-          </select>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Driver</div>
+            <select id="src-driver-filter" class="dep-select" style="min-width:160px;" onchange="srcApplyFilters()">
+              <option value="">All Drivers</option>
+            </select>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Equipment Type</div>
+            <select id="src-eq-filter" class="dep-select" style="min-width:130px;" onchange="srcApplyFilters()">
+              <option value="">All Types</option>
+              <option value="__tipper">Tippers</option>
+              <option value="__excavator">Excavators</option>
+              <option value="__other">Others</option>
+            </select>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Unit</div>
+            <select id="src-unit-filter" class="dep-select" style="min-width:120px;" onchange="srcApplyFilters()">
+              <option value="">All Units</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -19132,6 +19148,8 @@
     let _srcFiltered      = [];   // after all filters applied
     let _srcStatusFilter  = '';   // '', 'complete', 'partial', 'missing'
     let _srcCurrentShift  = 'all';
+    let _srcDriverFilter  = '';   // client-side driver name/id filter
+    let _srcUnitFilter    = '';   // client-side specific unit filter
     let _srcRenderedRows  = [];   // rows currently in the DOM (for onclick index lookup)
     let _srcTripCounts    = new Map(); // date|shift|equipment id -> trip count
     let _srcTripsLoaded   = false;
@@ -19151,9 +19169,12 @@
       }
       document.getElementById('app').style.display = 'none';
       document.getElementById('compliance-page').style.display = 'block';
-      // Default date to today
-      const dateEl = document.getElementById('src-date');
-      if (!dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+      // Default dates to today
+      const today  = new Date().toISOString().split('T')[0];
+      const fromEl = document.getElementById('src-date-from');
+      const toEl   = document.getElementById('src-date-to');
+      if (!fromEl.value) fromEl.value = today;
+      if (!toEl.value)   toEl.value   = today;
       srcShowAdminButtons();
       srcPopulateFlagFilters();
       srcFetchFlagsQueue(true);
@@ -19488,16 +19509,16 @@
     }
 
     function srcFocusFlagsQueue() {
-      const date = document.getElementById('src-date').value;
+      const date = document.getElementById('src-date-from').value;
       document.getElementById('src-flag-resolved').value = 'false';
       document.getElementById('src-flag-date-from').value = date;
-      document.getElementById('src-flag-date-to').value = date;
+      document.getElementById('src-flag-date-to').value = document.getElementById('src-date-to').value || date;
       srcFetchFlagsQueue(true);
       document.getElementById('src-flags-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     async function srcRefreshFlagData() {
-      const date = document.getElementById('src-date').value;
+      const date = document.getElementById('src-date-from').value;
       await Promise.all([srcFetchRowFlags(date), srcFetchFlagsQueue()]);
       srcRenderTable();
     }
@@ -19506,7 +19527,7 @@
       const flag = _srcFlagsQueue.find(item => srcFlagId(item) === flagId);
       if (!flag) return;
       const targetDate = srcFlagDate(flag);
-      const dateInput = document.getElementById('src-date');
+      const dateInput = document.getElementById('src-date-from');
       if (targetDate && dateInput.value !== targetDate) {
         dateInput.value = targetDate;
         await srcFetch();
@@ -19588,39 +19609,63 @@
     }
 
     async function srcFetch() {
-      const date  = document.getElementById('src-date').value;
-      const eqType = document.getElementById('src-eq-filter').value;
-      const p = new URLSearchParams();
-      if (date) p.set('date', date);
-      const summaryUrl  = `${API}/deployments/summary?${p}`;
-      const readingsUrl = `${API}/shift-readings?${p}`;
-      const rowFlagsPromise = srcFetchRowFlags(date);
+      const dateFrom = document.getElementById('src-date-from').value;
+      const dateTo   = document.getElementById('src-date-to').value || dateFrom;
+      // Build list of individual dates in range (capped at 31)
+      const srcDateRange = (from, to) => {
+        if (!from) return [];
+        const dates = [];
+        let cur = new Date(from + 'T00:00:00');
+        const end = new Date((to || from) + 'T00:00:00');
+        while (cur <= end && dates.length < 31) {
+          dates.push(cur.toISOString().split('T')[0]);
+          cur.setDate(cur.getDate() + 1);
+        }
+        return dates;
+      };
+      const dates = srcDateRange(dateFrom, dateTo);
+      const rowFlagsPromise = srcFetchRowFlags(dateFrom);
       _srcTripCounts = new Map();
       _srcTripsLoaded = false;
-      const tripsPromise = date
-        ? fetchAllTripsForRange(date, date)
+      const tripsPromise = dateFrom
+        ? fetchAllTripsForRange(dateFrom, dateTo || dateFrom)
           .then(trips => ({ trips, loaded: true }))
           .catch(() => ({ trips: [], loaded: false }))
         : Promise.resolve({ trips: [], loaded: false });
       document.getElementById('src-table-body').innerHTML =
         `<tr><td colspan="12" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
       try {
-        const [summaryRes, readingsRes, tripsResult] = await Promise.all([
-          apiFetch(summaryUrl),
-          apiFetch(readingsUrl),
-          tripsPromise
-        ]);
-        if (!summaryRes.ok) throw new Error(`HTTP ${summaryRes.status}`);
-        const data = await summaryRes.json();
-        if (tripsResult.loaded) srcBuildTripCounts(tripsResult.trips, date);
+        if (!dates.length) {
+          await rowFlagsPromise;
+          document.getElementById('src-table-body').innerHTML =
+            `<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text-muted);">Select a date to load data</td></tr>`;
+          _srcAllData = []; srcApplyFilters(); return;
+        }
+        // Fetch summary + readings for every date in range, merge all results
+        const allLive = [], allHistory = [], allReadings = [];
+        await Promise.all(dates.map(async d => {
+          const p = new URLSearchParams({ date: d });
+          const [sRes, rRes] = await Promise.all([
+            apiFetch(`${API}/deployments/summary?${p}`),
+            apiFetch(`${API}/shift-readings?${p}`),
+          ]);
+          if (sRes.ok) {
+            const sd = await sRes.json();
+            if (Array.isArray(sd.live))    allLive.push(...sd.live);
+            if (Array.isArray(sd.history)) allHistory.push(...sd.history);
+          }
+          if (rRes.ok) {
+            const rd = await rRes.json();
+            if (Array.isArray(rd)) allReadings.push(...rd);
+          }
+        }));
+        const data = { live: allLive, history: allHistory };
+        const tripsResult = await tripsPromise;
+        if (tripsResult.loaded) srcBuildTripCounts(tripsResult.trips, dates.length === 1 ? dateFrom : null);
 
         // shift_readings call is best-effort: if it fails, still show
         // deployment rows (as "missing") rather than blanking the page.
-        let readingsData = [];
-        if (readingsRes.ok) {
-          readingsData = await readingsRes.json();
-          if (!Array.isArray(readingsData)) readingsData = [];
-        }
+        let readingsData = allReadings;
 
         // Prefer the stable vehicle ObjectId supplied by both endpoints. Keep
         // the truck-number key as a fallback for legacy records.
@@ -19780,8 +19825,10 @@
         });
 
 
-        // Populate equipment filter dropdown
+        // Populate filter dropdowns
         srcPopulateEqFilter();
+        srcPopulateDriverFilter();
+        srcPopulateUnitFilter();
         srcPopulateFlagFilters();
         srcApplyFilters();
         await rowFlagsPromise;
@@ -19794,13 +19841,41 @@
     }
 
     function srcPopulateEqFilter() {
-      const types = [...new Set(_srcAllData.map(d => depFmtType(d.equipment_type || '')).filter(Boolean))].sort();
       const sel = document.getElementById('src-eq-filter');
       const prev = sel.value;
-      sel.innerHTML = '<option value="">All Equipment</option>' +
+      sel.innerHTML = '<option value="">All Types</option>' +
         '<option value="__tipper">Tippers</option>' +
         '<option value="__excavator">Excavators</option>' +
         '<option value="__other">Others</option>';
+      if (prev) sel.value = prev;
+    }
+
+    function srcPopulateDriverFilter() {
+      const sel = document.getElementById('src-driver-filter');
+      if (!sel) return;
+      const prev = sel.value;
+      // Build unique driver list from loaded data + allDrivers/allOperators/allWorkers
+      const seen = new Map();
+      _srcAllData.forEach(d => {
+        const name = srcGetPersonName(d);
+        const id   = String(d.driver_id || d.operator_id || d.worker_id || name);
+        if (name && name !== '\u2014') seen.set(id, name);
+      });
+      const sorted = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+      sel.innerHTML = '<option value="">All Drivers</option>' +
+        sorted.map(([id, name]) => `<option value="${name.toLowerCase()}">${name}</option>`).join('');
+      if (prev) sel.value = prev;
+    }
+
+    function srcPopulateUnitFilter() {
+      const sel = document.getElementById('src-unit-filter');
+      if (!sel) return;
+      const prev = sel.value;
+      const codes = [...new Set(
+        _srcAllData.map(d => srcGetEquipmentCode(d)).filter(c => c && c !== '\u2014')
+      )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      sel.innerHTML = '<option value="">All Units</option>' +
+        codes.map(c => `<option value="${c.toLowerCase()}">${c}</option>`).join('');
       if (prev) sel.value = prev;
     }
 
@@ -19894,7 +19969,7 @@
 
     function srcGetTripCount(row) {
       if (!_srcTripsLoaded) return null;
-      const date = row?.date || document.getElementById('src-date')?.value || '';
+      const date = row?.date || document.getElementById('src-date-from')?.value || '';
       const shift = row?.shift;
       const equipmentIds = srcRowEquipmentIds(row);
       if (!date || !shift) return 0;
@@ -19950,13 +20025,25 @@
     }
 
     function srcApplyFilters() {
-      const shift  = _srcCurrentShift;
-      const eqType = document.getElementById('src-eq-filter').value;
+      const shift     = _srcCurrentShift;
+      const eqType    = document.getElementById('src-eq-filter').value;
+      const driverVal = (document.getElementById('src-driver-filter')?.value || '').trim().toLowerCase();
+      const unitVal   = (document.getElementById('src-unit-filter')?.value  || '').trim().toLowerCase();
       _srcFiltered = _srcAllData.filter(d => {
         if (shift && shift !== 'all' && (d.shift || '').toUpperCase() !== shift) return false;
         if (eqType === '__tipper'    && !srcIsTipper(d))    return false;
         if (eqType === '__excavator' && !srcIsExcavator(d)) return false;
         if (eqType === '__other'     && (srcIsTipper(d) || srcIsExcavator(d))) return false;
+        // Driver filter: match by stored name substring
+        if (driverVal) {
+          const name = srcGetPersonName(d).toLowerCase();
+          if (!name.includes(driverVal)) return false;
+        }
+        // Specific unit filter: match equipment code
+        if (unitVal) {
+          const code = srcGetEquipmentCode(d).toLowerCase();
+          if (!code.includes(unitVal)) return false;
+        }
         return true;
       });
       srcUpdateStats();
@@ -20121,7 +20208,7 @@
         if (sa !== sb) return sa - sb;
         return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
       });
-      const date = document.getElementById('src-date').value || 'unknown';
+      const date = document.getElementById('src-date-from').value || 'unknown';
       const esc  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const lines = [
         `${currentCompanyName || 'Tripman'} — Shift Readings Compliance`,
@@ -20366,7 +20453,7 @@
       dl.innerHTML = trucks.map(t => `<option value="${t}">`).join('');
 
       // Default date from filter
-      const dateVal = document.getElementById('src-date').value;
+      const dateVal = document.getElementById('src-date-from').value;
       document.getElementById('src-create-date').value = dateVal || new Date().toISOString().split('T')[0];
 
       // Reset all fields
@@ -20574,7 +20661,7 @@
     async function srcFetchAuditLog() {
       const equipF = document.getElementById('src-audit-equip-filter').value.trim();
       const byF    = document.getElementById('src-audit-by-filter').value.trim();
-      const date   = document.getElementById('src-date').value;
+      const date   = document.getElementById('src-date-from').value;
 
       const p = new URLSearchParams();
       if (date)   p.set('date',          date);
@@ -20765,7 +20852,7 @@
             saveBtn.textContent = 'Save';
             return;
           }
-          const date = document.getElementById('src-date').value;
+          const date = document.getElementById('src-date-from').value;
           const metric = _srcPopField.startsWith('hmr_') ? 'HMR' : 'KMR';
           const readingField = _srcPopField.endsWith('_opening') ? 'opening_value' : 'closing_value';
           const readings = {};
