@@ -19632,63 +19632,97 @@
           if (record.truck_number) keys.push(`truck:${record.truck_number}|${shift}|${date}`);
           return keys;
         };
+        // Store ALL readings per key so that when a driver submits readings for
+        // multiple vehicles (or the same vehicle more than once) every reading
+        // is visible as a separate row instead of the last one overwriting the rest.
         const readingsMap = {};
         readingsData.forEach(reading => {
-          srcReadingKeys(reading).forEach(key => { readingsMap[key] = reading; });
+          srcReadingKeys(reading).forEach(key => {
+            if (!readingsMap[key]) readingsMap[key] = [];
+            readingsMap[key].push(reading);
+          });
         });
 
         const live    = Array.isArray(data.live)    ? data.live    : [];
         const history = Array.isArray(data.history) ? data.history : [];
 
-        // Merge live + history, then enrich with readings, then deduplicate
-        // so each truck_number|shift|date combination yields exactly ONE row.
-        // We keep whichever entry has more reading data (readings-enriched wins).
-        const enriched = [...live, ...history].map(d => {
-          const match = srcReadingKeys(d).map(key => readingsMap[key]).find(Boolean);
-          if (match) {
-            d.reading_status     = match.reading_status;
-            // Carry the DB id and admin-override metadata forward so the table
-            // can render Edit buttons and override badges.
-            d._reading_id        = match._id || match.id || match.reading_id || null;
-            d.is_admin_override  = match.is_admin_override  || false;
-            d.created_by_admin   = match.created_by_admin   || false;
-            d.overridden_by      = match.overridden_by      || '';
-            d.overridden_by_name = match.overridden_by_name || '';
-            d.override_timestamp = match.override_timestamp || '';
-            d.override_reason    = match.override_reason    || '';
-            d.original_values    = match.original_values    || {};
-            d.vehicle_id         = match.vehicle_id || d.vehicle_id || null;
-            d.driver_id          = match.driver_id  || d.driver_id  || null;
-            // Backend stores readings as nested { HMR: {...}, KMR: {...} }
-            // sub-objects; flatten them here into the flat field names the
-            // table renderer (srcRenderTable) already expects.
-            const hmr = (match.readings && match.readings.HMR) || {};
-            const kmr = (match.readings && match.readings.KMR) || {};
-            d.hmr_opening_added     = hmr.opening_added;
-            d.hmr_opening_value     = hmr.opening_value;
-            d.hmr_opening_timestamp = hmr.opening_ts;
-            d.hmr_opening_by        = hmr.opening_by;
-            d.hmr_closing_added     = hmr.closing_added;
-            d.hmr_closing_value     = hmr.closing_value;
-            d.hmr_closing_timestamp = hmr.closing_ts;
-            d.hmr_closing_by        = hmr.closing_by;
-            d.kmr_opening_added     = kmr.opening_added;
-            d.kmr_opening_value     = kmr.opening_value;
-            d.kmr_opening_timestamp = kmr.opening_ts;
-            d.kmr_opening_by        = kmr.opening_by;
-            d.kmr_closing_added     = kmr.closing_added;
-            d.kmr_closing_value     = kmr.closing_value;
-            d.kmr_closing_timestamp = kmr.closing_ts;
-            d.kmr_closing_by        = kmr.closing_by;
-          }
+        // Helper: enrich a deployment object with data from a single reading.
+        const srcEnrichWithReading = (d, match) => {
+          d.reading_status     = match.reading_status;
+          d._reading_id        = match._id || match.id || match.reading_id || null;
+          d.is_admin_override  = match.is_admin_override  || false;
+          d.created_by_admin   = match.created_by_admin   || false;
+          d.overridden_by      = match.overridden_by      || '';
+          d.overridden_by_name = match.overridden_by_name || '';
+          d.override_timestamp = match.override_timestamp || '';
+          d.override_reason    = match.override_reason    || '';
+          d.original_values    = match.original_values    || {};
+          d.vehicle_id         = match.vehicle_id || d.vehicle_id || null;
+          d.driver_id          = match.driver_id  || d.driver_id  || null;
+          const hmr = (match.readings && match.readings.HMR) || {};
+          const kmr = (match.readings && match.readings.KMR) || {};
+          d.hmr_opening_added     = hmr.opening_added;
+          d.hmr_opening_value     = hmr.opening_value;
+          d.hmr_opening_timestamp = hmr.opening_ts;
+          d.hmr_opening_by        = hmr.opening_by;
+          d.hmr_closing_added     = hmr.closing_added;
+          d.hmr_closing_value     = hmr.closing_value;
+          d.hmr_closing_timestamp = hmr.closing_ts;
+          d.hmr_closing_by        = hmr.closing_by;
+          d.kmr_opening_added     = kmr.opening_added;
+          d.kmr_opening_value     = kmr.opening_value;
+          d.kmr_opening_timestamp = kmr.opening_ts;
+          d.kmr_opening_by        = kmr.opening_by;
+          d.kmr_closing_added     = kmr.closing_added;
+          d.kmr_closing_value     = kmr.closing_value;
+          d.kmr_closing_timestamp = kmr.closing_ts;
+          d.kmr_closing_by        = kmr.closing_by;
           return d;
+        };
+
+        // Merge live + history, enrich with readings.
+        // If a deployment key matches MULTIPLE readings (driver entered readings
+        // for more than one vehicle in that shift), emit one row per reading so
+        // all readings are visible — not just the last one.
+        const enriched = [];
+        ;[...live, ...history].forEach(d => {
+          const matchingReadings = srcReadingKeys(d)
+            .flatMap(key => readingsMap[key] || [])
+            // Deduplicate readings by their own _id in case multiple keys point
+            // to the same reading record.
+            .filter((r, idx, arr) => {
+              const rid = r._id || r.id || r.reading_id || null;
+              return !rid || arr.findIndex(x => (x._id || x.id || x.reading_id) === rid) === idx;
+            });
+
+          if (matchingReadings.length === 0) {
+            // No reading submitted — emit the deployment row as-is ("missing").
+            enriched.push(d);
+          } else if (matchingReadings.length === 1) {
+            // Exactly one reading — enrich in-place as before.
+            enriched.push(srcEnrichWithReading({ ...d }, matchingReadings[0]));
+          } else {
+            // Multiple readings for this deployment slot (driver operated several
+            // vehicles or re-submitted). Create one row per reading so every entry
+            // appears in the table.
+            matchingReadings.forEach(reading => {
+              const row = { ...d };
+              // Override truck_number with the reading's own vehicle identifier
+              // so the dedup key below does NOT collapse the rows back into one.
+              if (reading.truck_number) row.truck_number = reading.truck_number;
+              if (reading.vehicle_id)   row.vehicle_id   = reading.vehicle_id;
+              enriched.push(srcEnrichWithReading(row, reading));
+            });
+          }
         });
 
-        // Deduplicate: one row per (truck_number | shift | date).
-        // When duplicates exist, prefer the entry that has reading data.
+        // Deduplicate: one row per (truck_number | shift | date | reading_id).
+        // Including _reading_id ensures that two readings for different vehicles
+        // on the same shift are NOT collapsed into a single row.
         const dedupMap = {};
         enriched.forEach(d => {
-          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}`;
+          const rid = d._reading_id || '';
+          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}|${rid}`;
           if (!dedupMap[key]) {
             dedupMap[key] = d;
           } else {
