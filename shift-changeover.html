@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tripman — Shift Changeover Time Analysis</title>
+  <meta name="description" content="Analyse shift changeover timelines — track Deploy, Opening Reading, First Trip, Last Trip, and Closing Reading for every driver-truck-shift combination.">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --border: #e2e0d8;
+      --border-strong: #c8c5bb;
+      --text-primary: #1a1917;
+      --text-secondary: #6b6860;
+      --text-muted: #9b9890;
+      --accent: #1a3a5c;
+      --accent-light: #e8eef5;
+      --font-main: 'DM Sans', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+    }
+    :root[data-theme="dark"] {
+      --bg: #0d0f12; --surface: #16191f;
+      --border: #262a33; --border-strong: #363b45;
+      --text-primary: #e6e9ee; --text-secondary: #9aa0a6; --text-muted: #646a73;
+      --accent: #10b981; --accent-light: #064e3b;
+    }
+
+    body { font-family: var(--font-main); background: var(--bg); color: var(--text-primary); min-height: 100vh; font-size: 14px; }
+
+    .topbar { height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 100; }
+    .topbar-logo { display: inline-flex; align-items: center; background: #1e1e1e; border-radius: 6px; padding: 4px 10px; }
+    .topbar-logo-text { font-family: var(--font-main); font-size: 15px; font-weight: 700; color: #e8a24c; letter-spacing: 0.02em; }
+    .topbar-title { font-size: 15px; font-weight: 600; color: var(--accent); flex: 1; }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+    .action-btn { height: 34px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-primary); font-family: var(--font-main); font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s, border-color 0.15s; white-space: nowrap; }
+    .action-btn:hover { background: var(--accent-light); border-color: var(--accent); }
+    .action-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .action-btn.primary:hover { opacity: 0.88; }
+
+    .page-body { padding: 24px; max-width: 1480px; margin: 0 auto; }
+
+    .summary-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+    .summary-card .card-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); }
+    .summary-card .card-value { font-family: var(--font-mono); font-size: 26px; font-weight: 500; color: var(--text-primary); line-height: 1.1; }
+    .summary-card .card-sub { font-size: 11px; color: var(--text-muted); }
+    .summary-card.highlight .card-value { color: var(--accent); }
+    .summary-card.warn .card-value { color: #dc2626; }
+
+    .filter-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filter-field { display: flex; flex-direction: column; gap: 4px; }
+    .filter-label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    .filter-select { height: 34px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-primary); font-family: var(--font-main); font-size: 13px; outline: none; min-width: 140px; }
+    .filter-select:focus { border-color: var(--accent); }
+    .shift-pills { display: flex; gap: 4px; }
+    .shift-pill { height: 34px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-secondary); font-family: var(--font-main); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .shift-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .shift-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .shift-pill.active-all { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+
+    .legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; font-size: 12px; color: var(--text-secondary); }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .legend-thresh { font-size: 11px; color: var(--text-muted); margin-left: 4px; }
+
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1260px; }
+    thead th { padding: 11px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface); user-select: none; }
+    thead th.sortable { cursor: pointer; }
+    thead th.sortable:hover { color: var(--accent); }
+    thead th.sorted { color: var(--accent); }
+    thead th .sort-icon { margin-left: 4px; font-size: 10px; opacity: 0.7; }
+    thead th.num, tbody td.num { text-align: right; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--accent-light); }
+    tbody td { padding: 11px 12px; vertical-align: middle; white-space: nowrap; }
+    td.ts { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+    td.mono { font-family: var(--font-mono); font-weight: 500; }
+
+    .shift-badge { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.05em; }
+    .shift-badge.day   { background: #fef3c7; color: #b45309; }
+    .shift-badge.night { background: #ede9fe; color: #6d28d9; }
+    :root[data-theme="dark"] .shift-badge.day   { background: #44310a; color: #fcd34d; }
+    :root[data-theme="dark"] .shift-badge.night { background: #2d2054; color: #a78bfa; }
+
+    .gap-cell { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 62px; padding: 3px 9px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+    .gap-green  { background: #f0fdf4; color: #15803d; }
+    .gap-yellow { background: #fffbeb; color: #b45309; }
+    .gap-red    { background: #fff5f5; color: #dc2626; }
+    :root[data-theme="dark"] .gap-green  { background: #052e16; color: #4ade80; }
+    :root[data-theme="dark"] .gap-yellow { background: #1c1400; color: #fbbf24; }
+    :root[data-theme="dark"] .gap-red    { background: #1a0505; color: #f87171; }
+    .gap-prod { background: #eff6ff; color: #1d4ed8; display: inline-flex; align-items: center; justify-content: flex-end; min-width: 62px; padding: 3px 9px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; }
+    :root[data-theme="dark"] .gap-prod { background: #1e3a5f; color: #93c5fd; }
+    .idle-total { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+
+    .empty-state { padding: 48px; text-align: center; color: var(--text-muted); font-size: 14px; }
+    .theme-toggle { height: 34px; width: 34px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-secondary); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-logo"><span class="topbar-logo-text">Tripman</span></div>
+    <div class="topbar-title">⏱ Shift Changeover Time Analysis</div>
+    <div class="topbar-actions">
+      <button class="action-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+    </div>
+  </header>
+
+  <main class="page-body">
+
+    <div class="summary-strip" id="summary-strip"></div>
+
+    <div class="filter-bar">
+      <div class="filter-field">
+        <span class="filter-label">Date</span>
+        <select class="filter-select" id="filter-date" onchange="applyFilters()"><option value="">All Dates</option></select>
+      </div>
+      <div class="filter-field">
+        <span class="filter-label">Shift</span>
+        <div class="shift-pills" id="shift-pills">
+          <button class="shift-pill active-all" onclick="setShift(this,'all')">All</button>
+          <button class="shift-pill" onclick="setShift(this,'Day')">Day</button>
+          <button class="shift-pill" onclick="setShift(this,'Night')">Night</button>
+        </div>
+      </div>
+      <div class="filter-field">
+        <span class="filter-label">Driver</span>
+        <select class="filter-select" id="filter-driver" onchange="applyFilters()"><option value="">All Drivers</option></select>
+      </div>
+      <div class="filter-field">
+        <span class="filter-label">Truck</span>
+        <select class="filter-select" id="filter-truck" onchange="applyFilters()"><option value="">All Trucks</option></select>
+      </div>
+      <div class="filter-field" style="margin-left:auto;">
+        <span class="filter-label">&nbsp;</span>
+        <button class="action-btn" onclick="resetFilters()">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="legend" id="legend-bar"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Driver</th>
+            <th>Truck</th>
+            <th>Shift</th>
+            <th>Date</th>
+            <th class="ts">Deployed</th>
+            <th class="ts">Opening</th>
+            <th class="ts">1st Trip</th>
+            <th class="ts">Last Trip</th>
+            <th class="ts">Closing</th>
+            <th class="num sortable" id="th-gap1"      onclick="sortBy('gap1')">Deploy→Open <span class="sort-icon" id="si-gap1"></span></th>
+            <th class="num sortable" id="th-gap2"      onclick="sortBy('gap2')">Open→1st Trip <span class="sort-icon" id="si-gap2"></span></th>
+            <th class="num sortable" id="th-productive" onclick="sortBy('productive')">Productive Span <span class="sort-icon" id="si-productive"></span></th>
+            <th class="num sortable" id="th-gap4"      onclick="sortBy('gap4')">Last→Close <span class="sort-icon" id="si-gap4"></span></th>
+            <th class="num sortable" id="th-total_idle" onclick="sortBy('total_idle')">Total Idle <span class="sort-icon" id="si-total_idle"></span></th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="14" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIGURATION — change thresholds here only; no rendering code to touch
+   ═══════════════════════════════════════════════════════════════════════════ */
+const GAP_GREEN_MAX  = 10;  // minutes — green below this
+const GAP_YELLOW_MAX = 20;  // minutes — yellow below this, red at/above
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOCK DATA
+   ─────────────────────────────────────────────────────────────────────────
+   To wire up a real API later, replace this array with the API response
+   (same field names). Everything below the closing ]; is rendering-only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const RAW_DATA = [
+  {
+    driver_name: 'Shivprasad Singh',     truck_number: '23', shift: 'Night', date: '2026-07-24',
+    deployed_at: '2026-07-24T22:00:00',  opening_reading_at: '2026-07-24T22:07:00',
+    first_trip_at: '2026-07-24T22:14:00', last_trip_at: '2026-07-25T05:30:00',
+    closing_reading_at: '2026-07-25T05:38:00',
+  },
+  {
+    driver_name: 'Shivprasad Singh',     truck_number: '62', shift: 'Night', date: '2026-07-24',
+    deployed_at: '2026-07-24T22:50:00',  opening_reading_at: '2026-07-24T23:28:00',
+    first_trip_at: '2026-07-24T23:41:00', last_trip_at: '2026-07-25T05:10:00',
+    closing_reading_at: '2026-07-25T05:55:00',
+  },
+  {
+    driver_name: 'Mohanlal Ratiram Kumhar', truck_number: '1', shift: 'Night', date: '2026-07-27',
+    deployed_at: '2026-07-27T22:02:00',  opening_reading_at: '2026-07-27T22:09:00',
+    first_trip_at: '2026-07-27T22:17:00', last_trip_at: '2026-07-28T05:45:00',
+    closing_reading_at: '2026-07-28T05:51:00',
+  },
+  {
+    driver_name: 'Anish Khan',           truck_number: '3', shift: 'Night', date: '2026-07-27',
+    deployed_at: '2026-07-27T22:05:00',  opening_reading_at: '2026-07-27T22:35:00',
+    first_trip_at: '2026-07-27T22:48:00', last_trip_at: '2026-07-28T04:20:00',
+    closing_reading_at: '2026-07-28T05:05:00',
+  },
+  {
+    driver_name: 'Vishal Bagde',         truck_number: '5', shift: 'Night', date: '2026-07-27',
+    deployed_at: '2026-07-27T22:03:00',  opening_reading_at: '2026-07-27T22:10:00',
+    first_trip_at: '2026-07-27T22:19:00', last_trip_at: '2026-07-28T05:50:00',
+    closing_reading_at: '2026-07-28T05:58:00',
+  },
+  {
+    driver_name: 'Rajendra Belwanshi',   truck_number: '11', shift: 'Night', date: '2026-07-27',
+    deployed_at: '2026-07-27T22:01:00',  opening_reading_at: '2026-07-27T22:14:00',
+    first_trip_at: '2026-07-27T22:23:00', last_trip_at: '2026-07-28T05:40:00',
+    closing_reading_at: '2026-07-28T06:02:00',
+  },
+  {
+    driver_name: 'Anil Bobde',           truck_number: '12', shift: 'Night', date: '2026-07-27',
+    deployed_at: '2026-07-27T22:00:00',  opening_reading_at: '2026-07-27T22:06:00',
+    first_trip_at: '2026-07-27T22:13:00', last_trip_at: '2026-07-28T05:30:00',
+    closing_reading_at: '2026-07-28T05:34:00',
+  },
+  {
+    driver_name: 'Rajesh Kumar Saket',   truck_number: '13', shift: 'Day', date: '2026-07-28',
+    deployed_at: '2026-07-28T06:00:00',  opening_reading_at: '2026-07-28T06:22:00',
+    first_trip_at: '2026-07-28T06:35:00', last_trip_at: '2026-07-28T13:50:00',
+    closing_reading_at: '2026-07-28T14:05:00',
+  },
+  {
+    driver_name: 'Remesh Deulkar',       truck_number: '15', shift: 'Day', date: '2026-07-28',
+    deployed_at: '2026-07-28T06:02:00',  opening_reading_at: '2026-07-28T06:09:00',
+    first_trip_at: '2026-07-28T06:17:00', last_trip_at: '2026-07-28T13:55:00',
+    closing_reading_at: '2026-07-28T14:03:00',
+  },
+  {
+    driver_name: 'Shankar Lal Raksal',   truck_number: '17', shift: 'Day', date: '2026-07-28',
+    deployed_at: '2026-07-28T06:05:00',  opening_reading_at: '2026-07-28T06:18:00',
+    first_trip_at: '2026-07-28T06:29:00', last_trip_at: '2026-07-28T14:00:00',
+    closing_reading_at: '2026-07-28T14:12:00',
+  },
+];
+/* ═══════════════════════════════════════════════════════════════════════════
+   END MOCK DATA — rendering / calculation logic below
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Calculations ── */
+function diffMin(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 60000);
+}
+
+function computeRow(r) {
+  const gap1       = diffMin(r.deployed_at,        r.opening_reading_at);
+  const gap2       = diffMin(r.opening_reading_at, r.first_trip_at);
+  const productive = diffMin(r.first_trip_at,      r.last_trip_at);
+  const gap4       = diffMin(r.last_trip_at,        r.closing_reading_at);
+  const total_span = diffMin(r.deployed_at,         r.closing_reading_at);
+  const total_idle = gap1 + gap2 + gap4;
+  return { ...r, gap1, gap2, productive, gap4, total_span, total_idle };
+}
+
+const COMPUTED = RAW_DATA.map(computeRow);
+
+/* ── State ── */
+let _shift = 'all', _sortKey = null, _sortDir = -1;
+
+/* ── Helpers ── */
+function fmtTime(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+function gapCls(min) {
+  if (min < GAP_GREEN_MAX)  return 'gap-green';
+  if (min < GAP_YELLOW_MAX) return 'gap-yellow';
+  return 'gap-red';
+}
+function gapHtml(min) {
+  return `<span class="gap-cell ${gapCls(min)}">${min} min</span>`;
+}
+function prodHtml(min) {
+  return `<span class="gap-prod">${min} min</span>`;
+}
+function idleHtml(min) {
+  return `<span class="idle-total ${gapCls(Math.round(min / 1.5))}">${min} min</span>`;
+}
+function shiftBadge(s) {
+  const cls = s === 'Night' ? 'night' : 'day';
+  return `<span class="shift-badge ${cls}">${s}</span>`;
+}
+
+/* ── Filters ── */
+function getFilters() {
+  return {
+    date:   document.getElementById('filter-date').value,
+    driver: document.getElementById('filter-driver').value,
+    truck:  document.getElementById('filter-truck').value,
+    shift:  _shift,
+  };
+}
+function filteredRows() {
+  const { date, driver, truck, shift } = getFilters();
+  return COMPUTED.filter(r => {
+    if (date   && r.date         !== date)   return false;
+    if (driver && r.driver_name  !== driver) return false;
+    if (truck  && r.truck_number !== truck)  return false;
+    if (shift !== 'all' && r.shift !== shift) return false;
+    return true;
+  });
+}
+
+function setShift(btn, s) {
+  _shift = s;
+  document.querySelectorAll('.shift-pill').forEach(b => b.classList.remove('active','active-all'));
+  btn.classList.add(s === 'all' ? 'active-all' : 'active');
+  render();
+}
+function applyFilters() { render(); }
+function resetFilters() {
+  document.getElementById('filter-date').value = '';
+  document.getElementById('filter-driver').value = '';
+  document.getElementById('filter-truck').value = '';
+  _shift = 'all'; _sortKey = null; _sortDir = -1;
+  document.querySelectorAll('.shift-pill').forEach(b => b.classList.remove('active','active-all'));
+  document.querySelector('.shift-pill').classList.add('active-all');
+  render();
+}
+
+/* ── Sort ── */
+function sortBy(key) {
+  if (_sortKey === key) _sortDir *= -1; else { _sortKey = key; _sortDir = -1; }
+  render();
+}
+function sorted(rows) {
+  if (!_sortKey) return rows;
+  return [...rows].sort((a, b) => _sortDir * (a[_sortKey] - b[_sortKey]));
+}
+function updateIcons() {
+  ['gap1','gap2','productive','gap4','total_idle'].forEach(k => {
+    const th = document.getElementById('th-'+k);
+    const si = document.getElementById('si-'+k);
+    if (!th || !si) return;
+    th.classList.toggle('sorted', _sortKey === k);
+    si.textContent = _sortKey === k ? (_sortDir === -1 ? '▼' : '▲') : '';
+  });
+}
+
+/* ── Summary ── */
+function renderSummary(rows) {
+  const el = document.getElementById('summary-strip');
+  if (!rows.length) { el.innerHTML = ''; return; }
+  const avg = k => Math.round(rows.reduce((s,r) => s + r[k], 0) / rows.length);
+  const max = k => Math.max(...rows.map(r => r[k]));
+
+  const cards = [
+    { label: 'Records shown',       value: rows.length,         sub: 'driver-truck-shift rows',       cls: 'highlight' },
+    { label: 'Avg Total Idle',       value: `${avg('total_idle')} min`, sub: 'deploy+open+close gaps avg',   cls: '' },
+    { label: 'Max Total Idle',       value: `${max('total_idle')} min`, sub: 'worst single record',           cls: max('total_idle') > 60 ? 'warn' : '' },
+    { label: 'Avg Productive Span',  value: `${avg('productive')} min`, sub: 'avg first→last trip',           cls: '' },
+    { label: 'Worst Deploy→Open',    value: `${max('gap1')} min`,       sub: 'slowest opening reading',       cls: max('gap1') > GAP_YELLOW_MAX ? 'warn' : '' },
+    { label: 'Worst Last→Close',     value: `${max('gap4')} min`,       sub: 'slowest closing reading',       cls: max('gap4') > GAP_YELLOW_MAX ? 'warn' : '' },
+  ];
+  el.innerHTML = cards.map(c =>
+    `<div class="summary-card ${c.cls}">
+      <div class="card-label">${c.label}</div>
+      <div class="card-value">${c.value}</div>
+      <div class="card-sub">${c.sub}</div>
+    </div>`
+  ).join('');
+}
+
+/* ── Legend ── */
+function renderLegend() {
+  document.getElementById('legend-bar').innerHTML = `
+    <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Gap colours:</strong>
+    <span class="legend-item"><span class="legend-dot" style="background:#bbf7d0;"></span>
+      &lt; ${GAP_GREEN_MAX} min <span class="legend-thresh">— on time</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:#fde68a;"></span>
+      ${GAP_GREEN_MAX}–${GAP_YELLOW_MAX} min <span class="legend-thresh">— moderate</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:#fecaca;"></span>
+      &gt; ${GAP_YELLOW_MAX} min <span class="legend-thresh">— high</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:#bfdbfe;"></span>
+      Productive Span</span>
+    <span class="legend-item" style="margin-left:auto;font-size:11px;color:var(--text-muted);">Click any gap column header to sort</span>`;
+}
+
+/* ── Table ── */
+function renderTable(rows) {
+  const tbody = document.getElementById('table-body');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="14" class="empty-state">No records match the selected filters.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td style="font-weight:500;">${r.driver_name}</td>
+      <td class="mono">${r.truck_number}</td>
+      <td>${shiftBadge(r.shift)}</td>
+      <td style="color:var(--text-secondary);font-size:12px;">${fmtDate(r.date)}</td>
+      <td class="ts">${fmtTime(r.deployed_at)}</td>
+      <td class="ts">${fmtTime(r.opening_reading_at)}</td>
+      <td class="ts">${fmtTime(r.first_trip_at)}</td>
+      <td class="ts">${fmtTime(r.last_trip_at)}</td>
+      <td class="ts">${fmtTime(r.closing_reading_at)}</td>
+      <td class="num">${gapHtml(r.gap1)}</td>
+      <td class="num">${gapHtml(r.gap2)}</td>
+      <td class="num">${prodHtml(r.productive)}</td>
+      <td class="num">${gapHtml(r.gap4)}</td>
+      <td class="num">${idleHtml(r.total_idle)}</td>
+    </tr>`).join('');
+}
+
+/* ── Main render ── */
+function render() {
+  const rows = sorted(filteredRows());
+  updateIcons();
+  renderSummary(rows);
+  renderTable(rows);
+}
+
+/* ── Populate dropdowns ── */
+function populateFilters() {
+  const dates   = [...new Set(COMPUTED.map(r => r.date))].sort();
+  const drivers = [...new Set(COMPUTED.map(r => r.driver_name))].sort();
+  const trucks  = [...new Set(COMPUTED.map(r => r.truck_number))].sort((a,b) => a.localeCompare(b, undefined, { numeric:true }));
+
+  const fill = (id, items, labelFn) => {
+    const sel = document.getElementById(id);
+    const base = sel.options[0].outerHTML;
+    sel.innerHTML = base + items.map(v => `<option value="${v}">${labelFn ? labelFn(v) : v}</option>`).join('');
+  };
+  fill('filter-date',   dates,   d => `${fmtDate(d)}  (${d})`);
+  fill('filter-driver', drivers, null);
+  fill('filter-truck',  trucks,  t => `Truck ${t}`);
+}
+
+/* ── Export CSV ── */
+function exportCSV() {
+  const rows = sorted(filteredRows());
+  const hdr = ['Driver','Truck','Shift','Date','Deployed','Opening','1st Trip','Last Trip','Closing',
+                'Deploy→Open (min)','Open→1st Trip (min)','Productive Span (min)','Last→Close (min)','Total Idle (min)'];
+  const esc = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  const lines = [
+    'Tripman — Shift Changeover Time Analysis',
+    `Generated: ${new Date().toLocaleString('en-IN')}`,
+    `Thresholds: Green < ${GAP_GREEN_MAX} min  |  Yellow < ${GAP_YELLOW_MAX} min  |  Red >= ${GAP_YELLOW_MAX} min`,
+    '',
+    hdr.join(','),
+    ...rows.map(r => [
+      r.driver_name, r.truck_number, r.shift, r.date,
+      fmtTime(r.deployed_at), fmtTime(r.opening_reading_at),
+      fmtTime(r.first_trip_at), fmtTime(r.last_trip_at), fmtTime(r.closing_reading_at),
+      r.gap1, r.gap2, r.productive, r.gap4, r.total_idle
+    ].map(esc).join(','))
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `Tripman_Changeover_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+/* ── Dark mode ── */
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
+  document.getElementById('theme-btn').textContent = dark ? '🌙' : '☀️';
+  localStorage.setItem('tripman-theme', dark ? '' : 'dark');
+}
+(function initTheme() {
+  if (localStorage.getItem('tripman-theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme','dark');
+    document.addEventListener('DOMContentLoaded', () => {
+      const b = document.getElementById('theme-btn'); if (b) b.textContent = '☀️';
+    });
+  }
+})();
+
+/* ── Boot ── */
+document.addEventListener('DOMContentLoaded', () => {
+  populateFilters();
+  renderLegend();
+  render();
+});
+</script>
+</body>
+</html>
