@@ -5691,6 +5691,7 @@
           Health</button>
         <button class="action-btn" onclick="openDeploymentsPage()" style="height:30px;font-size:12px;">🚛 Deployments</button>
         <button class="action-btn" id="compliance-btn" onclick="openCompliancePage()" style="height:30px;font-size:12px;display:none;">📋 Shift Compliance</button>
+        <button class="action-btn" id="changeover-btn" onclick="openChangeoverPage()" style="height:30px;font-size:12px;display:none;">⏱ Changeover Analysis</button>
         <button class="action-btn" id="manual-trip-btn" onclick="openManualTripPage()"
           style="height:30px;font-size:12px;display:none;background:#1a3a5c;color:#fff;border-color:#1a3a5c;">✏ Manual
           Entry</button>
@@ -8056,6 +8057,95 @@
     </div>
   </div>
   <!-- ── END COMPLIANCE PAGE ── -->
+
+  <!-- ── CHANGEOVER ANALYSIS PAGE ── -->
+  <div id="changeover-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeChangeoverPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">⏱ Shift Changeover Time Analysis</div>
+      <div class="topbar-user" style="gap:8px;">
+        <button class="action-btn" onclick="coExportCsv()" style="height:30px;font-size:12px;">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div style="padding:24px;max-width:1480px;margin:0 auto;">
+
+      <!-- Summary cards -->
+      <div id="co-summary-strip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;"></div>
+
+      <!-- Filter bar -->
+      <div class="src-filter-bar" style="flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">From Date</div>
+            <input type="date" id="co-date-from" class="date-input" style="height:34px;" onchange="coFetch()"/>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">To Date</div>
+            <input type="date" id="co-date-to" class="date-input" style="height:34px;" onchange="coFetch()"/>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Shift</div>
+            <div class="dep-shift-pills" id="co-shift-pills">
+              <button class="dep-shift-pill active-all" onclick="coSetShift(this,'all')">All</button>
+              <button class="dep-shift-pill" onclick="coSetShift(this,'A')">A</button>
+              <button class="dep-shift-pill" onclick="coSetShift(this,'B')">B</button>
+              <button class="dep-shift-pill" onclick="coSetShift(this,'C')">C</button>
+            </div>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Driver</div>
+            <select id="co-driver-filter" class="dep-select" style="min-width:160px;" onchange="coApplyFilters()">
+              <option value="">All Drivers</option>
+            </select>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Unit</div>
+            <select id="co-unit-filter" class="dep-select" style="min-width:120px;" onchange="coApplyFilters()">
+              <option value="">All Units</option>
+            </select>
+          </div>
+          <div class="dep-filter-field" style="margin-left:auto;">
+            <div class="dep-filter-label">&nbsp;</div>
+            <button class="action-btn" onclick="coResetFilters()">↺ Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div id="co-legend" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--text-secondary);"></div>
+
+      <!-- Table -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto;">
+        <table class="src-table" style="min-width:1300px;">
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>Truck</th>
+              <th>Shift</th>
+              <th>Date</th>
+              <th>Deployed</th>
+              <th>Opening</th>
+              <th>1st Trip</th>
+              <th>Last Trip</th>
+              <th>Closing</th>
+              <th id="co-th-gap1" style="text-align:right;cursor:pointer;" onclick="coSortBy('gap1')">Deploy→Open <span id="co-si-gap1"></span></th>
+              <th id="co-th-gap2" style="text-align:right;cursor:pointer;" onclick="coSortBy('gap2')">Open→1st Trip <span id="co-si-gap2"></span></th>
+              <th id="co-th-productive" style="text-align:right;cursor:pointer;" onclick="coSortBy('productive')">Productive Span <span id="co-si-productive"></span></th>
+              <th id="co-th-gap4" style="text-align:right;cursor:pointer;" onclick="coSortBy('gap4')">Last→Close <span id="co-si-gap4"></span></th>
+              <th id="co-th-total_idle" style="text-align:right;cursor:pointer;" onclick="coSortBy('total_idle')">Total Idle <span id="co-si-total_idle"></span></th>
+            </tr>
+          </thead>
+          <tbody id="co-table-body">
+            <tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text-muted);">Select a date to load data</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+  <!-- ── END CHANGEOVER PAGE ── -->
 
   <!-- ── ADMIN COMPLIANCE MODALS (fixed, body-level so display:none on parent doesn't hide them) ── -->
 
@@ -14232,6 +14322,12 @@
         const allowed = ['worker','admin'];
         compBtn.style.display = (currentUser && (currentUser.is_admin || allowed.includes(role))) ? 'inline-flex' : 'none';
       }
+      const coBtn = document.getElementById('changeover-btn');
+      if (coBtn) {
+        const role = (currentUser && (currentUser.role || '')).toLowerCase();
+        const allowed = ['worker','admin'];
+        coBtn.style.display = (currentUser && (currentUser.is_admin || allowed.includes(role))) ? 'inline-flex' : 'none';
+      }
     }
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
@@ -19185,6 +19281,386 @@
       document.getElementById('compliance-page').style.display = 'none';
       document.getElementById('app').style.display = 'block';
     }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // SHIFT CHANGEOVER TIME ANALYSIS
+    // ─────────────────────────────────────────────────────────────────────────────
+    const CO_GREEN_MAX  = 10;  // minutes — gap coloured green below this
+    const CO_YELLOW_MAX = 20;  // minutes — yellow below this, red above
+
+    let _coAllData    = [];   // computed rows from real API
+    let _coFiltered   = [];   // after client-side filters applied
+    let _coShift      = 'all';
+    let _coSortKey    = null;
+    let _coSortDir    = -1;   // -1 = highest first
+
+    function openChangeoverPage() {
+      const role = (currentUser && (currentUser.role || '')).toLowerCase();
+      if (!currentUser || (!currentUser.is_admin && !['worker','admin'].includes(role))) {
+        showToast('Access restricted'); return;
+      }
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('changeover-page').style.display = 'block';
+      const today = new Date().toISOString().split('T')[0];
+      const fromEl = document.getElementById('co-date-from');
+      const toEl   = document.getElementById('co-date-to');
+      if (!fromEl.value) fromEl.value = today;
+      if (!toEl.value)   toEl.value   = today;
+      coRenderLegend();
+      coFetch();
+    }
+
+    function closeChangeoverPage() {
+      document.getElementById('changeover-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    function coSetShift(btn, shift) {
+      _coShift = shift;
+      document.querySelectorAll('#co-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active','active-all'));
+      btn.classList.add(shift === 'all' ? 'active-all' : 'active');
+      coApplyFilters();
+    }
+
+    /* ── Gap colouring ── */
+    function coGapCls(min) {
+      if (min === null || min === undefined) return '';
+      if (min < CO_GREEN_MAX)  return 'gap-green';
+      if (min < CO_YELLOW_MAX) return 'gap-yellow';
+      return 'gap-red';
+    }
+    function coGapHtml(min, productive) {
+      if (min === null || min === undefined) return '<span style="color:var(--text-muted)">—</span>';
+      if (productive) return `<span class="src-stat-chip src-stat-chip-hours" style="font-size:11px;">${min} min</span>`;
+      const cls = coGapCls(min);
+      const bg  = cls === 'gap-green'  ? 'background:#f0fdf4;color:#15803d' :
+                  cls === 'gap-yellow' ? 'background:#fffbeb;color:#b45309' :
+                                         'background:#fff5f5;color:#dc2626';
+      return `<span style="${bg};display:inline-flex;align-items:center;justify-content:flex-end;min-width:62px;padding:3px 9px;border-radius:6px;font-family:var(--font-mono);font-size:12px;font-weight:500;">${min} min</span>`;
+    }
+    function coIdleHtml(min) {
+      if (min === null || min === undefined) return '—';
+      const cls = coGapCls(Math.round(min / 1.5));
+      const clr = cls === 'gap-green' ? '#15803d' : cls === 'gap-yellow' ? '#b45309' : '#dc2626';
+      return `<span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:${clr};">${min} min</span>`;
+    }
+
+    /* ── Time formatting ── */
+    function coFmtTime(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    function coFmtDate(d) {
+      if (!d) return '—';
+      return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    }
+    function coDiffMin(a, b) {
+      if (!a || !b) return null;
+      const diff = Math.round((new Date(b) - new Date(a)) / 60000);
+      return diff >= 0 ? diff : null;
+    }
+
+    /* ── Data fetch and build ── */
+    async function coFetch() {
+      const dateFrom = document.getElementById('co-date-from').value;
+      const dateTo   = document.getElementById('co-date-to').value || dateFrom;
+      if (!dateFrom) return;
+
+      // Build date range (cap at 31)
+      const dates = [];
+      let cur = new Date(dateFrom + 'T00:00:00');
+      const end = new Date(dateTo + 'T00:00:00');
+      while (cur <= end && dates.length < 31) {
+        dates.push(cur.toISOString().split('T')[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      document.getElementById('co-table-body').innerHTML =
+        `<tr><td colspan="14" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
+
+      try {
+        // Fetch deployments + readings per day, and all trips in range
+        const allLive = [], allHistory = [], allReadings = [];
+        await Promise.all(dates.map(async d => {
+          const p = new URLSearchParams({ date: d });
+          const [sRes, rRes] = await Promise.all([
+            apiFetch(`${API}/deployments/summary?${p}`),
+            apiFetch(`${API}/shift-readings?${p}`),
+          ]);
+          if (sRes.ok) {
+            const sd = await sRes.json();
+            if (Array.isArray(sd.live))    allLive.push(...sd.live);
+            if (Array.isArray(sd.history)) allHistory.push(...sd.history);
+          }
+          if (rRes.ok) {
+            const rd = await rRes.json();
+            if (Array.isArray(rd)) allReadings.push(...rd);
+          }
+        }));
+
+        let trips = [];
+        try { trips = await fetchAllTripsForRange(dateFrom, dateTo); } catch (_) {}
+
+        // Build readings map keyed by vehicle_id|shift|date (prefer vehicle_id, fallback truck_number)
+        const readingsMap = {};
+        allReadings.forEach(r => {
+          const shift = (r.shift || '').toUpperCase();
+          const date  = r.date || '';
+          const keys = [];
+          if (r.vehicle_id)   keys.push(`vid:${r.vehicle_id}|${shift}|${date}`);
+          if (r.truck_number) keys.push(`trk:${r.truck_number}|${shift}|${date}`);
+          keys.forEach(k => { readingsMap[k] = r; });
+        });
+
+        // Build trips map: vehicle_id|shift|date → {first: ISO, last: ISO}
+        const tripSpanMap = {};
+        trips.forEach(t => {
+          const ts    = t.timestamp || t.trip_time || t.created_at || null;
+          const shift = (t.shift || '').toUpperCase();
+          const date  = t.mining_date || (ts ? ts.split('T')[0] : null);
+          const vid   = String(t.vehicle_id || t.machine_id || '');
+          if (!ts || !shift || !date || !vid) return;
+          const key = `${vid}|${shift}|${date}`;
+          if (!tripSpanMap[key]) tripSpanMap[key] = { first: ts, last: ts };
+          else {
+            if (new Date(ts) < new Date(tripSpanMap[key].first)) tripSpanMap[key].first = ts;
+            if (new Date(ts) > new Date(tripSpanMap[key].last))  tripSpanMap[key].last  = ts;
+          }
+        });
+
+        // Merge live + history, enrich with reading + trip data
+        const seen = new Set();
+        const rows = [];
+        [...allLive, ...allHistory].forEach(dep => {
+          const shift  = (dep.shift || '').toUpperCase();
+          const date   = dep.date || (dep.deployed_since ? dep.deployed_since.slice(0, 10) : '');
+          const vid    = String(dep.vehicle_id || '');
+          const trk    = String(dep.truck_number || '');
+          const dedupKey = `${vid || trk}|${shift}|${date}`;
+          if (seen.has(dedupKey)) return;
+          seen.add(dedupKey);
+
+          // Find matching reading
+          const readingKey = vid ? `vid:${vid}|${shift}|${date}` : `trk:${trk}|${shift}|${date}`;
+          const reading = readingsMap[readingKey] || null;
+
+          const hmr = (reading && reading.readings && reading.readings.HMR) || {};
+          const kmr = (reading && reading.readings && reading.readings.KMR) || {};
+
+          // Prefer KMR timestamp for opening (driver submits at start), fallback to HMR
+          const openingTs  = kmr.opening_ts  || hmr.opening_ts  || null;
+          const closingTs  = kmr.closing_ts  || hmr.closing_ts  || null;
+          const deployedAt = dep.deployed_since || null;
+
+          // Trip span
+          const tripKey   = `${vid}|${shift}|${date}`;
+          const tripSpan  = tripSpanMap[tripKey] || null;
+          const firstTrip = tripSpan?.first || null;
+          const lastTrip  = tripSpan?.last  || null;
+
+          // Compute gaps (all in minutes)
+          const gap1       = coDiffMin(deployedAt, openingTs);
+          const gap2       = coDiffMin(openingTs, firstTrip);
+          const productive = coDiffMin(firstTrip, lastTrip);
+          const gap4       = coDiffMin(lastTrip, closingTs);
+          const totalIdle  = (gap1 ?? 0) + (gap2 ?? 0) + (gap4 ?? 0);
+
+          rows.push({
+            driver_name:    srcGetPersonName(dep) !== '—' ? srcGetPersonName(dep) : (reading ? srcGetPersonName(reading) : '—'),
+            truck_number:   trk || '—',
+            shift,
+            date,
+            deployed_at:     deployedAt,
+            opening_reading_at: openingTs,
+            first_trip_at:   firstTrip,
+            last_trip_at:    lastTrip,
+            closing_reading_at: closingTs,
+            gap1, gap2, productive, gap4,
+            total_idle: totalIdle,
+          });
+        });
+
+        _coAllData = rows;
+        coPopulateFilters();
+        coApplyFilters();
+      } catch (e) {
+        console.error('Changeover fetch error', e);
+        document.getElementById('co-table-body').innerHTML =
+          `<tr><td colspan="14" style="text-align:center;padding:28px;color:#c0392b;">⚠ Could not load data.</td></tr>`;
+      }
+    }
+
+    /* ── Filters ── */
+    function coPopulateFilters() {
+      const dsel = document.getElementById('co-driver-filter');
+      const usel = document.getElementById('co-unit-filter');
+      const prevD = dsel.value, prevU = usel.value;
+
+      const drivers = [...new Set(_coAllData.map(r => r.driver_name).filter(n => n && n !== '—'))].sort();
+      dsel.innerHTML = '<option value="">All Drivers</option>' +
+        drivers.map(n => `<option value="${n}">${n}</option>`).join('');
+      if (prevD) dsel.value = prevD;
+
+      const units = [...new Set(_coAllData.map(r => r.truck_number).filter(Boolean))].sort((a,b) =>
+        a.localeCompare(b, undefined, { numeric: true })
+      );
+      usel.innerHTML = '<option value="">All Units</option>' +
+        units.map(u => `<option value="${u}">Truck ${u}</option>`).join('');
+      if (prevU) usel.value = prevU;
+    }
+
+    function coApplyFilters() {
+      const driver = document.getElementById('co-driver-filter')?.value || '';
+      const unit   = document.getElementById('co-unit-filter')?.value   || '';
+      _coFiltered = _coAllData.filter(r => {
+        if (_coShift !== 'all' && r.shift !== _coShift) return false;
+        if (driver && r.driver_name !== driver) return false;
+        if (unit   && r.truck_number !== unit)  return false;
+        return true;
+      });
+      coRenderSummary();
+      coRenderTable();
+    }
+
+    function coResetFilters() {
+      document.getElementById('co-driver-filter').value = '';
+      document.getElementById('co-unit-filter').value   = '';
+      _coShift = 'all'; _coSortKey = null; _coSortDir = -1;
+      document.querySelectorAll('#co-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active','active-all'));
+      document.querySelector('#co-shift-pills .dep-shift-pill').classList.add('active-all');
+      coApplyFilters();
+    }
+
+    /* ── Sort ── */
+    function coSortBy(key) {
+      if (_coSortKey === key) _coSortDir *= -1; else { _coSortKey = key; _coSortDir = -1; }
+      coRenderTable();
+    }
+    function coSorted(rows) {
+      if (!_coSortKey) return rows;
+      return [...rows].sort((a, b) => {
+        const av = a[_coSortKey] ?? -Infinity;
+        const bv = b[_coSortKey] ?? -Infinity;
+        return _coSortDir * (av - bv);
+      });
+    }
+    function coUpdateIcons() {
+      ['gap1','gap2','productive','gap4','total_idle'].forEach(k => {
+        const th = document.getElementById('co-th-'+k);
+        const si = document.getElementById('co-si-'+k);
+        if (!th || !si) return;
+        const sorted = _coSortKey === k;
+        th.style.color = sorted ? 'var(--accent)' : '';
+        si.textContent  = sorted ? (_coSortDir === -1 ? '▼' : '▲') : '';
+      });
+    }
+
+    /* ── Summary cards ── */
+    function coRenderSummary() {
+      const rows = _coFiltered;
+      const el   = document.getElementById('co-summary-strip');
+      if (!rows.length) { el.innerHTML = ''; return; }
+
+      const withVal = (key) => rows.filter(r => r[key] !== null && r[key] !== undefined);
+      const avg = key => {
+        const arr = withVal(key);
+        return arr.length ? Math.round(arr.reduce((s,r) => s + r[key], 0) / arr.length) : '—';
+      };
+      const max = key => {
+        const arr = withVal(key);
+        return arr.length ? Math.max(...arr.map(r => r[key])) : '—';
+      };
+
+      const cards = [
+        { label: 'Records',          value: rows.length,          sub: 'driver-truck-shift rows' },
+        { label: 'Avg Total Idle',   value: `${avg('total_idle')} min`, sub: 'deploy + gaps avg' },
+        { label: 'Max Total Idle',   value: `${max('total_idle')} min`, sub: 'worst single record', warn: max('total_idle') > 60 },
+        { label: 'Avg Productive',   value: `${avg('productive')} min`, sub: 'avg 1st→last trip span' },
+        { label: 'Worst Deploy→Open',value: `${max('gap1')} min`,       sub: 'slowest opening reading', warn: max('gap1') > CO_YELLOW_MAX },
+        { label: 'Worst Last→Close', value: `${max('gap4')} min`,       sub: 'slowest closing reading', warn: max('gap4') > CO_YELLOW_MAX },
+      ];
+
+      el.innerHTML = cards.map(c => {
+        const clr = c.warn ? '#dc2626' : 'var(--accent)';
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);">${c.label}</div>
+          <div style="font-family:var(--font-mono);font-size:24px;font-weight:500;color:${c.warn ? clr : 'var(--text-primary)'};line-height:1.1;margin-top:4px;">${c.value}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${c.sub}</div>
+        </div>`;
+      }).join('');
+    }
+
+    /* ── Legend ── */
+    function coRenderLegend() {
+      document.getElementById('co-legend').innerHTML = `
+        <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Gap colours:</strong>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#bbf7d0;display:inline-block;"></span> &lt;${CO_GREEN_MAX} min — on time</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#fde68a;display:inline-block;"></span> ${CO_GREEN_MAX}–${CO_YELLOW_MAX} min — moderate</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#fecaca;display:inline-block;"></span> &gt;${CO_YELLOW_MAX} min — high</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#bfdbfe;display:inline-block;"></span> Productive Span</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">Click any gap column header to sort</span>`;
+    }
+
+    /* ── Table render ── */
+    function coRenderTable() {
+      const rows = coSorted(_coFiltered);
+      coUpdateIcons();
+      const tbody = document.getElementById('co-table-body');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text-muted);">No records match the selected filters.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => {
+        const shiftBg = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
+        const shiftClr = r.shift === 'A' ? '#065f46' : r.shift === 'B' ? '#5b21b6' : '#9a3412';
+        return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="font-weight:500;">${r.driver_name}</td>
+          <td style="font-family:var(--font-mono);font-weight:500;">${r.truck_number}</td>
+          <td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;font-family:var(--font-mono);background:${shiftBg};color:${shiftClr};">${r.shift}</span></td>
+          <td style="color:var(--text-secondary);font-size:12px;">${coFmtDate(r.date)}</td>
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.deployed_at)}</td>
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.opening_reading_at)}</td>
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.first_trip_at)}</td>
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.last_trip_at)}</td>
+          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.closing_reading_at)}</td>
+          <td style="text-align:right;">${coGapHtml(r.gap1, false)}</td>
+          <td style="text-align:right;">${coGapHtml(r.gap2, false)}</td>
+          <td style="text-align:right;">${coGapHtml(r.productive, true)}</td>
+          <td style="text-align:right;">${coGapHtml(r.gap4, false)}</td>
+          <td style="text-align:right;">${coIdleHtml(r.total_idle)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    /* ── CSV Export ── */
+    function coExportCsv() {
+      const rows = coSorted(_coFiltered);
+      const hdr  = ['Driver','Truck','Shift','Date','Deployed','Opening','1st Trip','Last Trip','Closing',
+                     'Deploy→Open (min)','Open→1st Trip (min)','Productive Span (min)','Last→Close (min)','Total Idle (min)'];
+      const esc  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = [
+        'Tripman — Shift Changeover Time Analysis',
+        `Generated: ${new Date().toLocaleString('en-IN')}`,
+        `Green < ${CO_GREEN_MAX} min | Yellow < ${CO_YELLOW_MAX} min | Red >= ${CO_YELLOW_MAX} min`,
+        '',
+        hdr.join(','),
+        ...rows.map(r => [
+          r.driver_name, r.truck_number, r.shift, r.date,
+          coFmtTime(r.deployed_at), coFmtTime(r.opening_reading_at),
+          coFmtTime(r.first_trip_at), coFmtTime(r.last_trip_at), coFmtTime(r.closing_reading_at),
+          r.gap1 ?? '', r.gap2 ?? '', r.productive ?? '', r.gap4 ?? '', r.total_idle ?? ''
+        ].map(esc).join(','))
+      ];
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Tripman_Changeover_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      showToast('CSV downloaded');
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+    // END SHIFT CHANGEOVER TIME ANALYSIS
+    // ─────────────────────────────────────────────────────────────────────────────
 
     function srcSetShift(btn, shift) {
       _srcCurrentShift = shift;
