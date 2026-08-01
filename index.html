@@ -9016,29 +9016,16 @@
       if (rawDataVisible) renderTable();
     }
 
-    // ── Cubic metre helper ────────────────────────────────────────────────────────
-    // Qualifying trucks: vehicle.capacity_m3 is 19, 19.5 (or volume_m3 / cum_capacity)
-    // Factor: 14.5 m³ per qualifying trip
+    // Qualifying trucks: ALL tippers count — 14.5 m³ per trip
     const CUM_FACTOR       = 14.5;   // m³ credited per trip
-    const CUM_CAP_MIN      = 19;     // inclusive lower bound (cu^m)
-    const CUM_CAP_MAX      = 19.5;   // inclusive upper bound (cu^m)
-
-    function getVehicleCumCap(vehicleId) {
-      const v = allVehicles.find(x => x._id === vehicleId);
-      if (!v) return null;
-      // Try every plausible field name the backend might use
-      const raw = v.capacity_m3 ?? v.volume_m3 ?? v.cum_capacity ?? v.capacity_cum ?? null;
-      return raw != null ? parseFloat(raw) : null;
-    }
 
     function isCumQualifyingTrip(trip) {
-      const cap = getVehicleCumCap(trip.vehicle_id);
-      return cap != null && cap >= CUM_CAP_MIN && cap <= CUM_CAP_MAX;
+      // All trips qualify — apply 14.5 m³ to every trip regardless of vehicle capacity
+      return true;
     }
 
     function calcCumM3(trips) {
-      const qualCount = trips.filter(isCumQualifyingTrip).length;
-      return qualCount * CUM_FACTOR;
+      return trips.length * CUM_FACTOR;
     }
 
     function fmtCum(m3) {
@@ -19315,6 +19302,36 @@
       document.getElementById('app').style.display = 'block';
     }
 
+    function dashboardDate(value) {
+      const text = String(value || '');
+      const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return iso[0];
+      const indian = text.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      return indian ? `${indian[3]}-${indian[2]}-${indian[1]}` : '';
+    }
+
+    function dashboardDateRange(from, to, limit = 31) {
+      const start = dashboardDate(from);
+      const end = dashboardDate(to || from);
+      if (!start || !end || start > end) return [];
+      const dates = [];
+      const current = new Date(`${start}T00:00:00`);
+      while (dates.length < limit) {
+        const currentDate = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+        if (currentDate > end) break;
+        dates.push(currentDate);
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    }
+
+    function dashboardDateInRange(value, from, to) {
+      const date = dashboardDate(value);
+      const start = dashboardDate(from);
+      const end = dashboardDate(to || from);
+      return Boolean(date && start && end && date >= start && date <= end);
+    }
+
     function coSetShift(btn, shift) {
       _coShift = shift;
       document.querySelectorAll('#co-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active','active-all'));
@@ -19366,14 +19383,8 @@
       const dateTo   = document.getElementById('co-date-to').value || dateFrom;
       if (!dateFrom) return;
 
-      // Build date range (cap at 31)
-      const dates = [];
-      let cur = new Date(dateFrom + 'T00:00:00');
-      const end = new Date(dateTo + 'T00:00:00');
-      while (cur <= end && dates.length < 31) {
-        dates.push(cur.toISOString().split('T')[0]);
-        cur.setDate(cur.getDate() + 1);
-      }
+      // Build date range without converting local midnight to UTC.
+      const dates = dashboardDateRange(dateFrom, dateTo);
 
       document.getElementById('co-table-body').innerHTML =
         `<tr><td colspan="14" style="text-align:center;padding:28px;color:var(--text-muted);">Loading…</td></tr>`;
@@ -19405,7 +19416,7 @@
         const readingsMap = {};
         allReadings.forEach(r => {
           const shift = (r.shift || '').toUpperCase();
-          const date  = r.date || '';
+          const date  = dashboardDate(r.date);
           const keys = [];
           if (r.vehicle_id)   keys.push(`vid:${r.vehicle_id}|${shift}|${date}`);
           if (r.truck_number) keys.push(`trk:${r.truck_number}|${shift}|${date}`);
@@ -19417,7 +19428,7 @@
         trips.forEach(t => {
           const ts    = t.timestamp || t.trip_time || t.created_at || null;
           const shift = (t.shift || '').toUpperCase();
-          const date  = t.mining_date || (ts ? ts.split('T')[0] : null);
+          const date  = dashboardDate(t.mining_date || ts);
           const vid   = String(t.vehicle_id || t.machine_id || '');
           if (!ts || !shift || !date || !vid) return;
           const key = `${vid}|${shift}|${date}`;
@@ -19433,7 +19444,7 @@
         const rows = [];
         [...allLive, ...allHistory].forEach(dep => {
           const shift  = (dep.shift || '').toUpperCase();
-          const date   = dep.date || (dep.deployed_since ? dep.deployed_since.slice(0, 10) : '');
+          const date   = dashboardDate(dep.date || dep.deployed_since);
           const vid    = String(dep.vehicle_id || '');
           const trk    = String(dep.truck_number || '');
           const dedupKey = `${vid || trk}|${shift}|${date}`;
@@ -19480,7 +19491,8 @@
           });
         });
 
-        _coAllData = rows;
+        // The summary API can include neighbouring history rows.
+        _coAllData = rows.filter(r => dashboardDateInRange(r.date, dateFrom, dateTo));
         coPopulateFilters();
         coApplyFilters();
       } catch (e) {
@@ -19537,11 +19549,19 @@
       coRenderTable();
     }
     function coSorted(rows) {
-      if (!_coSortKey) return rows;
+      if (_coSortKey) {
+        return [...rows].sort((a, b) => {
+          const av = a[_coSortKey] ?? -Infinity;
+          const bv = b[_coSortKey] ?? -Infinity;
+          return _coSortDir * (av - bv);
+        });
+      }
+      // Default: sort by date ascending, then by truck number
       return [...rows].sort((a, b) => {
-        const av = a[_coSortKey] ?? -Infinity;
-        const bv = b[_coSortKey] ?? -Infinity;
-        return _coSortDir * (av - bv);
+        const da = dashboardDate(a.date), db = dashboardDate(b.date);
+        if (da < db) return -1;
+        if (da > db) return  1;
+        return (a.truck_number || '').localeCompare(b.truck_number || '', undefined, { numeric: true, sensitivity: 'base' });
       });
     }
     function coUpdateIcons() {
@@ -20087,19 +20107,7 @@
     async function srcFetch() {
       const dateFrom = document.getElementById('src-date-from').value;
       const dateTo   = document.getElementById('src-date-to').value || dateFrom;
-      // Build list of individual dates in range (capped at 31)
-      const srcDateRange = (from, to) => {
-        if (!from) return [];
-        const dates = [];
-        let cur = new Date(from + 'T00:00:00');
-        const end = new Date((to || from) + 'T00:00:00');
-        while (cur <= end && dates.length < 31) {
-          dates.push(cur.toISOString().split('T')[0]);
-          cur.setDate(cur.getDate() + 1);
-        }
-        return dates;
-      };
-      const dates = srcDateRange(dateFrom, dateTo);
+      const dates = dashboardDateRange(dateFrom, dateTo);
       const rowFlagsPromise = srcFetchRowFlags(dateFrom);
       _srcTripCounts = new Map();
       _srcTripsLoaded = false;
@@ -20147,7 +20155,7 @@
         // the truck-number key as a fallback for legacy records.
         const srcReadingKeys = record => {
           const shift = (record.shift || '').toUpperCase();
-          const date = record.date || '';
+          const date = dashboardDate(record.date);
           const keys = [];
           if (record.vehicle_id) keys.push(`vehicle:${record.vehicle_id}|${shift}|${date}`);
           if (record.truck_number) keys.push(`truck:${record.truck_number}|${shift}|${date}`);
@@ -20282,7 +20290,7 @@
             equipment_type : reading.equipment_type || reading.vehicle_type || '',
             // shift / date
             shift : reading.shift || '',
-            date  : reading.date  || '',
+            date  : dashboardDate(reading.date),
             // driver
             driver_name    : reading.driver_name    || reading.operator_name || reading.worker_name || '',
             driver_id      : reading.driver_id      || reading.operator_id   || reading.worker_id   || null,
@@ -20300,6 +20308,11 @@
           }
         });
 
+        // The APIs can include neighbouring history rows. Apply the range guard
+        // after orphaned readings are added so they cannot bypass the filter.
+        _srcAllData = _srcAllData.filter(row =>
+          dashboardDateInRange(row.date || row.deployed_since, dateFrom, dateTo)
+        );
 
         // Populate filter dropdowns
         srcPopulateEqFilter();
@@ -20388,8 +20401,9 @@
     }
 
     function srcGetEquipmentCode(d) {
-      return d.truck_number || d.equipment_code || d.vehicle_number ||
-        (d.equipment_id ? d.equipment_id.slice(-6).toUpperCase() : '—');
+      const code = d.truck_number || d.equipment_code || d.vehicle_number ||
+        (d.equipment_id ? String(d.equipment_id).slice(-6).toUpperCase() : '—');
+      return String(code).trim();
     }
 
     function srcGetPersonName(d) {
@@ -20515,10 +20529,10 @@
           const name = srcGetPersonName(d).toLowerCase();
           if (!name.includes(driverVal)) return false;
         }
-        // Specific unit filter: match equipment code
+        // Specific unit filter: exact match on equipment code
         if (unitVal) {
-          const code = srcGetEquipmentCode(d).toLowerCase();
-          if (!code.includes(unitVal)) return false;
+          const code = srcGetEquipmentCode(d).trim().toLowerCase();
+          if (code !== unitVal) return false;
         }
         return true;
       });
@@ -20614,6 +20628,11 @@
       }
 
       rows.sort((a, b) => {
+        // Primary: date ascending so multi-day ranges show chronologically
+        const da = dashboardDate(a.date || a.deployed_since), db = dashboardDate(b.date || b.deployed_since);
+        if (da < db) return -1;
+        if (da > db) return  1;
+        // Secondary: status order (complete first)
         const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
         const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
         if (sa !== sb) return sa - sb;
