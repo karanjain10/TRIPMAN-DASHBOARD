@@ -19437,20 +19437,26 @@
           keys.forEach(k => { readingsMap[k] = r; });
         });
 
-        // Build trips map: vehicle_id|shift|date → {first: ISO, last: ISO}
+        // Build trip spans by both vehicle ID and truck number. Some historical
+        // deployment records do not carry the same vehicle ID as their trips.
         const tripSpanMap = {};
         trips.forEach(t => {
           const ts    = t.timestamp || t.trip_time || t.created_at || null;
           const shift = (t.shift || '').toUpperCase();
           const date  = coTripShiftDate(t);
-          const vid   = String(t.vehicle_id || t.machine_id || '');
-          if (!ts || !shift || !date || !vid) return;
-          const key = `${vid}|${shift}|${date}`;
-          if (!tripSpanMap[key]) tripSpanMap[key] = { first: ts, last: ts };
-          else {
-            if (new Date(ts) < new Date(tripSpanMap[key].first)) tripSpanMap[key].first = ts;
-            if (new Date(ts) > new Date(tripSpanMap[key].last))  tripSpanMap[key].last  = ts;
-          }
+          if (!ts || !shift || !date) return;
+          const keys = [
+            t.vehicle_id || t.machine_id ? `vid:${t.vehicle_id || t.machine_id}|${shift}|${date}` : '',
+            t.truck_number || t.vehicle_number || t.equipment_code
+              ? `trk:${t.truck_number || t.vehicle_number || t.equipment_code}|${shift}|${date}` : ''
+          ].filter(Boolean);
+          keys.forEach(key => {
+            if (!tripSpanMap[key]) tripSpanMap[key] = { first: ts, last: ts, count: 0 };
+            const span = tripSpanMap[key];
+            span.count++;
+            if (new Date(ts) < new Date(span.first)) span.first = ts;
+            if (new Date(ts) > new Date(span.last))  span.last  = ts;
+          });
         });
 
         // Merge live + history, enrich with reading + trip data
@@ -19478,8 +19484,11 @@
           const deployedAt = dep.deployed_since || null;
 
           // Trip span
-          const tripKey   = `${vid}|${shift}|${date}`;
-          const tripSpan  = tripSpanMap[tripKey] || null;
+          const tripSpans = [
+            tripSpanMap[`vid:${vid}|${shift}|${date}`],
+            tripSpanMap[`trk:${trk}|${shift}|${date}`]
+          ].filter(Boolean);
+          const tripSpan = tripSpans.sort((a, b) => b.count - a.count)[0] || null;
           const firstTrip = tripSpan?.first || null;
           const lastTrip  = tripSpan?.last  || null;
 
