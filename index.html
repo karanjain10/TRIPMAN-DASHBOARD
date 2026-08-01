@@ -19377,6 +19377,20 @@
       return diff >= 0 ? diff : null;
     }
 
+    function coTripShiftDate(trip) {
+      const timestamp = trip.timestamp || trip.trip_time || trip.created_at || null;
+      const shift = (trip.shift || '').toUpperCase();
+      if (!timestamp) return dashboardDate(trip.mining_date);
+
+      const time = new Date(timestamp);
+      if (Number.isNaN(time.getTime())) return dashboardDate(trip.mining_date);
+
+      // Shift C crosses midnight. A trip recorded after midnight belongs to the
+      // date on which that shift began, not the following calendar date.
+      if (shift === 'C' && time.getHours() < 12) time.setDate(time.getDate() - 1);
+      return `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`;
+    }
+
     /* ── Data fetch and build ── */
     async function coFetch() {
       const dateFrom = document.getElementById('co-date-from').value;
@@ -19428,7 +19442,7 @@
         trips.forEach(t => {
           const ts    = t.timestamp || t.trip_time || t.created_at || null;
           const shift = (t.shift || '').toUpperCase();
-          const date  = dashboardDate(t.mining_date || ts);
+          const date  = coTripShiftDate(t);
           const vid   = String(t.vehicle_id || t.machine_id || '');
           if (!ts || !shift || !date || !vid) return;
           const key = `${vid}|${shift}|${date}`;
