@@ -20651,10 +20651,10 @@
       }
 
       rows.sort((a, b) => {
-        // Primary: date ascending so multi-day ranges show chronologically
+        // Primary: newest date first for multi-day ranges
         const da = dashboardDate(a.date || a.deployed_since), db = dashboardDate(b.date || b.deployed_since);
-        if (da < db) return -1;
-        if (da > db) return  1;
+        if (da < db) return  1;
+        if (da > db) return -1;
         // Secondary: status order (complete first)
         const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
         const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
