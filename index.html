@@ -8764,6 +8764,12 @@
 
     let dateRange = { type: 'today', from: null, to: null };
 
+    const extractSiteId = (s) => {
+      if (!s) return null;
+      if (typeof s === 'string') return s;
+      return s.id || s._id || s.site_id || null;
+    };
+
     async function doLogin() {
       const company_code = document.getElementById('login-company').value.trim().toUpperCase();
       const worker_id = document.getElementById('login-id').value.trim();
@@ -8780,15 +8786,20 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ company_code, worker_id, password })
         });
-        if (!res.ok) { errEl.textContent = 'Invalid company code, worker ID, or password.'; showLoading(false); return; }
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          errEl.textContent = errData.detail || errData.message || 'Invalid company code, worker ID, or password.';
+          showLoading(false);
+          return;
+        }
         const data = await res.json();
 
         // ⚠️ ASSUMPTION — confirm actual field names with backend response:
         //   data.access_token  → the JWT
         //   data.sites         → array of sites this worker can access (multi-site workers)
         //   data.site_id       → default/only site id (single-site workers)
-        authToken = data.access_token || data.token || null;
-        currentUser = data.worker || data;
+        authToken = data.access_token || data.token || data.jwt || data.accessToken || null;
+        currentUser = data.worker || data.user || data;
         currentCompanyCode = company_code;
         // Extract company name from response (try multiple possible field names)
         currentCompanyName = data.company_name || data.company?.name || data.worker?.company_name
@@ -8805,14 +8816,14 @@
           openSitePicker();
           return;
         } else {
-          currentSiteId = (availableSites[0] && (availableSites[0].id || availableSites[0]._id))
-            || data.site_id || data.default_site_id || null;
-          localStorage.setItem('tripman_site_id', currentSiteId || '');
+          currentSiteId = extractSiteId(availableSites[0])
+            || data.site_id || data.default_site_id || data.site?.id || data.worker?.site_id || null;
+          if (currentSiteId) localStorage.setItem('tripman_site_id', currentSiteId);
         }
 
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        document.getElementById('topbar-username').textContent = currentUser.name || worker_id;
+        document.getElementById('topbar-username').textContent = (currentUser && (currentUser.name || currentUser.full_name || currentUser.worker_id)) || worker_id;
         // Show company name in topbar
         const cnEl = document.getElementById('topbar-company-name');
         if (cnEl) cnEl.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
@@ -8832,7 +8843,7 @@
       if (availableSites.length === 0) return;
       // Placeholder: auto-select first site so the app doesn't get stuck.
       // Replace this with a real picker UI.
-      selectSite(availableSites[0].id || availableSites[0]._id);
+      selectSite(extractSiteId(availableSites[0]));
     }
 
     function selectSite(siteId) {
@@ -8840,7 +8851,7 @@
       localStorage.setItem('tripman_site_id', currentSiteId || '');
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      document.getElementById('topbar-username').textContent = (currentUser && currentUser.name) || '';
+      document.getElementById('topbar-username').textContent = (currentUser && (currentUser.name || currentUser.full_name)) || '';
       const cnEl2 = document.getElementById('topbar-company-name');
       if (cnEl2) cnEl2.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
       updateAdminUI();
@@ -8851,6 +8862,17 @@
     document.getElementById('login-id').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     document.getElementById('login-company').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     if (currentCompanyCode) document.getElementById('login-company').value = currentCompanyCode;
+
+    // Auto-restore session if token exists in localStorage
+    if (authToken) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('topbar-username').textContent = (currentUser && (currentUser.name || currentUser.full_name)) || '';
+      const cnEl = document.getElementById('topbar-company-name');
+      if (cnEl) cnEl.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
+      updateAdminUI();
+      initApp();
+    }
 
     function doLogout() {
       currentUser = null;
@@ -8893,25 +8915,31 @@
     async function loadVehicles() {
       try {
         const res = await apiFetch(`${API}/vehicles`);
-        allVehicles = await res.json();
-        renderSidebarList('vehicle', allVehicles.map(v => ({ id: v._id, label: v.vehicle_number })));
-      } catch (e) { }
+        if (!res.ok) { allVehicles = []; return; }
+        const data = await res.json();
+        allVehicles = Array.isArray(data) ? data : (data.vehicles || []);
+        renderSidebarList('vehicle', allVehicles.map(v => ({ id: v._id || v.id, label: v.vehicle_number || v.number || v.name })));
+      } catch (e) { allVehicles = []; }
     }
 
     async function loadDrivers() {
       try {
         const res = await apiFetch(`${API}/drivers`);
-        allDrivers = await res.json();
-        renderSidebarList('driver', allDrivers.map(d => ({ id: d._id, label: d.name })));
-      } catch (e) { }
+        if (!res.ok) { allDrivers = []; return; }
+        const data = await res.json();
+        allDrivers = Array.isArray(data) ? data : (data.drivers || []);
+        renderSidebarList('driver', allDrivers.map(d => ({ id: d._id || d.id, label: d.name })));
+      } catch (e) { allDrivers = []; }
     }
 
     async function loadWorkers() {
       try {
         const res = await apiFetch(`${API}/workers`);
-        allWorkers = await res.json();
-        renderSidebarList('supervisor', allWorkers.map(w => ({ id: w._id, label: w.name })));
-      } catch (e) { }
+        if (!res.ok) { allWorkers = []; return; }
+        const data = await res.json();
+        allWorkers = Array.isArray(data) ? data : (data.workers || []);
+        renderSidebarList('supervisor', allWorkers.map(w => ({ id: w._id || w.id, label: w.name })));
+      } catch (e) { allWorkers = []; }
     }
 
     // ─── CLIENT-SIDE TRIP DURATION FIX FOR MANUAL ENTRIES ───────────────────────
