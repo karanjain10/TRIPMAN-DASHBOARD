@@ -19936,6 +19936,10 @@
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#fde68a;display:inline-block;"></span> ${CO_GREEN_MAX}–${CO_YELLOW_MAX} min — moderate</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#fecaca;display:inline-block;"></span> &gt;${CO_YELLOW_MAX} min — high</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#bfdbfe;display:inline-block;"></span> Productive Span</span>
+        <span style="display:flex;align-items:center;gap:5px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#fbbf24;color:#78350f;font-size:10px;font-weight:700;">2</span>
+          Driver operated multiple vehicles this shift
+        </span>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">Click any gap column header to sort</span>`;
     }
 
@@ -19948,11 +19952,41 @@
         tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text-muted);">No records match the selected filters.</td></tr>`;
         return;
       }
+
+      // Build frequency map: driver+shift+date → count
+      const freqMap = {};
+      rows.forEach(r => {
+        const key = `${r.driver_name}|${r.shift}|${r.date}`;
+        freqMap[key] = (freqMap[key] || 0) + 1;
+      });
+
       tbody.innerHTML = rows.map(r => {
-        const shiftBg = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
+        const shiftBg  = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
         const shiftClr = r.shift === 'A' ? '#065f46' : r.shift === 'B' ? '#5b21b6' : '#9a3412';
+
+        // Yellow dot badge for drivers who operated >1 vehicle in the same shift+date
+        const freqKey   = `${r.driver_name}|${r.shift}|${r.date}`;
+        const vehicleCount = freqMap[freqKey] || 1;
+        const multiBadge = vehicleCount > 1
+          ? `<span
+              title="This driver operated ${vehicleCount} vehicles this shift"
+              style="
+                display:inline-flex;align-items:center;justify-content:center;
+                width:18px;height:18px;border-radius:50%;
+                background:#fbbf24;color:#78350f;
+                font-size:10px;font-weight:700;
+                margin-left:6px;cursor:default;
+                flex-shrink:0;vertical-align:middle;
+                box-shadow:0 1px 3px rgba(0,0,0,.15);
+              ">${vehicleCount}</span>`
+          : '';
+
         return `<tr style="border-bottom:1px solid var(--border);">
-          <td style="font-weight:500;">${r.driver_name}</td>
+          <td style="font-weight:500;">
+            <span style="display:inline-flex;align-items:center;gap:0;">
+              ${r.driver_name}${multiBadge}
+            </span>
+          </td>
           <td style="font-family:var(--font-mono);font-weight:500;">${r.truck_number}</td>
           <td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;font-family:var(--font-mono);background:${shiftBg};color:${shiftClr};">${r.shift}</span></td>
           <td style="color:var(--text-secondary);font-size:12px;">${coFmtDate(r.date)}</td>
