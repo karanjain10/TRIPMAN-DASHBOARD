@@ -8863,18 +8863,11 @@
     document.getElementById('login-company').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     if (currentCompanyCode) document.getElementById('login-company').value = currentCompanyCode;
 
-    // Auto-restore session if token exists in localStorage
-    if (authToken) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      document.getElementById('topbar-username').textContent = (currentUser && (currentUser.name || currentUser.full_name)) || '';
-      const cnEl = document.getElementById('topbar-company-name');
-      if (cnEl) cnEl.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
-      updateAdminUI();
-      initApp();
-    }
+    // NOTE: No auto-restore — stale tokens cause spinner freeze.
+    // Users re-authenticate on each page load.
 
     function doLogout() {
+      showLoading(false); // always clear spinner on logout
       currentUser = null;
       authToken = null;
       currentSiteId = null;
@@ -8884,8 +8877,7 @@
       localStorage.removeItem('tripman_token');
       localStorage.removeItem('tripman_site_id');
       // currentCompanyCode + 'tripman_company_code' intentionally kept so the
-      // company code field can stay prefilled next time (matches your existing
-      // AsyncStorage autofill pattern on the app). Remove if you don't want that.
+      // company code field can stay prefilled next time.
       const cnEl = document.getElementById('topbar-company-name');
       if (cnEl) cnEl.textContent = '';
       document.getElementById('app').style.display = 'none';
@@ -8896,11 +8888,18 @@
 
     async function initApp() {
       showLoading(true);
-      await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
-      await loadTrips();
-      showLoading(false);
-      checkFuelBalanceAlert();
-      _arInitTripReports(); // start auto-refresh for Trip Reports (2 min)
+      try {
+        await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
+        await loadTrips();
+        checkFuelBalanceAlert();
+        _arInitTripReports(); // start auto-refresh for Trip Reports (2 min)
+      } catch (e) {
+        // apiFetch already called doLogout() for 401 errors
+        // For other errors, show a toast
+        if (authToken) showToast('Failed to load data. Check your connection.');
+      } finally {
+        showLoading(false); // ALWAYS hide spinner
+      }
     }
 
     async function loadAssignmentsForLookup() {
