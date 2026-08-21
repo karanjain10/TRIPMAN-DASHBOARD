@@ -20782,18 +20782,21 @@
     }
 
     function srcGetPersonName(d) {
-      if (d.driver_name)   return d.driver_name;
-      if (d.operator_name) return d.operator_name;
-      if (d.worker_name)   return d.worker_name;
-      if (d.added_by)      return d.added_by;
-      // Fallback: look up the person by their stored ID in the already-loaded
-      // driver/operator/worker lists (covers rows where only driver_id is set).
+      // Prioritise the ID-based lookup: after a breakdown handover,
+      // srcEnrichWithReading updates driver_id to the reading submitter's ID
+      // but the deployment's driver_name text (original driver) remains stale.
+      // Checking the ID first ensures the correct person is shown.
       const id = d.driver_id || d.operator_id || d.worker_id;
       if (id) {
         const all = [...(allDrivers || []), ...(allOperators || []), ...(allWorkers || [])];
         const person = all.find(p => String(p._id || p.id || '') === String(id));
         if (person?.name) return person.name;
       }
+      // Fall back to text fields (covers legacy/orphaned rows without an ID).
+      if (d.driver_name)   return d.driver_name;
+      if (d.operator_name) return d.operator_name;
+      if (d.worker_name)   return d.worker_name;
+      if (d.added_by)      return d.added_by;
       return '—';
     }
 
