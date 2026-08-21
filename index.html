@@ -20557,6 +20557,12 @@
           d.original_values    = match.original_values    || {};
           d.vehicle_id         = match.vehicle_id || d.vehicle_id || null;
           d.driver_id          = match.driver_id  || d.driver_id  || null;
+          // If the reading was submitted by a different driver (e.g. truck handed
+          // over mid-shift due to breakdown), use the reading's driver name so
+          // each row shows the correct person — not the originally deployed driver.
+          if (match.driver_name)   d.driver_name   = match.driver_name;
+          if (match.operator_name) d.operator_name = match.operator_name;
+          if (match.worker_name)   d.worker_name   = match.worker_name;
           const hmr = (match.readings && match.readings.HMR) || {};
           const kmr = (match.readings && match.readings.KMR) || {};
           d.hmr_opening_added     = hmr.opening_added;
