@@ -5642,24 +5642,29 @@
     .dos-field { display:flex; flex-direction:column; gap:6px; }
     .dos-field label { font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--text-muted); text-transform:uppercase; }
     .dos-field input { height:36px; min-width:165px; padding:0 10px; color:var(--text-primary); background:var(--surface); border:1px solid var(--border); border-radius:7px; font-family:var(--font-main); }
-    .dos-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
-    .dos-summary-card { padding:15px 18px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
-    .dos-summary-label { color:var(--text-muted); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-    .dos-summary-value { color:var(--text-primary); font-family:var(--font-mono); font-size:21px; font-weight:600; margin-top:6px; }
-    .dos-report-card { overflow:hidden; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
-    .dos-report-title { padding:16px 20px; border-bottom:1px solid var(--border); }
+    .dos-summary { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:12px; margin-bottom:20px; }
+    .dos-kpi-group { padding:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+    .dos-kpi-group-title { margin:0 0 10px; color:#c67d22; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+    .dos-kpi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .dos-summary-card { min-height:72px; padding:12px 14px; background:rgba(232,162,76,.07); border:1px solid rgba(232,162,76,.32); border-radius:8px; }
+    .dos-fuel-group .dos-summary-card { min-height:58px; padding:9px 11px; background:rgba(30,30,30,.035); border-color:rgba(30,30,30,.14); }
+    .dos-summary-label { color:var(--text-muted); font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    .dos-summary-value { color:var(--text-primary); font-family:var(--font-mono); font-size:19px; font-weight:600; margin-top:6px; }
+    .dos-summary-placeholder { color:var(--text-muted); font-family:var(--font-main); font-size:12px; font-weight:500; }
+    .dos-report-card { overflow:hidden; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(30,30,30,.04); }
+    .dos-report-title { padding:16px 20px; border-bottom:2px solid rgba(232,162,76,.8); }
     .dos-report-title h2 { color:var(--text-primary); font-size:16px; }
     .dos-report-title p { margin-top:3px; color:var(--text-secondary); font-size:12px; }
     .dos-table-wrap { overflow:auto; }
     .dos-table { width:100%; border-collapse:collapse; min-width:1160px; font-size:12px; }
-    .dos-table th { padding:11px 10px; background:var(--bg); color:var(--text-muted); border-bottom:1px solid var(--border); font-size:10px; font-weight:700; letter-spacing:.05em; text-align:center; text-transform:uppercase; white-space:nowrap; }
+    .dos-table th { padding:11px 10px; background:#1e1e1e; color:#f0b361; border-bottom:2px solid #e8a24c; font-size:10px; font-weight:700; letter-spacing:.05em; text-align:center; text-transform:uppercase; white-space:nowrap; }
     .dos-table td { padding:11px 10px; border-bottom:1px solid var(--border); color:var(--text-primary); text-align:right; font-family:var(--font-mono); white-space:nowrap; }
     .dos-table td:first-child, .dos-table td:last-child { text-align:left; font-family:var(--font-main); }
     .dos-table tbody tr:nth-child(even) { background:rgba(0,0,0,.018); }
-    .dos-table tfoot td { background:var(--bg); font-weight:700; border-top:2px solid var(--border); }
+    .dos-table tfoot td { background:rgba(232,162,76,.13); font-weight:700; border-top:2px solid #e8a24c; }
     .dos-screen-brand { display:flex; justify-content:flex-end; margin-top:12px; }
     .dos-empty { padding:48px; color:var(--text-muted); font-size:13px; text-align:center; }
-    @media (max-width:800px) { .dos-body { padding:16px; } .dos-summary { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:800px) { .dos-body { padding:16px; } .dos-summary { grid-template-columns:1fr; } }
 
     /* ── DEPLOYMENTS SECTION END ── */
   </style>
@@ -6800,9 +6805,24 @@
         <span id="dos-status" style="font-size:12px;color:var(--text-muted);padding-bottom:10px;"></span>
       </div>
       <div class="dos-summary">
-        <div class="dos-summary-card"><div class="dos-summary-label">Total Work Done</div><div class="dos-summary-value" id="dos-total-work">—</div></div>
-        <div class="dos-summary-card"><div class="dos-summary-label">Fuel / CUM</div><div class="dos-summary-value" id="dos-fuel-per-cum">—</div></div>
-        <div class="dos-summary-card"><div class="dos-summary-label">Average per Day Work Done</div><div class="dos-summary-value" id="dos-average-work">—</div></div>
+        <div class="dos-kpi-group">
+          <div class="dos-kpi-group-title">Operations KPIs</div>
+          <div class="dos-kpi-grid">
+            <div class="dos-summary-card"><div class="dos-summary-label">Total Work Done</div><div class="dos-summary-value" id="dos-total-work">—</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Fuel Factor</div><div class="dos-summary-value" id="dos-fuel-per-cum">—</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Average per Day Work Done</div><div class="dos-summary-value" id="dos-average-work">—</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Excavator Factor</div><div class="dos-summary-value dos-summary-placeholder">Formula pending</div></div>
+          </div>
+        </div>
+        <div class="dos-kpi-group dos-fuel-group">
+          <div class="dos-kpi-group-title">Fuel Balance</div>
+          <div class="dos-kpi-grid">
+            <div class="dos-summary-card"><div class="dos-summary-label">Opening Balance</div><div class="dos-summary-value" id="dos-opening">—</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Diesel Received</div><div class="dos-summary-value" id="dos-received">—</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Diesel Issued</div><div class="dos-summary-value" id="dos-issued">—</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Closing Balance</div><div class="dos-summary-value" id="dos-closing">—</div></div>
+          </div>
+        </div>
       </div>
       <div class="dos-report-card">
         <div class="dos-report-title"><h2>Work Done Status</h2><p id="dos-period">Choose a date range and generate the report.</p></div>
@@ -11464,12 +11484,16 @@
 
     function dosRenderReport() {
       if (!dosReport) return;
-      const { rows, totals, start, end } = dosReport;
+      const { rows, totals, start, end, openingBalance, closingBalance } = dosReport;
       const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
       document.getElementById('dos-total-work').textContent = `${dosFormat(totals.workDoneCum, 1)} m³`;
       document.getElementById('dos-fuel-per-cum').textContent = totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`;
       document.getElementById('dos-average-work').textContent = `${dosFormat(averageDailyWork, 1)} m³`;
-      document.getElementById('dos-period').textContent = `${start} to ${end} · Mining day: 6:00 AM IST to 5:59 AM IST`;
+      document.getElementById('dos-opening').textContent = `${dosFormat(openingBalance, 1)} L`;
+      document.getElementById('dos-received').textContent = `${dosFormat(totals.received, 1)} L`;
+      document.getElementById('dos-issued').textContent = `${dosFormat(totals.issued, 1)} L`;
+      document.getElementById('dos-closing').textContent = `${dosFormat(closingBalance, 1)} L`;
+      document.getElementById('dos-period').textContent = `${start} to ${end} · Mining day: 6:00 AM IST to 5:59 AM IST · Assumption: ${DOS_CUM_PER_TRIP} m³ per trip`;
       const tableRows = rows.map(row => `<tr>
         <td>${row.date}</td><td>${dosFormat(row.hardOb)}</td><td>${dosFormat(row.softOb)}</td><td>${dosFormat(row.rehandling)}</td>
         <td>${dosFormat(row.totalTrips)}</td><td>${dosFormat(row.coalTrips)}</td><td>${dosFormat(row.issued, 1)}</td>
@@ -11512,9 +11536,9 @@
       const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
       const bodyRows = rows.map(row => `<tr><td>${row.date}</td><td>${row.hardOb}</td><td>${row.softOb}</td><td>${row.rehandling}</td><td>${row.totalTrips}</td><td>${row.coalTrips}</td><td>${dosFormat(row.issued, 1)}</td><td>${row.fuelPerCum == null ? '—' : dosFormat(row.fuelPerCum, 3)}</td><td>${dosFormat(row.workDoneCum, 1)}</td><td>${dosFormat(row.received, 1)}</td><td>${dosEscape(row.suppliers)}</td></tr>`).join('');
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>Daily Operations Report</title><style>
-        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:0;padding:11mm 11mm 16mm}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a3a5c;padding-bottom:8px;margin-bottom:12px}.brand{display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:4px 10px;margin-bottom:7px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}.head h1{font-size:19px;margin:0;color:#1a3a5c}.meta{font-size:10px;color:#555;margin-top:4px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.kpi{border:1px solid #bbb;padding:7px}.kpi b{display:block;font-size:8px;text-transform:uppercase;color:#666;margin-bottom:3px}.kpi span{font-size:13px;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #ccc;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#e9eef3;border-top:2px solid #1a3a5c}.footer-brand{position:fixed;right:0;bottom:0;display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:4px 10px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}@page{size:A4 landscape;margin:8mm}@media print{body{padding:0 0 10mm}.footer-brand{right:0;bottom:0}}</style></head><body>
-        <div class="head"><div><div class="brand">Tripman</div><h1>${dosEscape(currentCompanyName || 'Tripman')} — Daily Operations Report</h1><div class="meta">${start} to ${end}</div></div><div class="meta">Generated ${new Date().toLocaleString('en-IN')}</div></div>
-        <div class="kpis"><div class="kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel / CUM</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div></div>
+        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#27231f;margin:0;padding:0}.page-brand-top,.footer-brand{position:fixed;display:inline-flex;align-items:center;border-radius:6px;padding:4px 10px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}.page-brand-top{top:-10mm;left:0;background:#fff;border:1px solid #f0dfc6}.footer-brand{right:0;bottom:-8mm;background:#1e1e1e}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #e8a24c;padding-bottom:8px;margin-bottom:12px}.head h1{font-size:19px;margin:0;color:#1e1e1e}.meta{font-size:10px;color:#6b6258;margin-top:4px}.overview{display:grid;grid-template-columns:1.2fr .8fr;gap:10px;margin-bottom:12px}.kpi-group{border:1px solid #e6d9c9;background:#fffdf9;padding:8px}.kpi-group-title{margin:0 0 6px;color:#bd761e;font-size:7px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase}.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.kpi{border:1px solid #efd9ba;background:#fff8ee;padding:6px}.fuel-group .kpi{border-color:#dfd6ca;background:#fdfbf8}.kpi b{display:block;font-size:7px;text-transform:uppercase;color:#776c60;margin-bottom:3px}.kpi span{font-size:11px;font-weight:bold}.kpi .pending{font-size:9px;color:#776c60;font-weight:normal}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1e1e1e;color:#f0b361;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #d9d1c7;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#fff0dc;border-top:2px solid #e8a24c}@page{size:A4 landscape;margin:15mm 8mm 14mm}@media print{body{padding:0}}</style></head><body>
+        <div class="page-brand-top">Tripman</div><div class="head"><div><h1>${dosEscape(currentCompanyName || 'Tripman')} — Daily Operations Report</h1><div class="meta">${start} to ${end} · Mining day: 6:00 AM IST to 5:59 AM IST · Assumption: ${DOS_CUM_PER_TRIP} m³ per trip</div></div><div class="meta">Generated ${new Date().toLocaleString('en-IN')}</div></div>
+        <div class="overview"><div class="kpi-group"><div class="kpi-group-title">Operations KPIs</div><div class="kpis"><div class="kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel Factor</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div><div class="kpi"><b>Excavator Factor</b><span class="pending">Formula pending</span></div></div></div><div class="kpi-group fuel-group"><div class="kpi-group-title">Fuel Balance</div><div class="kpis"><div class="kpi"><b>Opening Balance</b><span>${dosFormat(dosReport.openingBalance, 1)} L</span></div><div class="kpi"><b>Diesel Received</b><span>${dosFormat(totals.received, 1)} L</span></div><div class="kpi"><b>Diesel Issued</b><span>${dosFormat(totals.issued, 1)} L</span></div><div class="kpi"><b>Closing Balance</b><span>${dosFormat(dosReport.closingBalance, 1)} L</span></div></div></div></div>
         <table><thead><tr><th>Date</th><th>Hard OB</th><th>Soft OB</th><th>RH</th><th>Total</th><th>Coal Trips</th><th>Diesel Issued</th><th>Fuel / CUM</th><th>Work Done CUM</th><th>Diesel Received</th><th>Suppliers</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td>Total</td><td>${totals.hardOb}</td><td>${totals.softOb}</td><td>${totals.rehandling}</td><td>${totals.totalTrips}</td><td>${totals.coalTrips}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${dosFormat(totals.received, 1)}</td><td>—</td></tr></tfoot></table><div class="footer-brand">Tripman</div><script>window.onload=()=>window.print();</scr${''}ipt></body></html>`;
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       const popup = window.open(url, '_blank');
