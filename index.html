@@ -5647,10 +5647,12 @@
     .dos-kpi-group-title { margin:0 0 10px; color:#c67d22; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
     .dos-kpi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .dos-summary-card { min-height:72px; padding:12px 14px; background:rgba(232,162,76,.07); border:1px solid rgba(232,162,76,.32); border-radius:8px; }
+    .dos-total-work-card { background:linear-gradient(135deg,rgba(255,248,238,.98),rgba(255,221,174,.7)); border-color:rgba(218,135,35,.5); }
     .dos-fuel-group .dos-summary-card { min-height:58px; padding:9px 11px; background:rgba(30,30,30,.035); border-color:rgba(30,30,30,.14); }
     .dos-summary-label { color:var(--text-muted); font-size:9px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
     .dos-summary-value { color:var(--text-primary); font-family:var(--font-mono); font-size:19px; font-weight:600; margin-top:6px; }
     .dos-summary-placeholder { color:var(--text-muted); font-family:var(--font-main); font-size:12px; font-weight:500; }
+    .dos-summary-sub { min-height:14px; margin-top:4px; color:var(--text-muted); font-size:10px; line-height:1.35; }
     .dos-report-card { overflow:hidden; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(30,30,30,.04); }
     .dos-report-title { padding:16px 20px; border-bottom:2px solid rgba(232,162,76,.8); }
     .dos-report-title h2 { color:var(--text-primary); font-size:16px; }
@@ -6808,10 +6810,10 @@
         <div class="dos-kpi-group">
           <div class="dos-kpi-group-title">Operations KPIs</div>
           <div class="dos-kpi-grid">
-            <div class="dos-summary-card"><div class="dos-summary-label">Total Work Done</div><div class="dos-summary-value" id="dos-total-work">—</div></div>
+            <div class="dos-summary-card dos-total-work-card"><div class="dos-summary-label">Total Work Done</div><div class="dos-summary-value" id="dos-total-work">—</div></div>
             <div class="dos-summary-card"><div class="dos-summary-label">Fuel Factor</div><div class="dos-summary-value" id="dos-fuel-per-cum">—</div></div>
             <div class="dos-summary-card"><div class="dos-summary-label">Average per Day Work Done</div><div class="dos-summary-value" id="dos-average-work">—</div></div>
-            <div class="dos-summary-card"><div class="dos-summary-label">Excavator Factor</div><div class="dos-summary-value dos-summary-placeholder">Formula pending</div></div>
+            <div class="dos-summary-card"><div class="dos-summary-label">Excavator Factor</div><div class="dos-summary-value" id="dos-excavator-factor">—</div><div class="dos-summary-sub" id="dos-excavator-factor-sub"></div></div>
           </div>
         </div>
         <div class="dos-kpi-group dos-fuel-group">
@@ -11396,6 +11398,98 @@
       return records;
     }
 
+    function dosReadingScore(reading) {
+      const hmr = (reading.readings && reading.readings.HMR) || {};
+      const complete = Number.isFinite(Number(hmr.opening_value)) && Number.isFinite(Number(hmr.closing_value));
+      const overridden = reading.is_admin_override || reading.created_by_admin;
+      const updatedAt = new Date(reading.override_timestamp || reading.updated_at || reading.created_at || hmr.closing_ts || hmr.opening_ts || 0).getTime() || 0;
+      return [overridden ? 1 : 0, complete ? 1 : 0, updatedAt];
+    }
+
+    function dosIsHigherScoredReading(candidate, current) {
+      const candidateScore = dosReadingScore(candidate);
+      const currentScore = dosReadingScore(current);
+      for (let index = 0; index < candidateScore.length; index++) {
+        if (candidateScore[index] !== currentScore[index]) return candidateScore[index] > currentScore[index];
+      }
+      return false;
+    }
+
+    function dosReadingEquipmentId(reading) {
+      return String(reading.vehicle_id || reading.equipment_id || reading.machine_id || reading.truck_number || reading.equipment_code || '');
+    }
+
+    async function dosFetchExcavatorHours(start, end) {
+      const dates = dosListDates(start, end);
+      const dailyData = await Promise.all(dates.map(async date => {
+        const [readingsResponse, deploymentsResponse] = await Promise.all([
+          apiFetch(`${API}/shift-readings?date=${encodeURIComponent(date)}`).catch(() => null),
+          apiFetch(`${API}/deployments/summary?date=${encodeURIComponent(date)}`).catch(() => null)
+        ]);
+        const readings = readingsResponse && readingsResponse.ok ? await readingsResponse.json() : [];
+        const deployments = deploymentsResponse && deploymentsResponse.ok ? await deploymentsResponse.json() : {};
+        return { date, readings: Array.isArray(readings) ? readings : [], deployments };
+      }));
+      const equipmentTypes = new Map();
+      dailyData.forEach(({ deployments }) => {
+        [...(deployments.live || []), ...(deployments.history || [])].forEach(record => {
+          const equipmentId = String(record.vehicle_id || record.equipment_id || record.machine_id || record.truck_number || '');
+          const equipmentType = String(record.equipment_type || record.vehicle_type || '').toLowerCase();
+          if (equipmentId && equipmentType) equipmentTypes.set(equipmentId, equipmentType);
+        });
+      });
+      const canonicalReadings = new Map();
+      dailyData.forEach(({ date, readings }) => {
+        readings.forEach(reading => {
+          const equipmentId = dosReadingEquipmentId(reading);
+          const equipmentType = String(reading.equipment_type || reading.vehicle_type || equipmentTypes.get(equipmentId) || '').toLowerCase();
+          const shift = String(reading.shift || '').toUpperCase();
+          if (!equipmentId || equipmentType !== 'excavator' || !shift) return;
+          const key = `${equipmentId}|${date}|${shift}`;
+          const current = canonicalReadings.get(key);
+          if (!current || dosIsHigherScoredReading(reading, current.reading)) canonicalReadings.set(key, { date, equipmentId, reading });
+        });
+      });
+      const equipmentHours = new Map();
+      let shiftHours = 0;
+      let incompleteShifts = 0;
+      canonicalReadings.forEach(({ date, equipmentId, reading }) => {
+        const hmr = (reading.readings && reading.readings.HMR) || {};
+        const openingValue = Number(hmr.opening_value);
+        const closingValue = Number(hmr.closing_value);
+        if (!Number.isFinite(openingValue) || !Number.isFinite(closingValue) || closingValue < openingValue) {
+          incompleteShifts++;
+          return;
+        }
+        const openingAt = new Date(hmr.opening_ts || `${date}T00:00:00`).getTime();
+        const closingAt = new Date(hmr.closing_ts || `${date}T23:59:59`).getTime();
+        if (!equipmentHours.has(equipmentId)) equipmentHours.set(equipmentId, { earliestOpening: null, latestClosing: null });
+        const equipment = equipmentHours.get(equipmentId);
+        if (!equipment.earliestOpening || openingAt < equipment.earliestOpening.at) equipment.earliestOpening = { at: openingAt, value: openingValue };
+        if (!equipment.latestClosing || closingAt > equipment.latestClosing.at) equipment.latestClosing = { at: closingAt, value: closingValue };
+        shiftHours += closingValue - openingValue;
+      });
+      let rangeHours = 0;
+      let excavatorCount = 0;
+      equipmentHours.forEach(equipment => {
+        if (!equipment.earliestOpening || !equipment.latestClosing) return;
+        const rangeDelta = equipment.latestClosing.value - equipment.earliestOpening.value;
+        if (!Number.isFinite(rangeDelta) || rangeDelta < 0) return;
+        rangeHours += rangeDelta;
+        excavatorCount++;
+      });
+      return { rangeHours, shiftHours, excavatorCount, incompleteShifts };
+    }
+
+    function dosExcavatorFactorDetail(excavatorHours) {
+      if (!excavatorHours?.excavatorCount) return 'No valid excavator HMR range';
+      const shiftCheck = `Shift check: ${dosFormat(excavatorHours.shiftHours, 1)} h`;
+      const incomplete = excavatorHours.incompleteShifts
+        ? ` · ${excavatorHours.incompleteShifts} incomplete shift${excavatorHours.incompleteShifts === 1 ? '' : 's'}`
+        : '';
+      return `${dosFormat(excavatorHours.rangeHours, 1)} HMR h · ${excavatorHours.excavatorCount} excavator${excavatorHours.excavatorCount === 1 ? '' : 's'} · ${shiftCheck}${incomplete}`;
+    }
+
     async function dosLoad() {
       const start = document.getElementById('dos-start').value;
       const end = document.getElementById('dos-end').value;
@@ -11406,17 +11500,18 @@
       try {
         const tripPromise = fetchAllTripsForRange(dosShiftDate(start, -1), dosShiftDate(end, 1));
         const fuelParams = `?end_date=${encodeURIComponent(end)}`;
-        const [trips, purchases, fuelLogs, otherFuelLogs] = await Promise.all([
+        const [trips, purchases, fuelLogs, otherFuelLogs, excavatorHours] = await Promise.all([
           tripPromise,
           dosFetchPaged('fuel-purchases', fuelParams),
           dosFetchPaged('fuel-logs', fuelParams),
-          dosFetchPaged('fuel-logs-other', fuelParams).catch(() => [])
+          dosFetchPaged('fuel-logs-other', fuelParams).catch(() => []),
+          dosFetchExcavatorHours(start, end).catch(() => null)
         ]);
         const issuedLogs = [...fuelLogs, ...otherFuelLogs].map(record => ({
           ...record,
           litres_filled: record.litres_filled == null ? record.diesel_issued : record.litres_filled
         }));
-        dosReport = dosBuildReport({ start, end, trips, purchases, issuedLogs });
+        dosReport = dosBuildReport({ start, end, trips, purchases, issuedLogs, excavatorHours });
         dosRenderReport();
         status.textContent = `Updated ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
       } catch (error) {
@@ -11427,7 +11522,7 @@
       }
     }
 
-    function dosBuildReport({ start, end, trips, purchases, issuedLogs }) {
+    function dosBuildReport({ start, end, trips, purchases, issuedLogs, excavatorHours = null }) {
       const dates = dosListDates(start, end);
       const rowsByDate = Object.fromEntries(dates.map(date => [date, {
         date, hardOb: 0, softOb: 0, rehandling: 0, coalTrips: 0,
@@ -11479,16 +11574,19 @@
         workDoneCum: sum.workDoneCum + row.workDoneCum, coalTrips: sum.coalTrips + row.coalTrips
       }), { hardOb: 0, softOb: 0, rehandling: 0, totalTrips: 0, received: 0, issued: 0, workDoneCum: 0, coalTrips: 0 });
       totals.fuelPerCum = totals.workDoneCum ? totals.issued / totals.workDoneCum : null;
-      return { start, end, rows, totals, openingBalance, closingBalance: openingBalance + totals.received - totals.issued };
+      const excavatorFactor = excavatorHours?.rangeHours ? totals.workDoneCum / excavatorHours.rangeHours : null;
+      return { start, end, rows, totals, openingBalance, closingBalance: openingBalance + totals.received - totals.issued, excavatorHours, excavatorFactor };
     }
 
     function dosRenderReport() {
       if (!dosReport) return;
-      const { rows, totals, start, end, openingBalance, closingBalance } = dosReport;
+      const { rows, totals, start, end, openingBalance, closingBalance, excavatorHours, excavatorFactor } = dosReport;
       const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
       document.getElementById('dos-total-work').textContent = `${dosFormat(totals.workDoneCum, 1)} m³`;
       document.getElementById('dos-fuel-per-cum').textContent = totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`;
       document.getElementById('dos-average-work').textContent = `${dosFormat(averageDailyWork, 1)} m³`;
+      document.getElementById('dos-excavator-factor').textContent = excavatorFactor == null ? '—' : `${dosFormat(excavatorFactor, 1)} m³ / h`;
+      document.getElementById('dos-excavator-factor-sub').textContent = dosExcavatorFactorDetail(excavatorHours);
       document.getElementById('dos-opening').textContent = `${dosFormat(openingBalance, 1)} L`;
       document.getElementById('dos-received').textContent = `${dosFormat(totals.received, 1)} L`;
       document.getElementById('dos-issued').textContent = `${dosFormat(totals.issued, 1)} L`;
@@ -11536,9 +11634,9 @@
       const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
       const bodyRows = rows.map(row => `<tr><td>${row.date}</td><td>${row.hardOb}</td><td>${row.softOb}</td><td>${row.rehandling}</td><td>${row.totalTrips}</td><td>${row.coalTrips}</td><td>${dosFormat(row.issued, 1)}</td><td>${row.fuelPerCum == null ? '—' : dosFormat(row.fuelPerCum, 3)}</td><td>${dosFormat(row.workDoneCum, 1)}</td><td>${dosFormat(row.received, 1)}</td><td>${dosEscape(row.suppliers)}</td></tr>`).join('');
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>Daily Operations Report</title><style>
-        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#27231f;margin:0;padding:0}.page-brand-top,.footer-brand{position:fixed;display:inline-flex;align-items:center;border-radius:6px;padding:4px 10px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}.page-brand-top{top:-10mm;left:0;background:#fff;border:1px solid #f0dfc6}.footer-brand{right:0;bottom:-8mm;background:#1e1e1e}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #e8a24c;padding-bottom:8px;margin-bottom:12px}.head h1{font-size:19px;margin:0;color:#1e1e1e}.meta{font-size:10px;color:#6b6258;margin-top:4px}.overview{display:grid;grid-template-columns:1.2fr .8fr;gap:10px;margin-bottom:12px}.kpi-group{border:1px solid #e6d9c9;background:#fffdf9;padding:8px}.kpi-group-title{margin:0 0 6px;color:#bd761e;font-size:7px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase}.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.kpi{border:1px solid #efd9ba;background:#fff8ee;padding:6px}.fuel-group .kpi{border-color:#dfd6ca;background:#fdfbf8}.kpi b{display:block;font-size:7px;text-transform:uppercase;color:#776c60;margin-bottom:3px}.kpi span{font-size:11px;font-weight:bold}.kpi .pending{font-size:9px;color:#776c60;font-weight:normal}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1e1e1e;color:#f0b361;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #d9d1c7;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#fff0dc;border-top:2px solid #e8a24c}@page{size:A4 landscape;margin:15mm 8mm 14mm}@media print{body{padding:0}}</style></head><body>
+        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#27231f;margin:0;padding:15mm 8mm 14mm}.page-brand-top,.footer-brand{position:fixed;z-index:10;display:inline-flex;align-items:center;border-radius:6px;padding:4px 10px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}.page-brand-top{top:5mm;left:8mm;background:#fff;border:1px solid #f0dfc6}.footer-brand{right:8mm;bottom:5mm;background:#1e1e1e}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #e8a24c;padding-bottom:8px;margin-bottom:12px}.head h1{font-size:19px;margin:0;color:#1e1e1e}.meta{font-size:10px;color:#6b6258;margin-top:4px}.overview{display:grid;grid-template-columns:1.2fr .8fr;gap:10px;margin-bottom:12px}.kpi-group{border:1px solid #e6d9c9;background:#fffdf9;padding:8px}.kpi-group-title{margin:0 0 6px;color:#bd761e;font-size:7px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase}.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.kpi{border:1px solid #efd9ba;background:#fff8ee;padding:6px}.kpi.total-work-kpi{background:linear-gradient(135deg,#fff8ee,#ffdeb0);border-color:#d98b25}.fuel-group .kpi{border-color:#dfd6ca;background:#fdfbf8}.kpi b{display:block;font-size:7px;text-transform:uppercase;color:#776c60;margin-bottom:3px}.kpi span{font-size:11px;font-weight:bold}.kpi .pending{font-size:9px;color:#776c60;font-weight:normal}.kpi .sub{display:block;margin-top:3px;color:#776c60;font-size:7px;font-weight:normal}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1e1e1e;color:#f0b361;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #d9d1c7;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:linear-gradient(90deg,#fff7e8,#ffe2b8);border-top:2px solid #e8a24c}@page{size:A4 landscape;margin:0}@media print{body{padding:15mm 8mm 14mm}}</style></head><body>
         <div class="page-brand-top">Tripman</div><div class="head"><div><h1>${dosEscape(currentCompanyName || 'Tripman')} — Daily Operations Report</h1><div class="meta">${start} to ${end} · Mining day: 6:00 AM IST to 5:59 AM IST · Assumption: ${DOS_CUM_PER_TRIP} m³ per trip</div></div><div class="meta">Generated ${new Date().toLocaleString('en-IN')}</div></div>
-        <div class="overview"><div class="kpi-group"><div class="kpi-group-title">Operations KPIs</div><div class="kpis"><div class="kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel Factor</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div><div class="kpi"><b>Excavator Factor</b><span class="pending">Formula pending</span></div></div></div><div class="kpi-group fuel-group"><div class="kpi-group-title">Fuel Balance</div><div class="kpis"><div class="kpi"><b>Opening Balance</b><span>${dosFormat(dosReport.openingBalance, 1)} L</span></div><div class="kpi"><b>Diesel Received</b><span>${dosFormat(totals.received, 1)} L</span></div><div class="kpi"><b>Diesel Issued</b><span>${dosFormat(totals.issued, 1)} L</span></div><div class="kpi"><b>Closing Balance</b><span>${dosFormat(dosReport.closingBalance, 1)} L</span></div></div></div></div>
+        <div class="overview"><div class="kpi-group"><div class="kpi-group-title">Operations KPIs</div><div class="kpis"><div class="kpi total-work-kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel Factor</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div><div class="kpi"><b>Excavator Factor</b><span>${dosReport.excavatorFactor == null ? '—' : `${dosFormat(dosReport.excavatorFactor, 1)} m³ / h`}</span><span class="sub">${dosExcavatorFactorDetail(dosReport.excavatorHours)}</span></div></div></div><div class="kpi-group fuel-group"><div class="kpi-group-title">Fuel Balance</div><div class="kpis"><div class="kpi"><b>Opening Balance</b><span>${dosFormat(dosReport.openingBalance, 1)} L</span></div><div class="kpi"><b>Diesel Received</b><span>${dosFormat(totals.received, 1)} L</span></div><div class="kpi"><b>Diesel Issued</b><span>${dosFormat(totals.issued, 1)} L</span></div><div class="kpi"><b>Closing Balance</b><span>${dosFormat(dosReport.closingBalance, 1)} L</span></div></div></div></div>
         <table><thead><tr><th>Date</th><th>Hard OB</th><th>Soft OB</th><th>RH</th><th>Total</th><th>Coal Trips</th><th>Diesel Issued</th><th>Fuel / CUM</th><th>Work Done CUM</th><th>Diesel Received</th><th>Suppliers</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td>Total</td><td>${totals.hardOb}</td><td>${totals.softOb}</td><td>${totals.rehandling}</td><td>${totals.totalTrips}</td><td>${totals.coalTrips}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${dosFormat(totals.received, 1)}</td><td>—</td></tr></tfoot></table><div class="footer-brand">Tripman</div><script>window.onload=()=>window.print();</scr${''}ipt></body></html>`;
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       const popup = window.open(url, '_blank');
