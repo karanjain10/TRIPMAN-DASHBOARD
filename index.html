@@ -8764,12 +8764,6 @@
 
     let dateRange = { type: 'today', from: null, to: null };
 
-    const extractSiteId = (s) => {
-      if (!s) return null;
-      if (typeof s === 'string') return s;
-      return s.id || s._id || s.site_id || null;
-    };
-
     async function doLogin() {
       const company_code = document.getElementById('login-company').value.trim().toUpperCase();
       const worker_id = document.getElementById('login-id').value.trim();
@@ -8786,20 +8780,15 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ company_code, worker_id, password })
         });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          errEl.textContent = errData.detail || errData.message || 'Invalid company code, worker ID, or password.';
-          showLoading(false);
-          return;
-        }
+        if (!res.ok) { errEl.textContent = 'Invalid company code, worker ID, or password.'; showLoading(false); return; }
         const data = await res.json();
 
         // ⚠️ ASSUMPTION — confirm actual field names with backend response:
         //   data.access_token  → the JWT
         //   data.sites         → array of sites this worker can access (multi-site workers)
         //   data.site_id       → default/only site id (single-site workers)
-        authToken = data.access_token || data.token || data.jwt || data.accessToken || null;
-        currentUser = data.worker || data.user || data;
+        authToken = data.access_token || data.token || null;
+        currentUser = data.worker || data;
         currentCompanyCode = company_code;
         // Extract company name from response (try multiple possible field names)
         currentCompanyName = data.company_name || data.company?.name || data.worker?.company_name
@@ -8816,14 +8805,14 @@
           openSitePicker();
           return;
         } else {
-          currentSiteId = extractSiteId(availableSites[0])
-            || data.site_id || data.default_site_id || data.site?.id || data.worker?.site_id || null;
-          if (currentSiteId) localStorage.setItem('tripman_site_id', currentSiteId);
+          currentSiteId = (availableSites[0] && (availableSites[0].id || availableSites[0]._id))
+            || data.site_id || data.default_site_id || null;
+          localStorage.setItem('tripman_site_id', currentSiteId || '');
         }
 
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        document.getElementById('topbar-username').textContent = (currentUser && (currentUser.name || currentUser.full_name || currentUser.worker_id)) || worker_id;
+        document.getElementById('topbar-username').textContent = currentUser.name || worker_id;
         // Show company name in topbar
         const cnEl = document.getElementById('topbar-company-name');
         if (cnEl) cnEl.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
@@ -8843,7 +8832,7 @@
       if (availableSites.length === 0) return;
       // Placeholder: auto-select first site so the app doesn't get stuck.
       // Replace this with a real picker UI.
-      selectSite(extractSiteId(availableSites[0]));
+      selectSite(availableSites[0].id || availableSites[0]._id);
     }
 
     function selectSite(siteId) {
@@ -8851,7 +8840,7 @@
       localStorage.setItem('tripman_site_id', currentSiteId || '');
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      document.getElementById('topbar-username').textContent = (currentUser && (currentUser.name || currentUser.full_name)) || '';
+      document.getElementById('topbar-username').textContent = (currentUser && currentUser.name) || '';
       const cnEl2 = document.getElementById('topbar-company-name');
       if (cnEl2) cnEl2.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
       updateAdminUI();
@@ -8863,11 +8852,7 @@
     document.getElementById('login-company').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
     if (currentCompanyCode) document.getElementById('login-company').value = currentCompanyCode;
 
-    // NOTE: No auto-restore — stale tokens cause spinner freeze.
-    // Users re-authenticate on each page load.
-
     function doLogout() {
-      showLoading(false); // always clear spinner on logout
       currentUser = null;
       authToken = null;
       currentSiteId = null;
@@ -8877,7 +8862,8 @@
       localStorage.removeItem('tripman_token');
       localStorage.removeItem('tripman_site_id');
       // currentCompanyCode + 'tripman_company_code' intentionally kept so the
-      // company code field can stay prefilled next time.
+      // company code field can stay prefilled next time (matches your existing
+      // AsyncStorage autofill pattern on the app). Remove if you don't want that.
       const cnEl = document.getElementById('topbar-company-name');
       if (cnEl) cnEl.textContent = '';
       document.getElementById('app').style.display = 'none';
@@ -8888,18 +8874,11 @@
 
     async function initApp() {
       showLoading(true);
-      try {
-        await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
-        await loadTrips();
-        checkFuelBalanceAlert();
-        _arInitTripReports(); // start auto-refresh for Trip Reports (2 min)
-      } catch (e) {
-        // apiFetch already called doLogout() for 401 errors
-        // For other errors, show a toast
-        if (authToken) showToast('Failed to load data. Check your connection.');
-      } finally {
-        showLoading(false); // ALWAYS hide spinner
-      }
+      await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
+      await loadTrips();
+      showLoading(false);
+      checkFuelBalanceAlert();
+      _arInitTripReports(); // start auto-refresh for Trip Reports (2 min)
     }
 
     async function loadAssignmentsForLookup() {
@@ -8914,31 +8893,25 @@
     async function loadVehicles() {
       try {
         const res = await apiFetch(`${API}/vehicles`);
-        if (!res.ok) { allVehicles = []; return; }
-        const data = await res.json();
-        allVehicles = Array.isArray(data) ? data : (data.vehicles || []);
-        renderSidebarList('vehicle', allVehicles.map(v => ({ id: v._id || v.id, label: v.vehicle_number || v.number || v.name })));
-      } catch (e) { allVehicles = []; }
+        allVehicles = await res.json();
+        renderSidebarList('vehicle', allVehicles.map(v => ({ id: v._id, label: v.vehicle_number })));
+      } catch (e) { }
     }
 
     async function loadDrivers() {
       try {
         const res = await apiFetch(`${API}/drivers`);
-        if (!res.ok) { allDrivers = []; return; }
-        const data = await res.json();
-        allDrivers = Array.isArray(data) ? data : (data.drivers || []);
-        renderSidebarList('driver', allDrivers.map(d => ({ id: d._id || d.id, label: d.name })));
-      } catch (e) { allDrivers = []; }
+        allDrivers = await res.json();
+        renderSidebarList('driver', allDrivers.map(d => ({ id: d._id, label: d.name })));
+      } catch (e) { }
     }
 
     async function loadWorkers() {
       try {
         const res = await apiFetch(`${API}/workers`);
-        if (!res.ok) { allWorkers = []; return; }
-        const data = await res.json();
-        allWorkers = Array.isArray(data) ? data : (data.workers || []);
-        renderSidebarList('supervisor', allWorkers.map(w => ({ id: w._id || w.id, label: w.name })));
-      } catch (e) { allWorkers = []; }
+        allWorkers = await res.json();
+        renderSidebarList('supervisor', allWorkers.map(w => ({ id: w._id, label: w.name })));
+      } catch (e) { }
     }
 
     // ─── CLIENT-SIDE TRIP DURATION FIX FOR MANUAL ENTRIES ───────────────────────
@@ -11516,13 +11489,14 @@
 
     function dosDownloadPdf() {
       if (!dosReport) { showToast('Generate the report first'); return; }
-      const { rows, totals, start, end, openingBalance, closingBalance } = dosReport;
-      const bodyRows = rows.map(row => `<tr><td>${row.date}</td><td>${row.hardOb}</td><td>${row.softOb}</td><td>${row.rehandling}</td><td>${row.totalTrips}</td><td>${dosFormat(row.received, 1)}</td><td>${dosFormat(row.issued, 1)}</td><td>${row.fuelPerCum == null ? '—' : dosFormat(row.fuelPerCum, 3)}</td><td>${dosFormat(row.workDoneCum, 1)}</td><td>${row.coalTrips}</td><td>${dosEscape(row.suppliers)}</td></tr>`).join('');
+      const { rows, totals, start, end } = dosReport;
+      const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
+      const bodyRows = rows.map(row => `<tr><td>${row.date}</td><td>${row.hardOb}</td><td>${row.softOb}</td><td>${row.rehandling}</td><td>${row.totalTrips}</td><td>${row.coalTrips}</td><td>${dosFormat(row.issued, 1)}</td><td>${row.fuelPerCum == null ? '—' : dosFormat(row.fuelPerCum, 3)}</td><td>${dosFormat(row.workDoneCum, 1)}</td><td>${dosFormat(row.received, 1)}</td><td>${dosEscape(row.suppliers)}</td></tr>`).join('');
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>Daily Operations Report</title><style>
-        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:0;padding:11mm} .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a3a5c;padding-bottom:8px;margin-bottom:12px} h1{font-size:19px;margin:0;color:#1a3a5c}.meta{font-size:10px;color:#555;margin-top:4px}.balances{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.balance{border:1px solid #bbb;padding:7px}.balance b{display:block;font-size:8px;text-transform:uppercase;color:#666;margin-bottom:3px}.balance span{font-size:13px;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #ccc;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#e9eef3;border-top:2px solid #1a3a5c}@page{size:A4 landscape;margin:8mm}@media print{body{padding:0}}</style></head><body>
-        <div class="head"><div><h1>${dosEscape(currentCompanyName || 'Tripman')} — Daily Operations Report</h1><div class="meta">${start} to ${end} · Work done: ${DOS_CUM_PER_TRIP} m³ per trip</div></div><div class="meta">Generated ${new Date().toLocaleString('en-IN')}</div></div>
-        <div class="balances"><div class="balance"><b>Opening Diesel Balance</b><span>${dosFormat(openingBalance, 1)} L</span></div><div class="balance"><b>Diesel Received</b><span>${dosFormat(totals.received, 1)} L</span></div><div class="balance"><b>Diesel Issued</b><span>${dosFormat(totals.issued, 1)} L</span></div><div class="balance"><b>Closing Diesel Balance</b><span>${dosFormat(closingBalance, 1)} L</span></div></div>
-        <table><thead><tr><th>Date</th><th>Hard OB</th><th>Soft OB</th><th>RH</th><th>Total</th><th>Diesel Received</th><th>Diesel Issued</th><th>Fuel / CUM</th><th>Work Done CUM</th><th>Coal Trips</th><th>Suppliers</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td>Total</td><td>${totals.hardOb}</td><td>${totals.softOb}</td><td>${totals.rehandling}</td><td>${totals.totalTrips}</td><td>${dosFormat(totals.received, 1)}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${totals.coalTrips}</td><td>—</td></tr></tfoot></table><script>window.onload=()=>window.print();<\/script></body></html>`;
+        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:0;padding:11mm 11mm 16mm}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a3a5c;padding-bottom:8px;margin-bottom:12px}.brand{display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:5px 10px;margin-bottom:7px;color:#e8a24c;font-family:Arial,sans-serif;font-size:16px;font-weight:700;letter-spacing:.02em}.head h1{font-size:19px;margin:0;color:#1a3a5c}.meta{font-size:10px;color:#555;margin-top:4px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.kpi{border:1px solid #bbb;padding:7px}.kpi b{display:block;font-size:8px;text-transform:uppercase;color:#666;margin-bottom:3px}.kpi span{font-size:13px;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #ccc;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#e9eef3;border-top:2px solid #1a3a5c}.footer-brand{position:fixed;right:0;bottom:0;display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:4px 8px;color:#e8a24c;font-family:Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.02em}@page{size:A4 landscape;margin:8mm}@media print{body{padding:0 0 10mm}.footer-brand{right:0;bottom:0}}</style></head><body>
+        <div class="head"><div><div class="brand">Tripman</div><h1>${dosEscape(currentCompanyName || 'Tripman')} — Daily Operations Report</h1><div class="meta">${start} to ${end}</div></div><div class="meta">Generated ${new Date().toLocaleString('en-IN')}</div></div>
+        <div class="kpis"><div class="kpi"><b>Work</b><span>${dosFormat(DOS_CUM_PER_TRIP, 1)} m³ / Trip</span></div><div class="kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel / CUM</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div></div>
+        <table><thead><tr><th>Date</th><th>Hard OB</th><th>Soft OB</th><th>RH</th><th>Total</th><th>Coal Trips</th><th>Diesel Issued</th><th>Fuel / CUM</th><th>Work Done CUM</th><th>Diesel Received</th><th>Suppliers</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td>Total</td><td>${totals.hardOb}</td><td>${totals.softOb}</td><td>${totals.rehandling}</td><td>${totals.totalTrips}</td><td>${totals.coalTrips}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${dosFormat(totals.received, 1)}</td><td>—</td></tr></tfoot></table><div class="footer-brand">Tripman</div><script>window.onload=()=>window.print();</scr${''}ipt></body></html>`;
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       const popup = window.open(url, '_blank');
       if (!popup) showToast('Allow popups to save the report as PDF');
@@ -19936,10 +19910,6 @@
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#fde68a;display:inline-block;"></span> ${CO_GREEN_MAX}–${CO_YELLOW_MAX} min — moderate</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#fecaca;display:inline-block;"></span> &gt;${CO_YELLOW_MAX} min — high</span>
         <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#bfdbfe;display:inline-block;"></span> Productive Span</span>
-        <span style="display:flex;align-items:center;gap:5px;">
-          <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#fbbf24;color:#78350f;font-size:10px;font-weight:700;">2</span>
-          Driver operated multiple vehicles this shift
-        </span>
         <span style="margin-left:auto;font-size:11px;color:var(--text-muted);">Click any gap column header to sort</span>`;
     }
 
@@ -19952,41 +19922,11 @@
         tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text-muted);">No records match the selected filters.</td></tr>`;
         return;
       }
-
-      // Build frequency map: driver+shift+date → count
-      const freqMap = {};
-      rows.forEach(r => {
-        const key = `${r.driver_name}|${r.shift}|${r.date}`;
-        freqMap[key] = (freqMap[key] || 0) + 1;
-      });
-
       tbody.innerHTML = rows.map(r => {
-        const shiftBg  = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
+        const shiftBg = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
         const shiftClr = r.shift === 'A' ? '#065f46' : r.shift === 'B' ? '#5b21b6' : '#9a3412';
-
-        // Yellow dot badge for drivers who operated >1 vehicle in the same shift+date
-        const freqKey   = `${r.driver_name}|${r.shift}|${r.date}`;
-        const vehicleCount = freqMap[freqKey] || 1;
-        const multiBadge = vehicleCount > 1
-          ? `<span
-              title="This driver operated ${vehicleCount} vehicles this shift"
-              style="
-                display:inline-flex;align-items:center;justify-content:center;
-                width:18px;height:18px;border-radius:50%;
-                background:#fbbf24;color:#78350f;
-                font-size:10px;font-weight:700;
-                margin-left:6px;cursor:default;
-                flex-shrink:0;vertical-align:middle;
-                box-shadow:0 1px 3px rgba(0,0,0,.15);
-              ">${vehicleCount}</span>`
-          : '';
-
         return `<tr style="border-bottom:1px solid var(--border);">
-          <td style="font-weight:500;">
-            <span style="display:inline-flex;align-items:center;gap:0;">
-              ${r.driver_name}${multiBadge}
-            </span>
-          </td>
+          <td style="font-weight:500;">${r.driver_name}</td>
           <td style="font-family:var(--font-mono);font-weight:500;">${r.truck_number}</td>
           <td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;font-family:var(--font-mono);background:${shiftBg};color:${shiftClr};">${r.shift}</span></td>
           <td style="color:var(--text-secondary);font-size:12px;">${coFmtDate(r.date)}</td>
