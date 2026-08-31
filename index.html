@@ -5642,7 +5642,7 @@
     .dos-field { display:flex; flex-direction:column; gap:6px; }
     .dos-field label { font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--text-muted); text-transform:uppercase; }
     .dos-field input { height:36px; min-width:165px; padding:0 10px; color:var(--text-primary); background:var(--surface); border:1px solid var(--border); border-radius:7px; font-family:var(--font-main); }
-    .dos-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+    .dos-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
     .dos-summary-card { padding:15px 18px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
     .dos-summary-label { color:var(--text-muted); font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
     .dos-summary-value { color:var(--text-primary); font-family:var(--font-mono); font-size:21px; font-weight:600; margin-top:6px; }
@@ -5657,6 +5657,7 @@
     .dos-table td:first-child, .dos-table td:last-child { text-align:left; font-family:var(--font-main); }
     .dos-table tbody tr:nth-child(even) { background:rgba(0,0,0,.018); }
     .dos-table tfoot td { background:var(--bg); font-weight:700; border-top:2px solid var(--border); }
+    .dos-screen-brand { display:flex; justify-content:flex-end; margin-top:12px; }
     .dos-empty { padding:48px; color:var(--text-muted); font-size:13px; text-align:center; }
     @media (max-width:800px) { .dos-body { padding:16px; } .dos-summary { grid-template-columns:repeat(2,1fr); } }
 
@@ -6799,15 +6800,15 @@
         <span id="dos-status" style="font-size:12px;color:var(--text-muted);padding-bottom:10px;"></span>
       </div>
       <div class="dos-summary">
-        <div class="dos-summary-card"><div class="dos-summary-label">Opening Diesel Balance</div><div class="dos-summary-value" id="dos-opening">—</div></div>
-        <div class="dos-summary-card"><div class="dos-summary-label">Diesel Received</div><div class="dos-summary-value" id="dos-received">—</div></div>
-        <div class="dos-summary-card"><div class="dos-summary-label">Diesel Issued</div><div class="dos-summary-value" id="dos-issued">—</div></div>
-        <div class="dos-summary-card"><div class="dos-summary-label">Closing Diesel Balance</div><div class="dos-summary-value" id="dos-closing">—</div></div>
+        <div class="dos-summary-card"><div class="dos-summary-label">Total Work Done</div><div class="dos-summary-value" id="dos-total-work">—</div></div>
+        <div class="dos-summary-card"><div class="dos-summary-label">Fuel / CUM</div><div class="dos-summary-value" id="dos-fuel-per-cum">—</div></div>
+        <div class="dos-summary-card"><div class="dos-summary-label">Average per Day Work Done</div><div class="dos-summary-value" id="dos-average-work">—</div></div>
       </div>
       <div class="dos-report-card">
         <div class="dos-report-title"><h2>Work Done Status</h2><p id="dos-period">Choose a date range and generate the report.</p></div>
         <div class="dos-table-wrap" id="dos-table-wrap"><div class="dos-empty">No report generated yet.</div></div>
       </div>
+      <div class="dos-screen-brand"><div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div></div>
     </div>
   </div>
 
@@ -11309,14 +11310,33 @@
       document.getElementById('daily-operations-page').style.display = 'block';
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-      document.getElementById('dos-start').value = firstDay.toISOString().slice(0, 10);
-      document.getElementById('dos-end').value = today.toISOString().slice(0, 10);
+      document.getElementById('dos-start').value = dosLocalDateString(firstDay);
+      document.getElementById('dos-end').value = dosLocalDateString(today);
       dosLoad();
     }
 
     function dosNumber(value) {
       const number = Number(value);
       return Number.isFinite(number) ? number : 0;
+    }
+
+    function dosLocalDateString(date) {
+      const pad = value => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function dosShiftDate(date, days) {
+      const [year, month, day] = date.split('-').map(Number);
+      const shifted = new Date(Date.UTC(year, month - 1, day + days));
+      return shifted.toISOString().slice(0, 10);
+    }
+
+    function dosTripMiningDate(trip) {
+      if (trip.timestamp) {
+        const timestamp = new Date(trip.timestamp);
+        if (!Number.isNaN(timestamp.getTime())) return mtMiningDate(timestamp);
+      }
+      return String(trip.mining_date || '').slice(0, 10);
     }
 
     function dosRecordDate(record, kind) {
@@ -11330,11 +11350,10 @@
 
     function dosListDates(start, end) {
       const dates = [];
-      const cursor = new Date(`${start}T00:00:00`);
-      const last = new Date(`${end}T00:00:00`);
-      while (cursor <= last) {
-        dates.push(cursor.toISOString().slice(0, 10));
-        cursor.setDate(cursor.getDate() + 1);
+      let cursor = start;
+      while (cursor <= end) {
+        dates.push(cursor);
+        cursor = dosShiftDate(cursor, 1);
       }
       return dates;
     }
@@ -11365,7 +11384,7 @@
       status.textContent = 'Loading trips and diesel activity…';
       document.getElementById('dos-table-wrap').innerHTML = '<div class="dos-empty">Loading report…</div>';
       try {
-        const tripPromise = fetchAllTripsForRange(start, end);
+        const tripPromise = fetchAllTripsForRange(dosShiftDate(start, -1), dosShiftDate(end, 1));
         const fuelParams = `?end_date=${encodeURIComponent(end)}`;
         const [trips, purchases, fuelLogs, otherFuelLogs] = await Promise.all([
           tripPromise,
@@ -11395,7 +11414,7 @@
         received: 0, issued: 0, suppliers: new Set()
       }]));
       trips.forEach(trip => {
-        const date = trip.mining_date || String(trip.timestamp || '').slice(0, 10);
+        const date = dosTripMiningDate(trip);
         const row = rowsByDate[date];
         if (!row) return;
         if (trip.material_type === 'Hard OB') row.hardOb++;
@@ -11445,21 +11464,21 @@
 
     function dosRenderReport() {
       if (!dosReport) return;
-      const { rows, totals, start, end, openingBalance, closingBalance } = dosReport;
-      document.getElementById('dos-opening').textContent = `${dosFormat(openingBalance, 1)} L`;
-      document.getElementById('dos-received').textContent = `${dosFormat(totals.received, 1)} L`;
-      document.getElementById('dos-issued').textContent = `${dosFormat(totals.issued, 1)} L`;
-      document.getElementById('dos-closing').textContent = `${dosFormat(closingBalance, 1)} L`;
-      document.getElementById('dos-period').textContent = `${start} to ${end} · Work done calculated at ${DOS_CUM_PER_TRIP} m³ per trip`;
+      const { rows, totals, start, end } = dosReport;
+      const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
+      document.getElementById('dos-total-work').textContent = `${dosFormat(totals.workDoneCum, 1)} m³`;
+      document.getElementById('dos-fuel-per-cum').textContent = totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`;
+      document.getElementById('dos-average-work').textContent = `${dosFormat(averageDailyWork, 1)} m³`;
+      document.getElementById('dos-period').textContent = `${start} to ${end} · Mining day: 6:00 AM IST to 5:59 AM IST`;
       const tableRows = rows.map(row => `<tr>
         <td>${row.date}</td><td>${dosFormat(row.hardOb)}</td><td>${dosFormat(row.softOb)}</td><td>${dosFormat(row.rehandling)}</td>
-        <td>${dosFormat(row.totalTrips)}</td><td>${dosFormat(row.received, 1)}</td><td>${dosFormat(row.issued, 1)}</td>
+        <td>${dosFormat(row.totalTrips)}</td><td>${dosFormat(row.coalTrips)}</td><td>${dosFormat(row.issued, 1)}</td>
         <td>${row.fuelPerCum == null ? '—' : dosFormat(row.fuelPerCum, 3)}</td><td>${dosFormat(row.workDoneCum, 1)}</td>
-        <td>${dosFormat(row.coalTrips)}</td><td title="${dosEscape(row.suppliers)}">${dosEscape(row.suppliers)}</td></tr>`).join('');
+        <td>${dosFormat(row.received, 1)}</td><td title="${dosEscape(row.suppliers)}">${dosEscape(row.suppliers)}</td></tr>`).join('');
       document.getElementById('dos-table-wrap').innerHTML = `<table class="dos-table"><thead><tr>
-        <th>Date</th><th>Hard OB Trips</th><th>Soft OB Trips</th><th>RH Trips</th><th>Total Trips</th><th>Diesel Received (L)</th><th>Diesel Issued (L)</th><th>Fuel / CUM (L)</th><th>Work Done (CUM)</th><th>Coal Trips</th><th>Suppliers</th>
+        <th>Date</th><th>Hard OB Trips</th><th>Soft OB Trips</th><th>RH Trips</th><th>Total Trips</th><th>Coal Trips</th><th>Diesel Issued (L)</th><th>Fuel / CUM (L)</th><th>Work Done (CUM)</th><th>Diesel Received (L)</th><th>Suppliers</th>
       </tr></thead><tbody>${tableRows}</tbody><tfoot><tr>
-        <td>Total</td><td>${dosFormat(totals.hardOb)}</td><td>${dosFormat(totals.softOb)}</td><td>${dosFormat(totals.rehandling)}</td><td>${dosFormat(totals.totalTrips)}</td><td>${dosFormat(totals.received, 1)}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${dosFormat(totals.coalTrips)}</td><td>—</td>
+        <td>Total</td><td>${dosFormat(totals.hardOb)}</td><td>${dosFormat(totals.softOb)}</td><td>${dosFormat(totals.rehandling)}</td><td>${dosFormat(totals.totalTrips)}</td><td>${dosFormat(totals.coalTrips)}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${dosFormat(totals.received, 1)}</td><td>—</td>
       </tr></tfoot></table>`;
     }
 
@@ -11493,9 +11512,9 @@
       const averageDailyWork = rows.length ? totals.workDoneCum / rows.length : 0;
       const bodyRows = rows.map(row => `<tr><td>${row.date}</td><td>${row.hardOb}</td><td>${row.softOb}</td><td>${row.rehandling}</td><td>${row.totalTrips}</td><td>${row.coalTrips}</td><td>${dosFormat(row.issued, 1)}</td><td>${row.fuelPerCum == null ? '—' : dosFormat(row.fuelPerCum, 3)}</td><td>${dosFormat(row.workDoneCum, 1)}</td><td>${dosFormat(row.received, 1)}</td><td>${dosEscape(row.suppliers)}</td></tr>`).join('');
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>Daily Operations Report</title><style>
-        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:0;padding:11mm 11mm 16mm}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a3a5c;padding-bottom:8px;margin-bottom:12px}.brand{display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:5px 10px;margin-bottom:7px;color:#e8a24c;font-family:Arial,sans-serif;font-size:16px;font-weight:700;letter-spacing:.02em}.head h1{font-size:19px;margin:0;color:#1a3a5c}.meta{font-size:10px;color:#555;margin-top:4px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}.kpi{border:1px solid #bbb;padding:7px}.kpi b{display:block;font-size:8px;text-transform:uppercase;color:#666;margin-bottom:3px}.kpi span{font-size:13px;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #ccc;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#e9eef3;border-top:2px solid #1a3a5c}.footer-brand{position:fixed;right:0;bottom:0;display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:4px 8px;color:#e8a24c;font-family:Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.02em}@page{size:A4 landscape;margin:8mm}@media print{body{padding:0 0 10mm}.footer-brand{right:0;bottom:0}}</style></head><body>
+        *{box-sizing:border-box} body{font-family:Arial,sans-serif;color:#111;margin:0;padding:11mm 11mm 16mm}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a3a5c;padding-bottom:8px;margin-bottom:12px}.brand{display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:4px 10px;margin-bottom:7px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}.head h1{font-size:19px;margin:0;color:#1a3a5c}.meta{font-size:10px;color:#555;margin-top:4px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.kpi{border:1px solid #bbb;padding:7px}.kpi b{display:block;font-size:8px;text-transform:uppercase;color:#666;margin-bottom:3px}.kpi span{font-size:13px;font-weight:bold}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#1a3a5c;color:#fff;padding:6px 3px;text-align:center;font-size:7px;text-transform:uppercase}td{padding:5px 3px;border:1px solid #ccc;text-align:right;vertical-align:top}td:first-child,td:last-child{text-align:left}tfoot td{font-weight:bold;background:#e9eef3;border-top:2px solid #1a3a5c}.footer-brand{position:fixed;right:0;bottom:0;display:inline-flex;align-items:center;background:#1e1e1e;border-radius:6px;padding:4px 10px;color:#e8a24c;font-family:'DM Sans',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1}@page{size:A4 landscape;margin:8mm}@media print{body{padding:0 0 10mm}.footer-brand{right:0;bottom:0}}</style></head><body>
         <div class="head"><div><div class="brand">Tripman</div><h1>${dosEscape(currentCompanyName || 'Tripman')} — Daily Operations Report</h1><div class="meta">${start} to ${end}</div></div><div class="meta">Generated ${new Date().toLocaleString('en-IN')}</div></div>
-        <div class="kpis"><div class="kpi"><b>Work</b><span>${dosFormat(DOS_CUM_PER_TRIP, 1)} m³ / Trip</span></div><div class="kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel / CUM</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div></div>
+        <div class="kpis"><div class="kpi"><b>Total Work Done</b><span>${dosFormat(totals.workDoneCum, 1)} m³</span></div><div class="kpi"><b>Fuel / CUM</b><span>${totals.fuelPerCum == null ? '—' : `${dosFormat(totals.fuelPerCum, 3)} L / m³`}</span></div><div class="kpi"><b>Average per Day Work Done</b><span>${dosFormat(averageDailyWork, 1)} m³</span></div></div>
         <table><thead><tr><th>Date</th><th>Hard OB</th><th>Soft OB</th><th>RH</th><th>Total</th><th>Coal Trips</th><th>Diesel Issued</th><th>Fuel / CUM</th><th>Work Done CUM</th><th>Diesel Received</th><th>Suppliers</th></tr></thead><tbody>${bodyRows}</tbody><tfoot><tr><td>Total</td><td>${totals.hardOb}</td><td>${totals.softOb}</td><td>${totals.rehandling}</td><td>${totals.totalTrips}</td><td>${totals.coalTrips}</td><td>${dosFormat(totals.issued, 1)}</td><td>${totals.fuelPerCum == null ? '—' : dosFormat(totals.fuelPerCum, 3)}</td><td>${dosFormat(totals.workDoneCum, 1)}</td><td>${dosFormat(totals.received, 1)}</td><td>—</td></tr></tfoot></table><div class="footer-brand">Tripman</div><script>window.onload=()=>window.print();</scr${''}ipt></body></html>`;
       const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       const popup = window.open(url, '_blank');
