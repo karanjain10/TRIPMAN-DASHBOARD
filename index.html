@@ -7171,10 +7171,22 @@
                     onclick="trCmpSort('trips')">Total Trips ↕</th>
                   <th
                     style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
-                    onclick="trCmpSort('shifts')">Shifts Active ↕</th>
+                    onclick="trCmpSort('capacity')">Capacity ↕</th>
                   <th
                     style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
-                    onclick="trCmpSort('breakdowns')">Breakdowns ↕</th>
+                    onclick="trCmpSort('shifts')">Active Shifts ↕</th>
+                  <th
+                    style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
+                    onclick="trCmpSort('activePct')">Active % ↕</th>
+                  <th
+                    style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
+                    onclick="trCmpSort('inactive')">Inactive ↕</th>
+                  <th
+                    style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
+                    onclick="trCmpSort('runningShiftBd')">Running Shift BD ↕</th>
+                  <th
+                    style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
+                    onclick="trCmpSort('earlyBreakdownCount')">Early BD ↕</th>
                   <th
                     style="padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);cursor:pointer;"
                     onclick="trCmpSort('avgTrips')">Avg Trips/Shift ↕</th>
@@ -14057,13 +14069,76 @@
         n === 0 ? 'Select trucks...' : `${n} truck${n > 1 ? 's' : ''} selected`;
     }
 
-    // ── Breakdown detection for a single truck ────────────────────────────────────
-    // Returns array of {date, shift, driversCount, trucks:[...]} events
-    function getTruckBreakdownEvents(vehicleId, rangeTrips) {
-      // A breakdown = another driver drove THIS truck in same shift+date after someone else
-      // OR a driver who was on this truck switched to another truck (abandonment)
-      // We use the existing checkBreakdownAlerts logic applied to all trips,
-      // then filter for events involving this vehicle.
+    // ── Truck shift and breakdown helpers ─────────────────────────────────────────
+    async function trFetchEquipmentStatusLogs(startDate, endDate) {
+      const params = new URLSearchParams({ start_date: startDate, end_date: endDate, limit: '500' });
+      try {
+        const res = await apiFetch(`${API}/equipment-status-logs?${params}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : (data.logs || []);
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function trTripDate(trip) {
+      return trip.mining_date || (trip.timestamp ? trip.timestamp.split('T')[0] : null);
+    }
+
+    function trShiftFromTimestamp(timestamp) {
+      const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return null;
+      const hour = date.getHours();
+      let shift = 'A';
+      if (hour >= 14 && hour < 22) shift = 'B';
+      else if (hour >= 22 || hour < 6) shift = 'C';
+      if (shift === 'C' && hour < 6) date.setDate(date.getDate() - 1);
+      return {
+        date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+        shift
+      };
+    }
+
+    function trStatusEventForTruck(vehicleId, rangeTrips, statusLogs) {
+      const events = [];
+      statusLogs
+        .filter(log => log.action === 'DEACTIVATED' && String(log.entity_id || '') === String(vehicleId))
+        .forEach(log => {
+          const timestamp = log.timestamp || log.created_at;
+          if (!timestamp) return;
+          const slot = trShiftFromTimestamp(timestamp);
+          if (!slot || !slot.date || !slot.shift) return;
+
+          const tripsBeforeBreakdown = rangeTrips.filter(t =>
+            t.vehicle_id === vehicleId && trTripDate(t) === slot.date && t.shift === slot.shift &&
+            t.timestamp && new Date(t.timestamp) <= new Date(timestamp)
+          ).length;
+          const activation = statusLogs
+            .filter(candidate => candidate.action === 'ACTIVATED' && String(candidate.entity_id || '') === String(vehicleId) &&
+              candidate.timestamp && new Date(candidate.timestamp) > new Date(timestamp))
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))[0];
+          const activatedAt = activation ? activation.timestamp : null;
+          const downtimeMs = activatedAt ? new Date(activatedAt) - new Date(timestamp) : null;
+          events.push({
+            ...slot,
+            timestamp,
+            activatedAt,
+            downtimeMs,
+            tripsBeforeBreakdown,
+            reason: log.deactivation_reason || log.reason || '—',
+            notes: log.deactivation_notes || log.notes || '',
+            source: 'Equipment Health'
+          });
+        });
+      return events;
+    }
+
+    // Returns one event per truck/date/shift. Equipment Health logs are primary;
+    // driver switches remain a secondary signal when no log was recorded.
+    function getTruckBreakdownEvents(vehicleId, rangeTrips, statusLogs = []) {
+      // Secondary signal: another driver drove this truck's driver on a different
+      // truck later in the same shift, suggesting the original truck stopped.
       const vNum = getVehicleNum(vehicleId);
       const events = [];
       // Group by date+shift
@@ -14107,18 +14182,51 @@
               }
             }
             if (brokeDown) {
-              events.push({ date, shift, driver: getDriverName(dId), trucks: truckSequence });
+              events.push({ date, shift, driver: getDriverName(dId), trucks: truckSequence, source: 'Driver switch' });
             }
           }
         });
       });
-      // Deduplicate by date+shift+driver
-      const seen = new Set();
-      return events.filter(e => {
-        const k = `${e.date}||${e.shift}||${e.driver}`;
-        if (seen.has(k)) return false;
-        seen.add(k); return true;
+      const bySlot = new Map();
+      events.forEach(event => bySlot.set(`${event.date}||${event.shift}`, event));
+      trStatusEventForTruck(vehicleId, rangeTrips, statusLogs).forEach(event => {
+        const key = `${event.date}||${event.shift}`;
+        const inferred = bySlot.get(key);
+        bySlot.set(key, inferred ? { ...event, driver: inferred.driver, trucks: inferred.trucks, source: 'Equipment Health + driver switch' } : event);
       });
+      return [...bySlot.values()].sort((a, b) => `${b.date}${b.shift}`.localeCompare(`${a.date}${a.shift}`));
+    }
+
+    function trBuildShiftMetrics(vehicleId, rangeTrips, dateFrom, dateTo, statusLogs = []) {
+      const dates = dashboardDateRange(dateFrom, dateTo, 370);
+      const tripsBySlot = new Map();
+      rangeTrips.filter(t => t.vehicle_id === vehicleId).forEach(t => {
+        const date = trTripDate(t);
+        if (!date || !t.shift) return;
+        const key = `${date}||${t.shift}`;
+        if (!tripsBySlot.has(key)) tripsBySlot.set(key, []);
+        tripsBySlot.get(key).push(t);
+      });
+      const breakdownEvents = getTruckBreakdownEvents(vehicleId, rangeTrips, statusLogs);
+      const breakdownBySlot = new Map(breakdownEvents.map(event => [`${event.date}||${event.shift}`, event]));
+      const slots = dates.flatMap(date => ['A', 'B', 'C'].map(shift => {
+        const trips = tripsBySlot.get(`${date}||${shift}`) || [];
+        return { date, shift, trips: trips.length, breakdown: breakdownBySlot.get(`${date}||${shift}`) || null };
+      }));
+      const activeSlots = slots.filter(slot => slot.trips >= 1);
+      const runningShiftBd = activeSlots.filter(slot => slot.breakdown);
+      const earlyBreakdowns = breakdownEvents.filter(event => event.tripsBeforeBreakdown === 1 || event.tripsBeforeBreakdown === 2);
+      return {
+        capacity: slots.length,
+        active: activeSlots.length,
+        inactive: slots.length - activeSlots.length,
+        activePct: slots.length ? Math.round(activeSlots.length / slots.length * 1000) / 10 : 0,
+        inactivePct: slots.length ? Math.round((slots.length - activeSlots.length) / slots.length * 1000) / 10 : 0,
+        runningShiftBd: runningShiftBd.length,
+        earlyBreakdowns,
+        breakdownEvents,
+        avgTrips: activeSlots.length ? Math.round(rangeTrips.filter(t => t.vehicle_id === vehicleId).length / activeSlots.length * 10) / 10 : 0
+      };
     }
 
     // ── Consistency score ─────────────────────────────────────────────────────────
@@ -14239,14 +14347,15 @@
     }
 
     // ── Maintenance flag ──────────────────────────────────────────────────────────
-    function getTruckMaintenanceFlag(vehicleId, rangeTrips, maintDays) {
+    function getTruckMaintenanceFlag(vehicleId, rangeTrips, maintDays, statusLogs = []) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - maintDays);
       const recentTrips = rangeTrips.filter(t => {
         const d = t.mining_date || (t.timestamp ? t.timestamp.split('T')[0] : null);
         return d && new Date(d) >= cutoff;
       });
-      const events = getTruckBreakdownEvents(vehicleId, recentTrips);
+      const recentLogs = statusLogs.filter(log => log.timestamp && new Date(log.timestamp) >= cutoff);
+      const events = getTruckBreakdownEvents(vehicleId, recentTrips, recentLogs);
       return { count: events.length, flagged: events.length >= 2 };
     }
 
@@ -14265,13 +14374,16 @@
     </div>`;
 
       showLoading(true);
-      let rangeTrips = [];
+      let rangeTrips = [], statusLogs = [];
       try {
-        rangeTrips = await fetchAllTripsForRange(dateFrom, dateTo, (n, capped) => {
+        [rangeTrips, statusLogs] = await Promise.all([
+          fetchAllTripsForRange(dateFrom, dateTo, (n, capped) => {
           const msg = document.getElementById('tr-load-msg');
           if (msg) msg.textContent = `Fetched ${n.toLocaleString()} trips…`;
           if (capped) showToast('⚠ Only first 200,000 trips loaded');
-        });
+          }),
+          trFetchEquipmentStatusLogs(dateFrom, dateTo)
+        ]);
       } catch (e) {
         showToast('Failed to fetch trip data.');
         area.innerHTML = `<div style="padding:32px;color:#c0392b;font-size:13px;">❌ Failed to load data. Please try again.</div>`;
@@ -14287,7 +14399,7 @@
       area.innerHTML = '';
       const maintDays = parseInt(document.getElementById('tr-maint-days').value) || 14;
       [...trSelectedVehicleIds].forEach(vehicleId => {
-        const cardHtml = buildTruckCard(vehicleId, rangeTrips, dateFrom, dateTo, maintDays);
+        const cardHtml = buildTruckCard(vehicleId, rangeTrips, statusLogs, dateFrom, dateTo, maintDays);
         const wrapper = document.createElement('div');
         wrapper.innerHTML = cardHtml;
         area.appendChild(wrapper.firstElementChild);
@@ -14296,16 +14408,16 @@
     }
 
     // ── Build one truck card ──────────────────────────────────────────────────────
-    function buildTruckCard(vehicleId, rangeTrips, dateFrom, dateTo, maintDays) {
+    function buildTruckCard(vehicleId, rangeTrips, statusLogs, dateFrom, dateTo, maintDays) {
       const truckNum = getVehicleNum(vehicleId);
       const plate = getVehiclePlate(vehicleId);
       const myTrips = rangeTrips.filter(t => t.vehicle_id === vehicleId);
       const totalTrips = myTrips.length;
-      const shiftsSet = new Set(myTrips.map(t => `${t.mining_date || ''}__${t.shift}`));
       const daysSet = new Set(myTrips.map(t => t.mining_date || (t.timestamp ? t.timestamp.split('T')[0] : '?')));
-      const shiftsActive = shiftsSet.size;
+      const shiftMetrics = trBuildShiftMetrics(vehicleId, rangeTrips, dateFrom, dateTo, statusLogs);
+      const shiftsActive = shiftMetrics.active;
       const daysActive = daysSet.size;
-      const avgTrips = shiftsActive > 0 ? (totalTrips / shiftsActive).toFixed(1) : '—';
+      const avgTrips = shiftsActive > 0 ? shiftMetrics.avgTrips.toFixed(1) : '—';
       const matCounts = { 'Coal': 0, 'Soft OB': 0, 'Hard OB': 0, 'Rehandling': 0 };
       myTrips.forEach(t => { if (matCounts[t.material_type] !== undefined) matCounts[t.material_type]++; });
 
@@ -14313,15 +14425,15 @@
       const genTime = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 
       // ── Section 1: Breakdown Frequency ───────────────────────────────────────
-      const breakdownEvents = getTruckBreakdownEvents(vehicleId, rangeTrips);
+      const breakdownEvents = shiftMetrics.breakdownEvents;
       const bdCount = breakdownEvents.length;
       let bdVerdict, bdNote;
-      if (bdCount === 0) { bdVerdict = { label: '✓ No Breakdowns Detected', cls: 'tr-badge-green' }; bdNote = 'No driver-switch events detected for this truck in the period.'; }
-      else if (bdCount === 1) { bdVerdict = { label: '△ 1 Breakdown Event', cls: 'tr-badge-yellow' }; bdNote = 'One driver-switch event detected — monitor closely.'; }
+      if (bdCount === 0) { bdVerdict = { label: '✓ No Breakdowns Detected', cls: 'tr-badge-green' }; bdNote = 'No equipment-health or driver-switch breakdown evidence detected in the period.'; }
+      else if (bdCount === 1) { bdVerdict = { label: '△ 1 Breakdown Event', cls: 'tr-badge-yellow' }; bdNote = 'One breakdown event detected — monitor closely.'; }
       else if (bdCount <= 3) { bdVerdict = { label: `⚠ ${bdCount} Breakdown Events`, cls: 'tr-badge-yellow' }; bdNote = 'Multiple breakdown events detected. Recommend inspection.'; }
       else { bdVerdict = { label: `🔴 ${bdCount} Breakdown Events`, cls: 'tr-badge-red' }; bdNote = 'Frequent breakdowns detected. Recommend immediate maintenance review.'; }
 
-      const maintFlag = getTruckMaintenanceFlag(vehicleId, rangeTrips, maintDays);
+      const maintFlag = getTruckMaintenanceFlag(vehicleId, rangeTrips, maintDays, statusLogs);
       const maintFlagHtml = maintFlag.flagged
         ? `<div class="tr-maint-flag">🔧 Maintenance Recommended — ${maintFlag.count} breakdown event${maintFlag.count > 1 ? 's' : ''} in the last ${maintDays} days</div>`
         : '';
@@ -14329,8 +14441,10 @@
       const bdTableRows = breakdownEvents.map(e => `<tr>
     <td style="font-family:var(--font-mono);">${e.date}</td>
     <td><span style="font-weight:600;color:${e.shift === 'A' ? '#27ae60' : e.shift === 'B' ? '#8e44ad' : '#e67e22'}">Shift ${e.shift}</span></td>
-    <td style="font-weight:600;">${e.driver}</td>
-    <td style="font-family:var(--font-mono);font-size:11px;">${e.trucks.join(', ')}</td>
+    <td style="font-family:var(--font-mono);text-align:center;">${e.tripsBeforeBreakdown != null ? e.tripsBeforeBreakdown : '—'}</td>
+    <td style="font-size:12px;">${e.reason || '—'}</td>
+    <td style="font-family:var(--font-mono);font-size:11px;">${e.downtimeMs != null ? eqhFmtDuration(e.downtimeMs) : '—'}</td>
+    <td style="font-size:11px;">${e.source}</td>
   </tr>`).join('');
 
       // ── Section 2: Consistency ────────────────────────────────────────────────
@@ -14400,21 +14514,27 @@
       <div class="tr-kpi-value">${totalTrips}</div>
     </div>
     <div class="tr-kpi">
-      <div class="tr-kpi-label">Shifts Active</div>
+      <div class="tr-kpi-label">Shift Capacity</div>
+      <div class="tr-kpi-value">${shiftMetrics.capacity}</div>
+    </div>
+    <div class="tr-kpi">
+      <div class="tr-kpi-label">Active Shifts</div>
       <div class="tr-kpi-value">${shiftsActive}</div>
+      <div class="tr-kpi-sub">${shiftMetrics.activePct}% of capacity</div>
     </div>
     <div class="tr-kpi">
-      <div class="tr-kpi-label">Days Active</div>
-      <div class="tr-kpi-value">${daysActive}</div>
+      <div class="tr-kpi-label">Inactive Shifts</div>
+      <div class="tr-kpi-value" style="color:#c0392b;">${shiftMetrics.inactive}</div>
+      <div class="tr-kpi-sub">${shiftMetrics.inactivePct}% of capacity</div>
     </div>
     <div class="tr-kpi">
-      <div class="tr-kpi-label">Avg Trips / Shift</div>
+      <div class="tr-kpi-label">Running Shift BD</div>
+      <div class="tr-kpi-value" style="color:${shiftMetrics.runningShiftBd === 0 ? '#1e8449' : '#c0392b'};">${shiftMetrics.runningShiftBd}</div>
+      <div class="tr-kpi-sub">after at least 1 trip</div>
+    </div>
+    <div class="tr-kpi">
+      <div class="tr-kpi-label">Avg Trips / Active Shift</div>
       <div class="tr-kpi-value" style="font-size:20px;">${avgTrips}</div>
-    </div>
-    <div class="tr-kpi">
-      <div class="tr-kpi-label">Breakdowns</div>
-      <div class="tr-kpi-value" style="color:${bdCount === 0 ? '#1e8449' : bdCount <= 2 ? '#7d6608' : '#c0392b'};">${bdCount}</div>
-      <div class="tr-kpi-sub">driver-switch events</div>
     </div>
   </div>
 
@@ -14447,6 +14567,18 @@
     </div>
   </div>` : ''}
 
+  ${shiftMetrics.earlyBreakdowns.map(event => `
+  <div style="margin:16px 24px;padding:14px 16px;background:#fff5f5;border:1px solid #f5c6c6;border-radius:8px;display:flex;gap:10px;align-items:flex-start;">
+    <span style="font-size:18px;">⚠</span>
+    <div style="font-size:12px;color:#7f1d1d;line-height:1.5;">
+      <strong>Early breakdown — Shift ${event.shift}, ${event.date}</strong><br>
+      ${event.activatedAt ? `Maintenance team cleared at ${eqhFmtTs(new Date(event.activatedAt))}. ` : 'Truck has not yet been cleared. '}
+      Breakdown occurred after only ${event.tripsBeforeBreakdown} trip${event.tripsBeforeBreakdown === 1 ? '' : 's'};
+      ${event.downtimeMs != null ? `${eqhFmtDuration(event.downtimeMs)} production time lost. ` : ''}
+      Reason: ${event.reason || '—'}.
+    </div>
+  </div>`).join('')}
+
   <!-- SECTION 1: BREAKDOWN FREQUENCY -->
   <div class="tr-section">
     <div class="tr-section-header" onclick="trToggleSection(this)">
@@ -14461,12 +14593,12 @@
     <div class="tr-table-wrap">
       <table class="tr-table">
         <thead><tr>
-          <th>Date</th><th>Shift</th><th>Driver</th><th>Trucks Driven That Shift</th>
+          <th>Date</th><th>Shift</th><th>Trips Before BD</th><th>Reason</th><th>Downtime</th><th>Evidence</th>
         </tr></thead>
-        <tbody>${bdTableRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">No breakdown events</td></tr>'}</tbody>
+        <tbody>${bdTableRows || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:16px;">No breakdown events</td></tr>'}</tbody>
       </table>
       <div class="tr-threshold-note">
-        <span>🔍 A breakdown event = a driver who operated this truck also operated another truck in the same shift (suggesting this truck stopped working)</span>
+        <span>🔍 Equipment Health deactivation logs are primary evidence; driver switches are retained as supporting evidence.</span>
       </div>
     </div>
   </div>
@@ -14555,9 +14687,12 @@
       subtitle.textContent = 'Loading…';
 
       showLoading(true);
-      let rangeTrips = [];
+      let rangeTrips = [], statusLogs = [];
       try {
-        rangeTrips = await fetchAllTripsForRange(dateFrom, dateTo);
+        [rangeTrips, statusLogs] = await Promise.all([
+          fetchAllTripsForRange(dateFrom, dateTo),
+          trFetchEquipmentStatusLogs(dateFrom, dateTo)
+        ]);
       } catch (e) { showToast('Failed to fetch data'); showLoading(false); return; }
       showLoading(false);
 
@@ -14570,14 +14705,13 @@
       trCmpRows = allVehicles.map(v => {
         const vId = v._id;
         const myTrips = rangeTrips.filter(t => t.vehicle_id === vId);
-        if (!myTrips.length) return null;
-        const shiftsSet = new Set(myTrips.map(t => `${t.mining_date || ''}__${t.shift}`));
-        const shiftsActive = shiftsSet.size;
-        const avgT = shiftsActive > 0 ? Math.round((myTrips.length / shiftsActive) * 10) / 10 : 0;
-        const bdEvents = getTruckBreakdownEvents(vId, rangeTrips);
+        const shiftMetrics = trBuildShiftMetrics(vId, rangeTrips, dateFrom, dateTo, statusLogs);
+        const shiftsActive = shiftMetrics.active;
+        const avgT = shiftMetrics.avgTrips;
+        const bdEvents = shiftMetrics.breakdownEvents;
         const breakdowns = bdEvents.length;
         const consistency = getTruckConsistency(vId, rangeTrips);
-        const maintFlag = getTruckMaintenanceFlag(vId, rangeTrips, maintDays);
+        const maintFlag = getTruckMaintenanceFlag(vId, rangeTrips, maintDays, statusLogs);
         const volRows = consistency.rows.filter(r => r.peerMedian !== null);
         const standout = volRows.filter(r => r.verdict.cls === 'tr-badge-star').length;
         const onPar = volRows.filter(r => r.verdict.cls === 'tr-badge-green').length;
@@ -14595,6 +14729,10 @@
         return {
           truck: v.vehicle_number, vehicleId: vId,
           trips: myTrips.length, shifts: shiftsActive, avgTrips: avgT,
+          capacity: shiftMetrics.capacity, activePct: shiftMetrics.activePct,
+          inactive: shiftMetrics.inactive, inactivePct: shiftMetrics.inactivePct,
+          runningShiftBd: shiftMetrics.runningShiftBd, earlyBreakdowns: shiftMetrics.earlyBreakdowns,
+          earlyBreakdownCount: shiftMetrics.earlyBreakdowns.length,
           breakdowns, bdEvents,  // store events for drill
           volVerdict: volVerdict2,
           consistVerdict: { label: consistency.label, cls: consistency.cls },
@@ -14602,7 +14740,8 @@
         };
       }).filter(Boolean);
 
-      subtitle.textContent = `${trCmpRows.length} trucks · ${dateFrom} → ${dateTo}`;
+      const fleetCapacity = trCmpRows.reduce((sum, row) => sum + row.capacity, 0);
+      subtitle.textContent = `${trCmpRows.length} trucks · ${fleetCapacity} shift capacity · ${dateFrom} → ${dateTo}`;
       trCmpSortField = 'truck'; trCmpSortDir = 1;
       renderTruckCmpTable();
     }
@@ -14626,13 +14765,17 @@
         <span class="entity-link" onclick="openDrillByTruck('${r.truck}',event)">${r.truck}</span>
       </td>
       <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);font-weight:600;">${r.trips}</td>
+      <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);">${r.capacity}</td>
       <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);">${r.shifts}</td>
+      <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);font-weight:600;color:${r.activePct >= 70 ? '#1e8449' : r.activePct >= 40 ? '#7d6608' : '#c0392b'};">${r.activePct}%</td>
+      <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);">${r.inactive}<div style="font-size:10px;color:var(--text-muted);">${r.inactivePct}%</div></td>
       <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);font-weight:600;">
-        ${r.breakdowns === 0
-          ? `<span style="color:#1e8449;">${r.breakdowns}</span>`
-          : `<span class="entity-link" style="color:${r.breakdowns <= 2 ? '#7d6608' : '#c0392b'};text-decoration:underline;cursor:pointer;" onclick="openBreakdownDrill('${r.truck}',event)">${r.breakdowns}</span>`
+        ${r.runningShiftBd === 0
+          ? `<span style="color:#1e8449;">${r.runningShiftBd}</span>`
+          : `<span class="entity-link" style="color:${r.runningShiftBd <= 2 ? '#7d6608' : '#c0392b'};text-decoration:underline;cursor:pointer;" onclick="openBreakdownDrill('${r.truck}',event)">${r.runningShiftBd}</span>`
         }
       </td>
+      <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);font-weight:700;color:${r.earlyBreakdownCount ? '#c0392b' : '#1e8449'};">${r.earlyBreakdownCount || '—'}</td>
       <td style="padding:9px 12px;text-align:center;font-family:var(--font-mono);">${r.avgTrips}</td>
       <td style="padding:9px 12px;text-align:center;"><span class="${r.volVerdict.cls}" style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">${r.volVerdict.label}</span></td>
       <td style="padding:9px 12px;text-align:center;"><span class="${r.consistVerdict.cls}" style="padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">${r.consistVerdict.label}</span></td>
@@ -14657,19 +14800,21 @@
           <td style="padding:8px 12px;font-size:12px;color:var(--text-muted);">${i + 1}</td>
           <td style="padding:8px 12px;font-family:var(--font-mono);font-size:12px;">${ev.date}</td>
           <td style="padding:8px 12px;"><span style="font-weight:600;color:${ev.shift === 'A' ? '#27ae60' : ev.shift === 'B' ? '#8e44ad' : '#e67e22'}">Shift ${ev.shift}</span></td>
-          <td style="padding:8px 12px;font-weight:500;font-size:12px;">${ev.driver}</td>
-          <td style="padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);">${ev.trucks.join(', ')}</td>
+          <td style="padding:8px 12px;font-family:var(--font-mono);font-size:12px;text-align:center;">${ev.tripsBeforeBreakdown != null ? ev.tripsBeforeBreakdown : '—'}</td>
+          <td style="padding:8px 12px;font-size:12px;">${ev.reason || '—'}</td>
+          <td style="padding:8px 12px;font-size:11px;color:var(--text-secondary);">${ev.source || 'Driver switch'}</td>
         </tr>`).join('');
       // Reuse drill modal
       document.getElementById('drill-modal-title').textContent = `Breakdown Events — Truck ${truckNum}`;
-      document.getElementById('drill-modal-meta').textContent = `${events.length} driver-switch event${events.length > 1 ? 's' : ''} · ${trRangeDateFrom} → ${trRangeDateTo}`;
+      document.getElementById('drill-modal-meta').textContent = `${events.length} breakdown event${events.length > 1 ? 's' : ''} · ${trRangeDateFrom} → ${trRangeDateTo}`;
       document.getElementById('drill-tbody').innerHTML = `
         <tr style="background:var(--bg);border-bottom:1px solid var(--border);">
           <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">#</th>
           <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Date</th>
           <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Shift</th>
-          <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Driver (switched trucks)</th>
-          <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Trucks involved</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Trips Before BD</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Reason</th>
+          <th style="padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Evidence</th>
         </tr>${rows}`;
       document.getElementById('drill-modal').classList.add('open');
     }
@@ -14686,13 +14831,18 @@
         return trCmpSortDir * (va - vb);
       });
 
-      const lines = ['Truck,Total Trips,Shifts Active,Breakdowns,Avg Trips/Shift,Volume Verdict,Consistency Verdict,Maintenance Alert'];
+      const lines = ['Truck,Total Trips,Shift Capacity,Active Shifts,Active Shift %,Inactive Shifts,Inactive Shift %,Running Shift BD,Early BD Alerts,Avg Trips/Active Shift,Volume Verdict,Consistency Verdict,Maintenance Alert'];
       sorted.forEach(r => {
         const row = [
           r.truck,
           r.trips,
+          r.capacity,
           r.shifts,
-          r.breakdowns,
+          r.activePct,
+          r.inactive,
+          r.inactivePct,
+          r.runningShiftBd,
+          r.earlyBreakdownCount,
           r.avgTrips,
           r.volVerdict.label,
           r.consistVerdict.label,
