@@ -18352,10 +18352,9 @@
       const totalToday   = _depHistoryData.length;
       const completed    = _depHistoryData.filter(d => d.status === 'completed').length;
 
-      // Deduplicated live for counts (latest per truck+shift+date)
-      // If live is empty (past shift, all completed), fall back to latest-per-truck from history
-      const dedupedLive = depGetLatestPerTruck(_depFilteredLive);
-      const sourceForCounts = dedupedLive.length ? dedupedLive : depGetLatestPerTruck(_depFilteredHist);
+      // Deduplicated counts: merge live + history, then keep latest per truck+shift+date.
+      // This ensures completed excavators from history are included alongside active ones from live.
+      const sourceForCounts = depGetLatestPerTruck([..._depFilteredLive, ..._depFilteredHist]);
       const excavatorCount = sourceForCounts.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator').length;
       // Tipper count: unique vehicle_numbers from truck_ids across all excavators in source
       const allTruckIds = sourceForCounts
@@ -18466,31 +18465,17 @@
       if (headingEl) headingEl.textContent = label;
       if (pulseEl)   pulseEl.style.display  = isLive ? 'inline-block' : 'none';
 
-      // Deduplicate: latest per truck+shift+date
-      const deduped = depGetLatestPerTruck(items);
-      document.getElementById('dep-live-count').textContent = deduped.length;
+      // Deduplicate: merge live + history, then keep latest per truck+shift+date.
+      // This ensures completed excavators from history appear alongside active ones from live.
+      const deduped = depGetLatestPerTruck([...items, ..._depFilteredHist]);
 
       const grid = document.getElementById('dep-live-grid');
       // Separate excavators and other types (tippers, dozers, etc.)
-      // If no excavators found in live data (e.g. filtered past shift, all completed),
-      // fall back to latest-per-excavator from history data so cards always render.
-      let excavators = deduped.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
-      const others   = deduped.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator');
+      const excavators = deduped.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
+      const others     = deduped.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator');
 
-      if (!excavators.length) {
-        // Pull latest version per excavator truck_number from history
-        const histExcMap = new Map();
-        _depFilteredHist
-          .filter(d => (d.equipment_type || '').toLowerCase() === 'excavator')
-          .forEach(d => {
-            const key = d.truck_number;
-            const existing = histExcMap.get(key);
-            if (!existing || new Date(d.deployed_since) > new Date(existing.deployed_since)) {
-              histExcMap.set(key, d);
-            }
-          });
-        excavators = [...histExcMap.values()];
-      }
+      // Update the excavator count badge
+      document.getElementById('dep-live-count').textContent = excavators.length;
 
       // Only show empty state if nothing found in live OR history
       if (!excavators.length) {
@@ -19392,24 +19377,9 @@
     // page (1 row of 3).  Opens in a popup and triggers window.print() so the
     // user can save as PDF from the browser's native print dialog.
     function depDownloadPdf() {
-      // ── Gather the excavator cards currently displayed ────────────────────────
-      const dedupedLive = depGetLatestPerTruck(_depFilteredLive);
-      let excavators = dedupedLive.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
-
-      // Fallback to history if live is empty (past shift)
-      if (!excavators.length) {
-        const histExcMap = new Map();
-        _depFilteredHist
-          .filter(d => (d.equipment_type || '').toLowerCase() === 'excavator')
-          .forEach(d => {
-            const key = d.truck_number;
-            const existing = histExcMap.get(key);
-            if (!existing || new Date(d.deployed_since) > new Date(existing.deployed_since)) {
-              histExcMap.set(key, d);
-            }
-          });
-        excavators = [...histExcMap.values()];
-      }
+      // ── Gather the excavator cards: merge live + history, deduplicate ─────────
+      const allDeduped = depGetLatestPerTruck([..._depFilteredLive, ..._depFilteredHist]);
+      const excavators = allDeduped.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator');
 
       if (!excavators.length) {
         alert('No deployment data to export. Please load data first.');
