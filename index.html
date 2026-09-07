@@ -19921,6 +19921,19 @@
       return `${time.getFullYear()}-${String(time.getMonth() + 1).padStart(2, '0')}-${String(time.getDate()).padStart(2, '0')}`;
     }
 
+    /* ── Driver name resolution for changeover rows ── */
+    // Each deployment version carries the driver assigned at that point.
+    // Falls back to the reading record (driver submits readings).
+    function coResolveDriverName(dep, reading) {
+      const depName = srcGetPersonName(dep);
+      if (depName !== '—') return depName;
+      if (reading) {
+        const readingName = srcGetPersonName(reading);
+        if (readingName !== '—') return readingName;
+      }
+      return '—';
+    }
+
     /* ── Data fetch and build ── */
     async function coFetch() {
       const dateFrom = document.getElementById('co-date-from').value;
@@ -19997,7 +20010,7 @@
           const date   = dashboardDate(dep.date || dep.deployed_since);
           const vid    = String(dep.vehicle_id || '');
           const trk    = String(dep.truck_number || '');
-          const dedupKey = `${vid || trk}|${shift}|${date}`;
+          const dedupKey = `${vid || trk}|${shift}|${date}|${dep.driver_id || dep.driver_name || ''}`;
           if (seen.has(dedupKey)) return;
           seen.add(dedupKey);
 
@@ -20013,14 +20026,36 @@
           const closingTs  = kmr.closing_ts  || hmr.closing_ts  || null;
           const deployedAt = dep.deployed_since || null;
 
-          // Trip span
-          const tripSpans = [
-            tripSpanMap[`vid:${vid}|${shift}|${date}`],
-            tripSpanMap[`trk:${trk}|${shift}|${date}`]
-          ].filter(Boolean);
-          const tripSpan = tripSpans.sort((a, b) => b.count - a.count)[0] || null;
-          const firstTrip = tripSpan?.first || null;
-          const lastTrip  = tripSpan?.last  || null;
+          // Trip span — try driver-specific trips first, fall back to vehicle-wide span
+          const depDriverId = String(dep.driver_id || '');
+          let firstTrip = null, lastTrip = null;
+
+          if (depDriverId) {
+            const driverTrips = trips.filter(t => {
+              const tShift = (t.shift || '').toUpperCase();
+              const tDate  = coTripShiftDate(t);
+              const tVid   = String(t.vehicle_id || t.machine_id || '');
+              const tTrk   = String(t.truck_number || t.vehicle_number || t.equipment_code || '');
+              const matchesTruck = (vid && tVid === vid) || (trk && tTrk === trk);
+              return matchesTruck && tShift === shift && tDate === date && String(t.driver_id || '') === depDriverId;
+            });
+            if (driverTrips.length) {
+              const timestamps = driverTrips.map(t => t.timestamp || t.trip_time || t.created_at).filter(Boolean).sort();
+              firstTrip = timestamps[0] || null;
+              lastTrip  = timestamps[timestamps.length - 1] || null;
+            }
+          }
+
+          // Fallback: vehicle-wide trip span (original logic)
+          if (!firstTrip) {
+            const tripSpans = [
+              tripSpanMap[`vid:${vid}|${shift}|${date}`],
+              tripSpanMap[`trk:${trk}|${shift}|${date}`]
+            ].filter(Boolean);
+            const tripSpan = tripSpans.sort((a, b) => b.count - a.count)[0] || null;
+            firstTrip = tripSpan?.first || null;
+            lastTrip  = tripSpan?.last  || null;
+          }
 
           // Compute gaps (all in minutes)
           const gap1       = coDiffMin(deployedAt, openingTs);
@@ -20030,7 +20065,7 @@
           const totalIdle  = (gap1 ?? 0) + (gap2 ?? 0) + (gap4 ?? 0);
 
           rows.push({
-            driver_name:    srcGetPersonName(dep) !== '—' ? srcGetPersonName(dep) : (reading ? srcGetPersonName(reading) : '—'),
+            driver_name:    coResolveDriverName(dep, reading),
             truck_number:   trk || '—',
             shift,
             date,
