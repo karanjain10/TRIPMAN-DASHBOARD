@@ -11,6 +11,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
   <script>
     if (localStorage.getItem('tripman-theme') === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -5720,6 +5725,7 @@
         <button class="action-btn" onclick="openHandoverPage()" style="height:30px;font-size:12px;">📋 Handover</button>
         <button class="action-btn" onclick="openReportsHub()" style="height:30px;font-size:12px;">📊 Reports</button>
         <button class="action-btn" onclick="openHaulPage()" style="height:30px;font-size:12px;">📍 Haul Distance</button>
+        <button class="action-btn" onclick="openLiveMapPage()" style="height:30px;font-size:12px;">🗺 Live Map</button>
         <button class="action-btn" onclick="openEqHealthPage()" style="height:30px;font-size:12px;">🔧 Equipment
           Health</button>
         <button class="action-btn" onclick="openDeploymentsPage()" style="height:30px;font-size:12px;">🚛 Deployments</button>
@@ -8246,6 +8252,82 @@
     </div>
   </div>
   <!-- ── END CHANGEOVER PAGE ── -->
+
+  <!-- ── LIVE MAP PAGE ── -->
+  <div id="livemap-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeLiveMapPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">🗺 Live Map</div>
+      <div class="topbar-user" style="gap:8px;">
+        <button class="action-btn" onclick="lmFetch()" style="height:30px;font-size:12px;">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div style="padding:24px;max-width:1480px;margin:0 auto;">
+
+      <!-- Filter bar -->
+      <div class="src-filter-bar" style="flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">From Date</div>
+            <input type="date" id="lm-date-from" class="date-input" style="height:34px;" onchange="lmFetch()"/>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">To Date</div>
+            <input type="date" id="lm-date-to" class="date-input" style="height:34px;" onchange="lmFetch()"/>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Shift</div>
+            <div class="dep-shift-pills" id="lm-shift-pills">
+              <button class="dep-shift-pill active-all" onclick="lmSetShift(this,'all')">All</button>
+              <button class="dep-shift-pill" onclick="lmSetShift(this,'A')">A</button>
+              <button class="dep-shift-pill" onclick="lmSetShift(this,'B')">B</button>
+              <button class="dep-shift-pill" onclick="lmSetShift(this,'C')">C</button>
+            </div>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">Layers</div>
+            <div style="display:flex;gap:12px;align-items:center;height:34px;font-size:12px;color:var(--text-primary);">
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+                <input type="checkbox" id="lm-layer-trips" checked onchange="lmApplyLayerToggles()"/>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563eb;"></span> Trips
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+                <input type="checkbox" id="lm-layer-fuel" checked onchange="lmApplyLayerToggles()"/>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f97316;"></span> Fuel Entries
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+                <input type="checkbox" id="lm-layer-shift" checked onchange="lmApplyLayerToggles()"/>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16a34a;"></span> Shift Open/Close
+              </label>
+            </div>
+          </div>
+          <div class="dep-filter-field">
+            <div class="dep-filter-label">View</div>
+            <div class="dep-shift-pills" id="lm-base-toggle">
+              <button class="dep-shift-pill active-all" onclick="lmSetBaseLayer(this,'street')">🗺 Street</button>
+              <button class="dep-shift-pill" onclick="lmSetBaseLayer(this,'satellite')">🛰 Satellite</button>
+            </div>
+          </div>
+          <div class="dep-filter-field" style="margin-left:auto;">
+            <div class="dep-filter-label">&nbsp;</div>
+            <button class="action-btn" onclick="lmFitToMarkers()">⤢ Fit All</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status strip -->
+      <div id="lm-status" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--text-secondary);"></div>
+
+      <!-- Map -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div id="lm-map" style="width:100%;height:640px;"></div>
+      </div>
+
+    </div>
+  </div>
+  <!-- ── END LIVE MAP PAGE ── -->
 
   <!-- ── ADMIN COMPLIANCE MODALS (fixed, body-level so display:none on parent doesn't hide them) ── -->
 
@@ -21991,6 +22073,291 @@
 
 
     /* ── AUTO-REFRESH SYSTEM END ── */
+
+    /* ══════════════════════════ LIVE MAP ══════════════════════════ */
+
+    // Thin adapter over the mapping library. Only this object talks to Leaflet —
+    // swapping providers later (e.g. Google Maps) means rewriting just this block.
+    const LiveMap = {
+      _map: null,
+      _clusterGroups: {},
+      _baseLayers: {},
+      _currentBase: 'street',
+      _markerIcons: {
+        trip:       { color: '#2563eb' },
+        fuel:       { color: '#f97316' },
+        shiftOpen:  { color: '#16a34a' },
+        shiftClose: { color: '#dc2626' },
+      },
+      init(containerId) {
+        if (this._map) return this._map;
+        this._map = L.map(containerId).setView([21.15, 79.09], 6); // rough central-India default
+
+        this._baseLayers.street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        });
+        // Esri World Imagery — free satellite tiles, no API key required.
+        this._baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19,
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+        });
+        this._baseLayers[this._currentBase].addTo(this._map);
+
+        ['trip', 'fuel', 'shiftOpen', 'shiftClose'].forEach(type => {
+          this._clusterGroups[type] = L.markerClusterGroup({ maxClusterRadius: 45 });
+          this._map.addLayer(this._clusterGroups[type]);
+        });
+        return this._map;
+      },
+      setBaseLayer(type) {
+        if (!this._map || !this._baseLayers[type] || type === this._currentBase) return;
+        this._map.removeLayer(this._baseLayers[this._currentBase]);
+        this._baseLayers[type].addTo(this._map);
+        this._currentBase = type;
+      },
+      _dotIcon(type) {
+        const color = this._markerIcons[type].color;
+        return L.divIcon({
+          className: 'lm-dot-icon',
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 0 1px ${color};"></div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+          popupAnchor: [0, -7],
+        });
+      },
+      clearLayer(type) {
+        if (this._clusterGroups[type]) this._clusterGroups[type].clearLayers();
+      },
+      clearAll() {
+        Object.keys(this._clusterGroups).forEach(type => this.clearLayer(type));
+      },
+      addMarker({ lat, lng, type, popupHtml }) {
+        if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) return;
+        const marker = L.marker([lat, lng], { icon: this._dotIcon(type) });
+        if (popupHtml) marker.bindPopup(popupHtml);
+        this._clusterGroups[type].addLayer(marker);
+      },
+      setLayerVisible(type, visible) {
+        if (!this._map || !this._clusterGroups[type]) return;
+        if (visible) this._map.addLayer(this._clusterGroups[type]);
+        else this._map.removeLayer(this._clusterGroups[type]);
+      },
+      fitToMarkers() {
+        if (!this._map) return;
+        const bounds = L.latLngBounds([]);
+        Object.values(this._clusterGroups).forEach(g => {
+          if (this._map.hasLayer(g) && g.getLayers().length) bounds.extend(g.getBounds());
+        });
+        if (bounds.isValid()) this._map.fitBounds(bounds, { padding: [30, 30] });
+      },
+      invalidateSize() {
+        if (this._map) this._map.invalidateSize();
+      },
+    };
+
+    let _lmShift = 'all';
+    let _lmCounts = { trip: [0, 0], fuel: [0, 0], shiftOpen: [0, 0], shiftClose: [0, 0] };
+
+    function openLiveMapPage() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('livemap-page').style.display = 'block';
+      const today = new Date().toISOString().split('T')[0];
+      const fromEl = document.getElementById('lm-date-from');
+      const toEl   = document.getElementById('lm-date-to');
+      if (!fromEl.value) fromEl.value = today;
+      if (!toEl.value)   toEl.value   = today;
+      LiveMap.init('lm-map');
+      // Map tiles need a layout pass after the container becomes visible.
+      setTimeout(() => LiveMap.invalidateSize(), 50);
+      lmFetch();
+    }
+
+    function closeLiveMapPage() {
+      document.getElementById('livemap-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    function lmSetShift(btn, shift) {
+      _lmShift = shift;
+      document.querySelectorAll('#lm-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active', 'active-all'));
+      btn.classList.add(shift === 'all' ? 'active-all' : 'active');
+      lmFetch();
+    }
+
+    function lmSetBaseLayer(btn, type) {
+      document.querySelectorAll('#lm-base-toggle .dep-shift-pill').forEach(b => b.classList.remove('active', 'active-all'));
+      btn.classList.add('active-all');
+      LiveMap.setBaseLayer(type);
+    }
+
+    function lmApplyLayerToggles() {
+      LiveMap.setLayerVisible('trip', document.getElementById('lm-layer-trips').checked);
+      LiveMap.setLayerVisible('fuel', document.getElementById('lm-layer-fuel').checked);
+      LiveMap.setLayerVisible('shiftOpen', document.getElementById('lm-layer-shift').checked);
+      LiveMap.setLayerVisible('shiftClose', document.getElementById('lm-layer-shift').checked);
+    }
+
+    function lmFitToMarkers() {
+      LiveMap.fitToMarkers();
+    }
+
+    // Pull {latitude, longitude} out of a record, checking a couple of
+    // plausible field-name variants since fuel/shift-reading GPS isn't
+    // shipped by the backend yet — trips confirmed to use `location.{latitude,longitude}`.
+    function lmExtractLatLng(obj) {
+      if (!obj) return null;
+      const candidates = [obj.location, obj.gps, obj.coords, obj];
+      for (const c of candidates) {
+        if (!c || typeof c !== 'object') continue;
+        const lat = c.latitude ?? c.lat;
+        const lng = c.longitude ?? c.lng ?? c.lon;
+        if (typeof lat === 'number' && typeof lng === 'number') return { lat, lng };
+      }
+      return null;
+    }
+
+    function lmFmtTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    function lmUpdateStatus() {
+      const el = document.getElementById('lm-status');
+      const parts = [
+        { label: 'Trips', color: '#2563eb', n: _lmCounts.trip },
+        { label: 'Fuel Entries', color: '#f97316', n: _lmCounts.fuel },
+        { label: 'Shift Open', color: '#16a34a', n: _lmCounts.shiftOpen },
+        { label: 'Shift Close', color: '#dc2626', n: _lmCounts.shiftClose },
+      ];
+      el.innerHTML = parts.map(p => {
+        const [geo, total] = p.n;
+        const note = total > 0 && geo === 0 ? ' (not yet available)' : '';
+        return `<span style="display:inline-flex;align-items:center;gap:5px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};"></span>
+          ${p.label}: ${geo}/${total} geotagged${note}
+        </span>`;
+      }).join('');
+    }
+
+    async function lmFetch() {
+      const dateFrom = document.getElementById('lm-date-from').value;
+      const dateTo   = document.getElementById('lm-date-to').value || dateFrom;
+      if (!dateFrom) return;
+
+      document.getElementById('lm-status').innerHTML = '<span style="color:var(--text-muted);">Loading…</span>';
+      LiveMap.clearAll();
+      _lmCounts = { trip: [0, 0], fuel: [0, 0], shiftOpen: [0, 0], shiftClose: [0, 0] };
+
+      const shiftFilter = t => _lmShift === 'all' || (t.shift || '').toUpperCase() === _lmShift;
+
+      await Promise.all([
+        lmLoadTrips(dateFrom, dateTo, shiftFilter),
+        lmLoadFuel(dateFrom, dateTo),
+        lmLoadShiftReadings(dateFrom, dateTo, shiftFilter),
+      ]);
+
+      lmApplyLayerToggles();
+      lmUpdateStatus();
+      LiveMap.fitToMarkers();
+    }
+
+    async function lmLoadTrips(dateFrom, dateTo, shiftFilter) {
+      try {
+        const trips = await fetchAllTripsForRange(dateFrom, dateTo);
+        const filtered = trips.filter(shiftFilter);
+        let geo = 0;
+        filtered.forEach(t => {
+          const pos = lmExtractLatLng(t);
+          if (!pos) return;
+          geo++;
+          const vehicle = getMachineLabel(t.machine_id || t.vehicle_id) || '—';
+          const popup = `<div style="font-size:12px;line-height:1.5;">
+            <b>Trip</b><br/>
+            Vehicle: ${vehicle}<br/>
+            Material: ${t.material_type || '—'}<br/>
+            Shift: ${t.shift || '—'}<br/>
+            Time: ${lmFmtTime(t.timestamp || t.trip_time || t.created_at)}
+          </div>`;
+          LiveMap.addMarker({ lat: pos.lat, lng: pos.lng, type: 'trip', popupHtml: popup });
+        });
+        _lmCounts.trip = [geo, filtered.length];
+      } catch (e) {
+        console.error('Live Map: failed to load trips', e);
+      }
+    }
+
+    async function lmLoadFuel(dateFrom, dateTo) {
+      try {
+        const url = `${API}/fuel-purchases?start_date=${dateFrom}&end_date=${dateTo}`;
+        const res = await apiFetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const entries = Array.isArray(data) ? data : (data.items || data.results || []);
+        let geo = 0;
+        entries.forEach(f => {
+          const pos = lmExtractLatLng(f);
+          if (!pos) return;
+          geo++;
+          const vehicle = getMachineLabel(f.vehicle_id) || f.vehicle_name || '—';
+          const popup = `<div style="font-size:12px;line-height:1.5;">
+            <b>Fuel Entry</b><br/>
+            Vehicle: ${vehicle}<br/>
+            Vendor: ${f.vendor_name || '—'}<br/>
+            Litres: ${f.quantity_litres ?? '—'}<br/>
+            Date: ${f.date || '—'}
+          </div>`;
+          LiveMap.addMarker({ lat: pos.lat, lng: pos.lng, type: 'fuel', popupHtml: popup });
+        });
+        _lmCounts.fuel = [geo, entries.length];
+      } catch (e) {
+        console.error('Live Map: failed to load fuel entries', e);
+      }
+    }
+
+    async function lmLoadShiftReadings(dateFrom, dateTo, shiftFilter) {
+      try {
+        const dates = dashboardDateRange(dateFrom, dateTo);
+        const results = await Promise.all(dates.map(d =>
+          apiFetch(`${API}/shift-readings?date=${encodeURIComponent(d)}`)
+            .then(r => r.ok ? r.json() : [])
+            .catch(() => [])
+        ));
+        const all = results.flatMap(r => Array.isArray(r) ? r : (r.readings || []));
+        const filtered = all.filter(shiftFilter);
+        let geoOpen = 0, geoClose = 0;
+        filtered.forEach(r => {
+          const vehicle = getMachineLabel(r.vehicle_id) || r.truck_number || '—';
+          const driver = srcGetPersonName(r);
+
+          // Two possible shapes: one `location` per reading, or separate
+          // opening/closing coordinates. Handle both without assuming either.
+          const openPos  = lmExtractLatLng(r.opening_location) || (r.readings && lmExtractLatLng(r.readings.opening_location));
+          const closePos = lmExtractLatLng(r.closing_location) || (r.readings && lmExtractLatLng(r.readings.closing_location));
+          const singlePos = !openPos && !closePos ? lmExtractLatLng(r) : null;
+
+          if (openPos) {
+            geoOpen++;
+            LiveMap.addMarker({ lat: openPos.lat, lng: openPos.lng, type: 'shiftOpen', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Open</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}</div>` });
+          }
+          if (closePos) {
+            geoClose++;
+            LiveMap.addMarker({ lat: closePos.lat, lng: closePos.lng, type: 'shiftClose', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Close</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}</div>` });
+          }
+          if (singlePos) {
+            geoOpen++;
+            LiveMap.addMarker({ lat: singlePos.lat, lng: singlePos.lng, type: 'shiftOpen', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Reading</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}</div>` });
+          }
+        });
+        _lmCounts.shiftOpen = [geoOpen, filtered.length];
+        _lmCounts.shiftClose = [geoClose, filtered.length];
+      } catch (e) {
+        console.error('Live Map: failed to load shift readings', e);
+      }
+    }
+
+    /* ══════════════════════════ END LIVE MAP ══════════════════════════ */
 
   </script>
 </body>
