@@ -22272,10 +22272,12 @@
           const pos = lmExtractLatLng(t);
           if (!pos) return;
           geo++;
-          const vehicle = getMachineLabel(t.machine_id || t.vehicle_id) || '—';
+          const truck = getVehicleNum(t.vehicle_id) || '—';
+          const excavator = t.machine_id ? getMachineLabel(t.machine_id) : '—';
           const popup = `<div style="font-size:12px;line-height:1.5;">
             <b>Trip</b><br/>
-            Vehicle: ${vehicle}<br/>
+            Truck: ${truck}<br/>
+            Loaded By: ${excavator}<br/>
             Material: ${t.material_type || '—'}<br/>
             Shift: ${t.shift || '—'}<br/>
             Time: ${lmFmtTime(t.timestamp || t.trip_time || t.created_at)}
@@ -22300,7 +22302,7 @@
           const pos = lmExtractLatLng(f);
           if (!pos) return;
           geo++;
-          const vehicle = getMachineLabel(f.vehicle_id) || f.vehicle_name || '—';
+          const vehicle = getVehicleNum(f.vehicle_id) || f.vehicle_name || getMachineLabel(f.vehicle_id) || '—';
           const popup = `<div style="font-size:12px;line-height:1.5;">
             <b>Fuel Entry</b><br/>
             Vehicle: ${vehicle}<br/>
@@ -22328,7 +22330,7 @@
         const filtered = all.filter(shiftFilter);
         let geoOpen = 0, geoClose = 0;
         filtered.forEach(r => {
-          const vehicle = getMachineLabel(r.vehicle_id) || r.truck_number || '—';
+          const vehicle = r.truck_number || getVehicleNum(r.vehicle_id) || '—';
           const driver = srcGetPersonName(r);
 
           // Two possible shapes: one `location` per reading, or separate
