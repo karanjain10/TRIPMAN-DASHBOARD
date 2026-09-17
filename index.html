@@ -8353,8 +8353,12 @@
       <!-- Status strip -->
       <div id="lm-status" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--text-secondary);"></div>
 
-      <!-- Map -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+      <!-- Map wrapper: Leaflet's own panes (markers z-index:600, popups 700,
+           zoom controls 1000) aren't contained by default and were leaking
+           out to beat the filters dropdown's z-index. `isolation:isolate`
+           forces this box to be its own stacking context so nothing inside
+           it can render above page content outside it. -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative;isolation:isolate;z-index:0;">
         <div id="lm-map" style="width:100%;height:640px;"></div>
       </div>
 
