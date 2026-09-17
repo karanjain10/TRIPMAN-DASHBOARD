@@ -8266,8 +8266,9 @@
 
     <div style="padding:24px;max-width:1480px;margin:0 auto;">
 
-      <!-- Filter bar -->
-      <div class="src-filter-bar" style="flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <!-- Filter bar (static — this page has no long list to justify sticking it,
+           and a sticky bar here was rendering underneath the map on scroll) -->
+      <div class="src-filter-bar" style="position:static;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
         <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;">
           <div class="dep-filter-field">
             <div class="dep-filter-label">From Date</div>
@@ -8276,15 +8277,6 @@
           <div class="dep-filter-field">
             <div class="dep-filter-label">To Date</div>
             <input type="date" id="lm-date-to" class="date-input" style="height:34px;" onchange="lmFetch()"/>
-          </div>
-          <div class="dep-filter-field">
-            <div class="dep-filter-label">Shift</div>
-            <div class="dep-shift-pills" id="lm-shift-pills">
-              <button class="dep-shift-pill active-all" onclick="lmSetShift(this,'all')">All</button>
-              <button class="dep-shift-pill" onclick="lmSetShift(this,'A')">A</button>
-              <button class="dep-shift-pill" onclick="lmSetShift(this,'B')">B</button>
-              <button class="dep-shift-pill" onclick="lmSetShift(this,'C')">C</button>
-            </div>
           </div>
           <div class="dep-filter-field">
             <div class="dep-filter-label">Layers</div>
@@ -8303,11 +8295,52 @@
               </label>
             </div>
           </div>
-          <div class="dep-filter-field">
-            <div class="dep-filter-label">View</div>
-            <div class="dep-shift-pills" id="lm-base-toggle">
-              <button class="dep-shift-pill active-all" onclick="lmSetBaseLayer(this,'street')">🗺 Street</button>
-              <button class="dep-shift-pill" onclick="lmSetBaseLayer(this,'satellite')">🛰 Satellite</button>
+          <div class="dep-filter-field" style="position:relative;">
+            <div class="dep-filter-label">&nbsp;</div>
+            <button class="action-btn" id="lm-filters-btn" onclick="lmToggleFiltersPanel(event)">⚙ Filters</button>
+            <div id="lm-filters-panel" style="display:none;position:absolute;top:38px;left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:200;min-width:270px;max-width:300px;padding:16px;max-height:70vh;overflow-y:auto;">
+              <div class="filter-section" style="margin-bottom:16px;">
+                <div class="filter-label">Shift</div>
+                <div class="filter-chip-group">
+                  <div class="filter-chip" onclick="lmToggleChip('shifts','A',this)">Shift A</div>
+                  <div class="filter-chip" onclick="lmToggleChip('shifts','B',this)">Shift B</div>
+                  <div class="filter-chip" onclick="lmToggleChip('shifts','C',this)">Shift C</div>
+                </div>
+              </div>
+              <div class="filter-section" style="margin-bottom:16px;">
+                <div class="filter-label">Material</div>
+                <div class="filter-chip-group">
+                  <div class="filter-chip" onclick="lmToggleChip('materials','Coal',this)">Coal</div>
+                  <div class="filter-chip" onclick="lmToggleChip('materials','Soft OB',this)">Soft OB</div>
+                  <div class="filter-chip" onclick="lmToggleChip('materials','Hard OB',this)">Hard OB</div>
+                  <div class="filter-chip" onclick="lmToggleChip('materials','Rehandling',this)">Rehandling</div>
+                </div>
+              </div>
+              <div class="filter-section" style="margin-bottom:16px;">
+                <div class="filter-label">Equipment (Truck)</div>
+                <input class="sidebar-search" type="text" id="lm-equipment-search" placeholder="Search..." oninput="lmFilterList('equipment')"/>
+                <div class="sidebar-list" id="lm-equipment-list"></div>
+                <span class="sidebar-clear" onclick="lmClearListFilter('equipment')">Clear</span>
+              </div>
+              <div class="filter-section" style="margin-bottom:16px;">
+                <div class="filter-label">Excavator</div>
+                <input class="sidebar-search" type="text" id="lm-excavator-search" placeholder="Search..." oninput="lmFilterList('excavator')"/>
+                <div class="sidebar-list" id="lm-excavator-list"></div>
+                <span class="sidebar-clear" onclick="lmClearListFilter('excavator')">Clear</span>
+              </div>
+              <div class="filter-section" style="margin-bottom:16px;">
+                <div class="filter-label">Driver</div>
+                <input class="sidebar-search" type="text" id="lm-driver-search" placeholder="Search..." oninput="lmFilterList('driver')"/>
+                <div class="sidebar-list" id="lm-driver-list"></div>
+                <span class="sidebar-clear" onclick="lmClearListFilter('driver')">Clear</span>
+              </div>
+              <div class="filter-section" style="margin-bottom:0;">
+                <div class="filter-label">Supervisor</div>
+                <input class="sidebar-search" type="text" id="lm-supervisor-search" placeholder="Search..." oninput="lmFilterList('supervisor')"/>
+                <div class="sidebar-list" id="lm-supervisor-list"></div>
+                <span class="sidebar-clear" onclick="lmClearListFilter('supervisor')">Clear</span>
+              </div>
+              <button class="action-btn" style="width:100%;margin-top:14px;" onclick="lmClearAllFilters()">↺ Clear All Filters</button>
             </div>
           </div>
           <div class="dep-filter-field" style="margin-left:auto;">
@@ -22081,8 +22114,17 @@
     const LiveMap = {
       _map: null,
       _clusterGroups: {},
-      _baseLayers: {},
-      _currentBase: 'street',
+      _baseLayer: null,
+      // Esri World Imagery doesn't have real high-res data at every zoom level
+      // everywhere (rural/mine sites often top out well below zoom 19) — past
+      // maxNativeZoom it returns a "Map data not yet available" placeholder
+      // tile instead of failing, which looked broken. Capping maxNativeZoom
+      // means Leaflet stops requesting new tiles past that level and instead
+      // scales up the last real one (soft-zoom), so users can still zoom the
+      // map for a closer look at clustered markers without ever hitting the
+      // placeholder tile.
+      _satelliteMaxNativeZoom: 17,
+      _mapMaxZoom: 19,
       _markerIcons: {
         trip:       { color: '#2563eb' },
         fuel:       { color: '#f97316' },
@@ -22091,30 +22133,20 @@
       },
       init(containerId) {
         if (this._map) return this._map;
-        this._map = L.map(containerId).setView([21.15, 79.09], 6); // rough central-India default
+        this._map = L.map(containerId, { maxZoom: this._mapMaxZoom }).setView([21.15, 79.09], 6); // rough central-India default
 
-        this._baseLayers.street = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap contributors'
-        });
         // Esri World Imagery — free satellite tiles, no API key required.
-        this._baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          maxZoom: 19,
+        this._baseLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: this._mapMaxZoom,
+          maxNativeZoom: this._satelliteMaxNativeZoom,
           attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
-        });
-        this._baseLayers[this._currentBase].addTo(this._map);
+        }).addTo(this._map);
 
         ['trip', 'fuel', 'shiftOpen', 'shiftClose'].forEach(type => {
           this._clusterGroups[type] = L.markerClusterGroup({ maxClusterRadius: 45 });
           this._map.addLayer(this._clusterGroups[type]);
         });
         return this._map;
-      },
-      setBaseLayer(type) {
-        if (!this._map || !this._baseLayers[type] || type === this._currentBase) return;
-        this._map.removeLayer(this._baseLayers[this._currentBase]);
-        this._baseLayers[type].addTo(this._map);
-        this._currentBase = type;
       },
       _dotIcon(type) {
         const color = this._markerIcons[type].color;
@@ -22156,8 +22188,20 @@
       },
     };
 
-    let _lmShift = 'all';
     let _lmCounts = { trip: [0, 0], fuel: [0, 0], shiftOpen: [0, 0], shiftClose: [0, 0] };
+
+    // Mirrors the homepage's `activeFilters` model (multi-select sets, AND
+    // across types, OR within a type) so behavior stays consistent with the
+    // rest of the app. "equipment" = truck/tipper (vehicle_id), "excavators"
+    // = loading machine (machine_id) — kept separate since a trip carries both.
+    let _lmFilters = {
+      shifts: new Set(),
+      materials: new Set(),
+      equipment: new Set(),
+      excavators: new Set(),
+      drivers: new Set(),
+      supervisors: new Set(),
+    };
 
     function openLiveMapPage() {
       document.getElementById('app').style.display = 'none';
@@ -22170,25 +22214,120 @@
       LiveMap.init('lm-map');
       // Map tiles need a layout pass after the container becomes visible.
       setTimeout(() => LiveMap.invalidateSize(), 50);
+      lmRenderFilterLists();
       lmFetch();
     }
 
     function closeLiveMapPage() {
       document.getElementById('livemap-page').style.display = 'none';
       document.getElementById('app').style.display = 'block';
+      document.getElementById('lm-filters-panel').style.display = 'none';
     }
 
-    function lmSetShift(btn, shift) {
-      _lmShift = shift;
-      document.querySelectorAll('#lm-shift-pills .dep-shift-pill').forEach(b => b.classList.remove('active', 'active-all'));
-      btn.classList.add(shift === 'all' ? 'active-all' : 'active');
+    function lmToggleFiltersPanel(event) {
+      if (event) event.stopPropagation();
+      const panel = document.getElementById('lm-filters-panel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', e => {
+      const panel = document.getElementById('lm-filters-panel');
+      if (panel && panel.style.display !== 'none' && !e.target.closest('#lm-filters-panel') && !e.target.closest('#lm-filters-btn')) {
+        panel.style.display = 'none';
+      }
+    });
+
+    function lmToggleChip(key, val, el) {
+      if (_lmFilters[key].has(val)) { _lmFilters[key].delete(val); el.classList.remove('active'); }
+      else { _lmFilters[key].add(val); el.classList.add('active'); }
       lmFetch();
     }
 
-    function lmSetBaseLayer(btn, type) {
-      document.querySelectorAll('#lm-base-toggle .dep-shift-pill').forEach(b => b.classList.remove('active', 'active-all'));
-      btn.classList.add('active-all');
-      LiveMap.setBaseLayer(type);
+    const LM_LIST_KEY = { equipment: 'equipment', excavator: 'excavators', driver: 'drivers', supervisor: 'supervisors' };
+
+    function lmRenderFilterLists() {
+      lmRenderList('equipment', allVehicles.map(v => ({ id: v._id, label: v.vehicle_number })));
+      lmRenderList('excavator', allMachines.map(m => ({ id: m._id, label: m.machine_number || m.machine_id })));
+      lmRenderList('driver', allDrivers.map(d => ({ id: d._id, label: d.name })));
+      lmRenderList('supervisor', allWorkers.map(w => ({ id: w._id, label: w.name })));
+    }
+
+    function lmRenderList(type, items) {
+      const key = LM_LIST_KEY[type];
+      const listEl = document.getElementById(`lm-${type}-list`);
+      listEl.innerHTML = items.map(item => `
+        <div class="sidebar-item" onclick="lmToggleListFilter('${type}', '${item.id}', this)">
+          <input type="checkbox" ${_lmFilters[key].has(item.id) ? 'checked' : ''} />
+          <span>${item.label}</span>
+        </div>
+      `).join('');
+    }
+
+    function lmToggleListFilter(type, id, el) {
+      const key = LM_LIST_KEY[type];
+      const chk = el.querySelector('input');
+      if (_lmFilters[key].has(id)) { _lmFilters[key].delete(id); chk.checked = false; }
+      else { _lmFilters[key].add(id); chk.checked = true; }
+      lmFetch();
+    }
+
+    function lmFilterList(type) {
+      const q = document.getElementById(`lm-${type}-search`).value.toLowerCase();
+      document.querySelectorAll(`#lm-${type}-list .sidebar-item`).forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+
+    function lmClearListFilter(type) {
+      const key = LM_LIST_KEY[type];
+      _lmFilters[key].clear();
+      document.querySelectorAll(`#lm-${type}-list input`).forEach(c => c.checked = false);
+      lmFetch();
+    }
+
+    function lmClearAllFilters() {
+      Object.values(_lmFilters).forEach(s => s.clear());
+      document.querySelectorAll('#lm-filters-panel .filter-chip').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('#lm-filters-panel .sidebar-item input').forEach(c => c.checked = false);
+      lmFetch();
+    }
+
+    // Supervisor filter stores worker _id, but trip.worker_id may be either
+    // the _id or the human worker_id string — same resolution the homepage uses.
+    function lmSupervisorIdSet() {
+      return new Set([..._lmFilters.supervisors].flatMap(id => {
+        const w = allWorkers.find(x => x._id === id);
+        return w ? [w._id, w.worker_id].filter(Boolean) : [id];
+      }));
+    }
+
+    function lmTripMatches(t) {
+      const f = _lmFilters;
+      if (f.shifts.size && !f.shifts.has(t.shift)) return false;
+      if (f.materials.size && !f.materials.has(t.material_type)) return false;
+      if (f.equipment.size && !f.equipment.has(t.vehicle_id)) return false;
+      if (f.excavators.size && !f.excavators.has(t.machine_id)) return false;
+      if (f.drivers.size && !f.drivers.has(t.driver_id)) return false;
+      if (f.supervisors.size && !lmSupervisorIdSet().has(t.worker_id)) return false;
+      return true;
+    }
+
+    // Fuel entries only carry a single `vehicle_id` that could reference
+    // either a truck or a machine — match it against whichever of the two
+    // equipment filters is active.
+    function lmFuelMatches(f) {
+      const filt = _lmFilters;
+      const union = new Set([...filt.equipment, ...filt.excavators]);
+      if (union.size && !union.has(f.vehicle_id)) return false;
+      return true;
+    }
+
+    function lmShiftReadingMatches(r) {
+      const filt = _lmFilters;
+      if (filt.shifts.size && !filt.shifts.has((r.shift || '').toUpperCase())) return false;
+      if (filt.equipment.size && !filt.equipment.has(r.vehicle_id)) return false;
+      if (filt.drivers.size && !filt.drivers.has(r.driver_id)) return false;
+      return true;
     }
 
     function lmApplyLayerToggles() {
@@ -22250,12 +22389,10 @@
       LiveMap.clearAll();
       _lmCounts = { trip: [0, 0], fuel: [0, 0], shiftOpen: [0, 0], shiftClose: [0, 0] };
 
-      const shiftFilter = t => _lmShift === 'all' || (t.shift || '').toUpperCase() === _lmShift;
-
       await Promise.all([
-        lmLoadTrips(dateFrom, dateTo, shiftFilter),
+        lmLoadTrips(dateFrom, dateTo),
         lmLoadFuel(dateFrom, dateTo),
-        lmLoadShiftReadings(dateFrom, dateTo, shiftFilter),
+        lmLoadShiftReadings(dateFrom, dateTo),
       ]);
 
       lmApplyLayerToggles();
@@ -22263,10 +22400,10 @@
       LiveMap.fitToMarkers();
     }
 
-    async function lmLoadTrips(dateFrom, dateTo, shiftFilter) {
+    async function lmLoadTrips(dateFrom, dateTo) {
       try {
         const trips = await fetchAllTripsForRange(dateFrom, dateTo);
-        const filtered = trips.filter(shiftFilter);
+        const filtered = trips.filter(lmTripMatches);
         let geo = 0;
         filtered.forEach(t => {
           const pos = lmExtractLatLng(t);
@@ -22296,7 +22433,7 @@
         const res = await apiFetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const entries = Array.isArray(data) ? data : (data.items || data.results || []);
+        const entries = (Array.isArray(data) ? data : (data.items || data.results || [])).filter(lmFuelMatches);
         let geo = 0;
         entries.forEach(f => {
           const pos = lmExtractLatLng(f);
@@ -22318,7 +22455,7 @@
       }
     }
 
-    async function lmLoadShiftReadings(dateFrom, dateTo, shiftFilter) {
+    async function lmLoadShiftReadings(dateFrom, dateTo) {
       try {
         const dates = dashboardDateRange(dateFrom, dateTo);
         const results = await Promise.all(dates.map(d =>
@@ -22327,7 +22464,7 @@
             .catch(() => [])
         ));
         const all = results.flatMap(r => Array.isArray(r) ? r : (r.readings || []));
-        const filtered = all.filter(shiftFilter);
+        const filtered = all.filter(lmShiftReadingMatches);
         let geoOpen = 0, geoClose = 0;
         filtered.forEach(r => {
           const vehicle = r.truck_number || getVehicleNum(r.vehicle_id) || '—';
