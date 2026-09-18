@@ -21002,6 +21002,17 @@
     }
 
     function srcGetPersonName(d) {
+      // A truck handed over mid-shift can have a reading whose own driver_id/
+      // driver_name still reflects the originally-deployed driver, while the
+      // hmr/kmr opening_by/closing_by fields record who actually submitted
+      // each value. Prefer that per-field attribution when present (skipped
+      // for admin overrides, which show their own "By: <admin>" attribution
+      // elsewhere) since it's the more accurate record of who was actually
+      // operating the truck for that reading.
+      if (!d.is_admin_override && !d.created_by_admin) {
+        const by = d.hmr_closing_by || d.kmr_closing_by || d.hmr_opening_by || d.kmr_opening_by;
+        if (by) return by;
+      }
       if (d.driver_name)   return d.driver_name;
       if (d.operator_name) return d.operator_name;
       if (d.worker_name)   return d.worker_name;
