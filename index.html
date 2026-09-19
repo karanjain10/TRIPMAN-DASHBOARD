@@ -20952,13 +20952,20 @@
           }
         });
 
-        // Deduplicate: one row per (truck_number | shift | date | reading_id).
+        // Deduplicate: one row per (truck_number | shift | date | reading_id | driver).
         // Including _reading_id ensures that two readings for different vehicles
-        // on the same shift are NOT collapsed into a single row.
+        // on the same shift are NOT collapsed into a single row. Including the
+        // driver too matters when a truck is handed over mid-shift: multiple
+        // deployment records (one per driver, current one in `live`, earlier
+        // ones in `history`) can resolve to the SAME reading (or none at all),
+        // which made their keys collide and silently dropped every driver but
+        // the one that won the score tie-break below. Same root cause already
+        // fixed for the Changeover page in ebabf81.
+        const srcDriverKey = d => d.driver_id || d.driver_name || d.operator_name || d.worker_name || '';
         const dedupMap = {};
         enriched.forEach(d => {
           const rid = d._reading_id || '';
-          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}|${rid}`;
+          const key = `${d.truck_number}|${(d.shift || '').toUpperCase()}|${d.date}|${rid}|${srcDriverKey(d)}`;
           if (!dedupMap[key]) {
             dedupMap[key] = d;
           } else {
@@ -21007,8 +21014,8 @@
           };
           srcEnrichWithReading(syntheticRow, reading);
 
-          // Only add if this reading is not already represented (dedup by reading id).
-          const orphanKey = `${syntheticRow.truck_number}|${(syntheticRow.shift || '').toUpperCase()}|${syntheticRow.date}|${rid}`;
+          // Only add if this reading is not already represented (dedup by reading id + driver).
+          const orphanKey = `${syntheticRow.truck_number}|${(syntheticRow.shift || '').toUpperCase()}|${syntheticRow.date}|${rid}|${srcDriverKey(syntheticRow)}`;
           if (!dedupMap[orphanKey]) {
             dedupMap[orphanKey] = syntheticRow;
             _srcAllData.push(syntheticRow);
@@ -21114,6 +21121,17 @@
     }
 
     function srcGetPersonName(d) {
+      // A truck handed over mid-shift can have a reading whose own driver_id/
+      // driver_name still reflects the originally-deployed driver, while the
+      // hmr/kmr opening_by/closing_by fields record who actually submitted
+      // each value. Prefer that per-field attribution when present (skipped
+      // for admin overrides, which show their own "By: <admin>" attribution
+      // elsewhere) since it's the more accurate record of who was actually
+      // operating the truck for that reading.
+      if (!d.is_admin_override && !d.created_by_admin) {
+        const by = d.hmr_closing_by || d.kmr_closing_by || d.hmr_opening_by || d.kmr_opening_by;
+        if (by) return by;
+      }
       if (d.driver_name)   return d.driver_name;
       if (d.operator_name) return d.operator_name;
       if (d.worker_name)   return d.worker_name;
