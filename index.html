@@ -2388,7 +2388,7 @@
         display: none !important;
       }
 
-      body>*:not(#handover-page) {
+      body:not(.ov-printing)>*:not(#handover-page) {
         display: none !important;
       }
 
@@ -5993,6 +5993,8 @@
     body.ov-printing .ov-toolbar, body.ov-printing .date-custom-row, body.ov-printing .ov-head-right,
     body.ov-printing #ov-sec-attention, body.ov-printing #ov-sec-haulage, body.ov-printing .ov-quiet, body.ov-printing .ov-note,
     body.ov-printing .ov-linkbtn, body.ov-printing .toast, body.ov-printing .cmdk-overlay { display: none !important; }
+    body.ov-printing > *:not(#app) { display: none !important; }
+    body.ov-printing #handover-page { display: none !important; } /* its own print rule would otherwise force it visible */
     body.ov-printing .main-layout { display: block; }
     body.ov-printing #app .content { padding: 0; }
     body.ov-printing .ov-print-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--brand); margin-bottom: 10px; }
