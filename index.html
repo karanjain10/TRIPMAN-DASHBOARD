@@ -2,6 +2,8 @@
 <html lang="en">
 
 <head>
+  <!-- Icons: Flaticon Uicons (Regular Rounded) — free with attribution (credited in the nav footer) -->
+  <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tripman — Trip Reports</title>
@@ -17,9 +19,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
   <script>
-    if (localStorage.getItem('tripman-theme') === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
+    // Light theme only: any previously saved dark preference is ignored.
+    try { localStorage.setItem('tripman-theme', 'light'); } catch (_) { }
   </script>
   <style>
     *,
@@ -5758,15 +5759,6 @@
 
     /* Layout of the three overview sections (reordered per role via `order`) */
     .ov-stack { display: flex; flex-direction: column; gap: 16px; }
-    .ov-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-    .ov-tile {
-      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 16px; min-height: 118px;
-    }
-    .ov-tile-label { font-size: 13px; color: var(--text-secondary); }
-    .ov-tile-value { font-size: 28px; font-weight: 600; line-height: 1.15; margin-top: 2px; }
-    .ov-tile-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-    .ov-tile-read { font-size: 13px; margin-top: 6px; font-weight: 500; }
     .ov-ok { color: var(--ok); } .ov-warn { color: var(--warn); } .ov-bad { color: var(--bad); } .ov-none { color: var(--text-muted); }
     .ov-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
     .ov-note:empty { display: none; }
@@ -5789,11 +5781,8 @@
       font-size: 14px; font-weight: 400; cursor: pointer; padding: 0;
     }
     .ov-link:hover { color: var(--text-primary); }
-    .ov-haul-strip { display: flex; flex-wrap: wrap; gap: 4px 28px; padding: 0 18px 16px; color: var(--text-secondary); font-size: 15px; }
-    .ov-haul-strip b { color: var(--text-primary); font-weight: 500; }
     #ov-trips-full { border-top: 1px solid var(--border); padding: 18px; background: var(--bg); }
 
-    @media (max-width: 1100px) { .ov-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 900px) {
       .nav-burger { display: inline-flex; align-items: center; justify-content: center; }
       .app-nav {
@@ -5803,10 +5792,174 @@
       .app-nav.open { left: 0; }
     }
     @media (max-width: 640px) {
-      .ov-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .ov-tile { padding: 12px; min-height: 0; }
-      .ov-tile-value { font-size: 24px; }
       #app .sidebar { width: 88vw !important; right: -92vw; }
+    }
+
+    /* ── OVERVIEW v2: bento tiles, header, palette, motion (light theme) ─────── */
+    :root {
+      --c-haulage: #e8890c; --c-loading: #2f6fed; --c-drilling: #7c4dff; --c-support: #0d9488; --c-utility: #64748b;
+      --shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 10px 28px -14px rgba(16, 24, 40, .16);
+      --shadow-lift: 0 2px 4px rgba(16, 24, 40, .05), 0 18px 36px -14px rgba(16, 24, 40, .22);
+    }
+    .fi { line-height: 1; display: inline-flex; }
+    .fi::before { display: block; }
+    #app .content { padding: 28px 32px 48px; }
+    .ov-num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+    /* header */
+    .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
+    .ov-greet { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; }
+    .ov-summary { margin-top: 6px; font-size: 15px; color: var(--text-secondary); max-width: 640px; }
+    .ov-summary b { color: var(--text-primary); font-weight: 600; }
+    .ov-summary .ov-need { color: var(--bad); font-weight: 600; }
+    .ov-summary .ov-clear { color: var(--ok); font-weight: 600; }
+    .ov-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 260px; }
+    .ov-live { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px 5px 10px; }
+    .ov-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 0 rgba(34, 197, 94, .55); animation: ovPulse 2s infinite; }
+    .ov-live.off .ov-live-dot { background: #ef4444; animation: none; }
+    @keyframes ovPulse { 70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+
+    /* shift timeline */
+    .ov-shiftbar { width: 100%; }
+    .ov-sb-track { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .ov-sb-seg { position: relative; height: 26px; border-radius: 8px; background: #ece9e1; overflow: hidden; display: flex; align-items: center; padding: 0 9px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+    .ov-sb-seg i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, rgba(232, 137, 12, .28), rgba(232, 137, 12, .5)); }
+    .ov-sb-seg span { position: relative; }
+    .ov-sb-seg.past { background: #e4e1d8; }
+    .ov-sb-seg.now { color: #7a4a00; }
+    .ov-sb-now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text-primary); border-radius: 2px; }
+    .ov-sb-cap { margin-top: 6px; font-size: 12px; color: var(--text-secondary); text-align: right; }
+
+    /* toolbar polish */
+    .ov-toolbar .date-btn { border-radius: 10px; height: 38px; }
+    .ov-toolbar .date-btn.active { background: #17171a; border-color: #17171a; }
+    .ov-toolbar .action-btn { height: 38px; border-radius: 10px; }
+    .ov-toolbar { margin-bottom: 20px; }
+
+    /* bento grid */
+    .ov-tiles { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: minmax(92px, auto); gap: 16px; }
+    .ov-t {
+      --accent-c: var(--c-utility);
+      position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 20px 22px; box-shadow: var(--shadow-card); overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .ov-t.rise { animation: ovRise .5s ease both; }
+    .ov-unit { font-size: .42em; font-weight: 500; color: var(--text-secondary); margin-left: 6px; letter-spacing: 0; }
+    .ov-t:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
+    .ov-t::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--accent-c); opacity: .9; }
+    .ov-t.c-haulage { --accent-c: var(--c-haulage); background: radial-gradient(120% 80% at 100% 0%, rgba(232, 137, 12, .13), transparent 55%), var(--surface); }
+    .ov-t.c-loading { --accent-c: var(--c-loading); background: radial-gradient(120% 90% at 100% 0%, rgba(47, 111, 237, .11), transparent 55%), var(--surface); }
+    .ov-t.c-drilling { --accent-c: var(--c-drilling); }
+    .ov-t.c-support { --accent-c: var(--c-support); }
+    .ov-t.c-utility { --accent-c: var(--c-utility); }
+    @keyframes ovRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .ov-t-top { display: flex; align-items: center; gap: 10px; }
+    .ov-ico { width: 34px; height: 34px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; color: var(--accent-c); background: color-mix(in srgb, var(--accent-c) 13%, transparent); flex-shrink: 0; }
+    .ov-t-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .ov-t-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+    .ov-t-value { font-size: 34px; font-weight: 600; line-height: 1.1; margin-top: 12px; }
+    .ov-hero { grid-column: var(--col, 1 / 7); grid-row: 1 / span 3; padding: 26px 28px; display: flex; flex-direction: column; }
+    .ov-hero .ov-t-value { font-size: 68px; font-weight: 600; margin-top: 14px; line-height: 1; }
+    .ov-loadingt { grid-column: 7 / 13; grid-row: 1 / span 2; padding: 24px 26px; }
+    .ov-loadingt.tall { grid-row: 1 / span 3; }
+    .ov-loadingt .ov-t-value { font-size: 52px; margin-top: 12px; }
+    .ov-small { grid-column: var(--col); grid-row: var(--row, 3); }
+    .ov-small .ov-t-value { font-size: 28px; margin-top: 8px; }
+    .ov-small { padding: 16px 18px; }
+    .ov-hero-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+    .ov-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+    .ov-chip.up { color: var(--ok); background: rgba(31, 107, 42, .1); }
+    .ov-chip.down { color: var(--bad); background: rgba(163, 45, 45, .1); }
+    .ov-chip small { font-weight: 400; color: var(--text-secondary); font-size: 12px; }
+    .ov-spark { margin-top: 18px; width: 100%; height: 96px; display: block; }
+    .ov-spark-cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .ov-mat { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: #ece9e1; margin-top: 22px; gap: 2px; }
+    .ov-mat i { display: block; min-width: 3px; transition: flex-grow .5s ease; }
+    .ov-mat-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
+    .ov-mat-legend b { color: var(--text-primary); font-weight: 600; margin-left: 4px; }
+    .ov-mat-legend em { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .ov-hero-foot { margin-top: auto; padding-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .ov-ring { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-secondary); }
+    .ov-ring svg { display: block; }
+    .ov-ring b { display: block; font-size: 18px; color: var(--text-primary); font-weight: 600; }
+    .ov-bar { height: 7px; border-radius: 999px; background: #ece9e1; overflow: hidden; margin-top: 14px; }
+    .ov-bar i { display: block; height: 100%; border-radius: 999px; transition: width .7s cubic-bezier(.2, .8, .2, 1); }
+    .ov-bar-cap { margin-top: 6px; font-size: 12px; font-weight: 500; }
+    .ov-bar i.ok { background: #22a06b; } .ov-bar i.warn { background: #e8a20c; } .ov-bar i.bad { background: #e5484d; }
+    .ov-t.skel .ov-t-value, .ov-t.skel .ov-t-sub { color: transparent; border-radius: 8px; background: linear-gradient(90deg, #ece9e1 25%, #f6f4ee 50%, #ece9e1 75%); background-size: 200% 100%; animation: ovShimmer 1.2s infinite; }
+    .ov-t.skel .ov-t-value { width: 60%; }
+    @keyframes ovShimmer { to { background-position: -200% 0; } }
+    .ov-linkbtn { background: none; border: none; font: inherit; font-size: 13px; color: var(--text-secondary); cursor: pointer; padding: 0; }
+    .ov-linkbtn:hover { color: var(--text-primary); }
+
+    .ov-quiet { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--text-muted); }
+    .ov-quiet:empty { display: none; }
+    .ov-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px dashed var(--border-strong); color: var(--text-secondary); }
+    .ov-pill i { color: var(--text-muted); }
+
+    /* needs attention v2 */
+    .ov-card { border-radius: 20px; box-shadow: var(--shadow-card); }
+    .ov-card-head { padding: 18px 22px 12px; font-size: 16px; }
+    .ov-row { padding: 14px 22px; gap: 14px; border-top: 1px solid var(--border); transition: background .12s; }
+    .ov-chipico { width: 38px; height: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+    .ov-chipico.bad { color: var(--bad); background: rgba(163, 45, 45, .1); }
+    .ov-chipico.warn { color: var(--warn); background: rgba(138, 90, 0, .11); }
+    .ov-chipico.ok { color: var(--ok); background: rgba(31, 107, 42, .1); }
+    .ov-row-text { display: flex; flex-direction: column; gap: 1px; }
+    .ov-row-text b { font-size: 15px; font-weight: 600; }
+    .ov-row-text small { font-size: 12.5px; color: var(--text-secondary); font-weight: 400; }
+    .ov-row-go { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 999px; background: var(--bg); color: var(--text-primary); }
+    button.ov-row:hover .ov-row-go { background: #17171a; color: #fff; }
+
+    /* nav v2 */
+    .app-nav { padding: 18px 14px 20px; }
+    .nav-group { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); padding: 20px 12px 6px; }
+    .nav-item { border-radius: 10px; padding: 9px 12px; gap: 12px; color: var(--text-secondary); font-weight: 500; transition: background .12s, color .12s; }
+    .nav-item .fi { font-size: 16px; color: var(--text-muted); transition: color .12s; }
+    .nav-item:hover { background: var(--bg); color: var(--text-primary); }
+    .nav-item:hover .fi { color: var(--text-primary); }
+    .nav-item.active { background: #17171a; color: #fff; }
+    .nav-item.active .fi { color: var(--c-haulage); }
+    .nav-credit { font-size: 10.5px; color: var(--text-muted); text-decoration: none; margin-top: 6px; }
+    .nav-credit:hover { text-decoration: underline; }
+    .topbar { height: 60px; }
+    .topbar-title { font-weight: 600; }
+
+    /* command palette */
+    .cmdk-pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; margin-left: auto; margin-right: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+    .cmdk-pill:hover { border-color: var(--border-strong); color: var(--text-primary); }
+    .cmdk-pill kbd { font-family: var(--font-mono); font-size: 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+    .topbar-title { flex: 0 1 auto; }
+    .cmdk-overlay { display: none; position: fixed; inset: 0; z-index: 400; background: rgba(20, 20, 24, .38); backdrop-filter: blur(3px); align-items: flex-start; justify-content: center; padding-top: 14vh; }
+    .cmdk-overlay.open { display: flex; }
+    .cmdk-box { width: min(560px, 92vw); background: var(--surface); border-radius: 18px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .4); overflow: hidden; animation: ovRise .18s ease both; }
+    .cmdk-input-row { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 17px; }
+    .cmdk-input-row input { flex: 1; border: none; outline: none; background: transparent; font: inherit; font-size: 16px; color: var(--text-primary); }
+    .cmdk-list { max-height: 50vh; overflow-y: auto; padding: 8px; }
+    .cmdk-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: none; border-radius: 10px; background: transparent; font: inherit; font-size: 14px; color: var(--text-primary); text-align: left; cursor: pointer; }
+    .cmdk-item .fi { color: var(--text-muted); font-size: 16px; }
+    .cmdk-item.sel { background: var(--bg); }
+    .cmdk-item.sel .fi { color: var(--c-haulage); }
+    .cmdk-empty { padding: 22px; text-align: center; color: var(--text-muted); font-size: 14px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ov-t, .ov-t.rise, .ov-live-dot, .cmdk-box, .ov-t.skel .ov-t-value { animation: none !important; }
+      .ov-t { transition: none; } .ov-bar i, .ov-mat i { transition: none; }
+    }
+    @media (max-width: 1100px) {
+      .ov-hero, .ov-loadingt, .ov-loadingt.tall { grid-column: 1 / -1; grid-row: auto; }
+      .ov-loadingt { grid-column: 1 / -1; }
+      .ov-small { grid-column: span 6; grid-row: auto; }
+      .ov-head-right { align-items: stretch; width: 100%; }
+    }
+    @media (max-width: 640px) {
+      #app .content { padding: 18px 14px 40px; }
+      .ov-greet { font-size: 24px; }
+      .ov-hero .ov-t-value { font-size: 52px; }
+      .ov-small { grid-column: 1 / -1; }
+      .cmdk-pill span, .cmdk-pill kbd { display: none; }
+      .cmdk-pill { width: 34px; padding: 0; justify-content: center; }
     }
   </style>
 </head>
@@ -5847,11 +6000,11 @@
         <div class="topbar-tripman-logo">
           <span class="topbar-tripman-text">Tripman</span>
         </div>
-        <button id="theme-toggle" onclick="toggleTheme()"
-          style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-secondary);padding:4px;display:flex;align-items:center;"
-          title="Toggle Theme"></button>
       </div>
       <div class="topbar-title"><span class="company-name-display" id="topbar-company-name"></span>Fleet Operations</div>
+      <button class="cmdk-pill" onclick="ovCmdkOpen()" aria-label="Search and jump to a page">
+        <i class="fi fi-rr-search" aria-hidden="true"></i><span>Search</span><kbd>⌘K</kbd>
+      </button>
       <div class="topbar-user">
         <span id="topbar-username"></span>
         <span class="topbar-logout" onclick="doLogout()">Sign out</span>
@@ -5864,29 +6017,26 @@
 
       <!-- LEFT NAV -->
       <nav class="app-nav" id="app-nav" aria-label="Main navigation">
-        <button class="nav-item active" data-nav="overview" onclick="navGo('overview')">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
-          Overview
-        </button>
+        <button class="nav-item active" data-nav="overview" onclick="navGo('overview')"><i class="fi fi-rr-apps" aria-hidden="true"></i><span>Overview</span></button>
 
         <div class="nav-group">Production</div>
-        <button class="nav-item" data-nav="reports" onclick="navGo('reports')">Trips and reports</button>
-        <button class="nav-item" data-nav="loadfactor" onclick="navGo('loadfactor')">Load factor</button>
-        <button class="nav-item" data-nav="haul" onclick="navGo('haul')">Haul distance</button>
-        <button class="nav-item" data-nav="cutoff" onclick="navGo('cutoff')">Cutoff check</button>
+        <button class="nav-item" data-nav="reports" onclick="navGo('reports')"><i class="fi fi-rr-chart-line-up" aria-hidden="true"></i><span>Trips and reports</span></button>
+        <button class="nav-item" data-nav="loadfactor" onclick="navGo('loadfactor')"><i class="fi fi-rr-tachometer-fast" aria-hidden="true"></i><span>Load factor</span></button>
+        <button class="nav-item" data-nav="haul" onclick="navGo('haul')"><i class="fi fi-rr-route" aria-hidden="true"></i><span>Haul distance</span></button>
+        <button class="nav-item" data-nav="cutoff" onclick="navGo('cutoff')"><i class="fi fi-rr-stopwatch" aria-hidden="true"></i><span>Cutoff check</span></button>
 
         <div class="nav-group">Fleet</div>
-        <button class="nav-item" data-nav="deployments" onclick="navGo('deployments')">Deployments</button>
-        <button class="nav-item" data-nav="eqhealth" onclick="navGo('eqhealth')">Equipment health</button>
-        <button class="nav-item" data-nav="livemap" onclick="navGo('livemap')">Live map</button>
+        <button class="nav-item" data-nav="deployments" onclick="navGo('deployments')"><i class="fi fi-rr-truck-loading" aria-hidden="true"></i><span>Deployments</span></button>
+        <button class="nav-item" data-nav="eqhealth" onclick="navGo('eqhealth')"><i class="fi fi-rr-engine" aria-hidden="true"></i><span>Equipment health</span></button>
+        <button class="nav-item" data-nav="livemap" onclick="navGo('livemap')"><i class="fi fi-rr-map-marker" aria-hidden="true"></i><span>Live map</span></button>
 
         <div class="nav-group" id="nav-group-shiftops">Shift operations</div>
-        <button class="nav-item" id="compliance-btn" data-nav="compliance" onclick="navGo('compliance')">Compliance</button>
-        <button class="nav-item" id="changeover-btn" data-nav="changeover" onclick="navGo('changeover')">Changeover</button>
-        <button class="nav-item" data-nav="handover" onclick="navGo('handover')">Handover</button>
+        <button class="nav-item" id="compliance-btn" data-nav="compliance" onclick="navGo('compliance')"><i class="fi fi-rr-clipboard-check" aria-hidden="true"></i><span>Compliance</span></button>
+        <button class="nav-item" id="changeover-btn" data-nav="changeover" onclick="navGo('changeover')"><i class="fi fi-rr-calendar-shift-swap" aria-hidden="true"></i><span>Changeover</span></button>
+        <button class="nav-item" data-nav="handover" onclick="navGo('handover')"><i class="fi fi-rr-people-arrows-left-right" aria-hidden="true"></i><span>Handover</span></button>
 
         <div class="nav-group" id="nav-group-admin" style="display:none;">Admin</div>
-        <button class="nav-item" id="manual-trip-btn" data-nav="manual" onclick="navGo('manual')" style="display:none;">Manual entry</button>
+        <button class="nav-item" id="manual-trip-btn" data-nav="manual" onclick="navGo('manual')" style="display:none;"><i class="fi fi-rr-edit" aria-hidden="true"></i><span>Manual entry</span></button>
 
         <div class="nav-foot">
           <label for="home-view-select">Home layout</label>
@@ -5896,6 +6046,7 @@
             <option value="supervisor">Production supervisor</option>
             <option value="owner">Owner</option>
           </select>
+          <a class="nav-credit" href="https://www.flaticon.com/uicons" target="_blank" rel="noopener">Icons by Flaticon</a>
         </div>
       </nav>
 
@@ -5956,6 +6107,18 @@
 
       <!-- CONTENT -->
       <div class="content">
+        <!-- PAGE HEADER: greeting, live status, shift timeline -->
+        <header class="ov-head" id="ov-head">
+          <div class="ov-head-left">
+            <div class="ov-greet" id="ov-greet">&nbsp;</div>
+            <div class="ov-summary" id="ov-summary"></div>
+          </div>
+          <div class="ov-head-right">
+            <div class="ov-live" id="ov-live"><span class="ov-live-dot"></span><span id="ov-live-text">Live</span></div>
+            <div class="ov-shiftbar" id="ov-shiftbar"></div>
+          </div>
+        </header>
+
         <!-- GLOBAL TOOLBAR: date + shift -->
         <div class="date-row ov-toolbar">
           <button class="date-btn active" data-range="today" onclick="setDateRange('today', this)">Today</button>
@@ -5971,9 +6134,9 @@
             <option value="multi" hidden>Shift: mixed</option>
           </select>
           <button class="date-btn" onclick="openSidebar()">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px;"><path d="M3 4h10M3 8h10M3 12h10"/><circle cx="6" cy="4" r="1.5" fill="var(--surface)"/><circle cx="10" cy="8" r="1.5" fill="var(--surface)"/><circle cx="5" cy="12" r="1.5" fill="var(--surface)"/></svg>Filters<span id="ov-filter-count" class="ov-filter-count" style="display:none;"></span>
+            <i class="fi fi-rr-settings-sliders" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Filters<span id="ov-filter-count" class="ov-filter-count" style="display:none;"></span>
           </button>
-          <button class="action-btn" onclick="refreshData()" style="margin-left:auto;" title="Refresh">↻ Refresh</button>
+          <button class="action-btn" onclick="refreshData()" style="margin-left:auto;" title="Refresh"><i class="fi fi-rr-refresh" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Refresh</button>
           <span id="trips-auto-refresh-indicator" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;"></span>
         </div>
 
@@ -5988,6 +6151,7 @@
           <!-- CLASS TILES -->
           <section class="ov-section" id="ov-sec-tiles" style="order:1;">
             <div class="ov-tiles" id="ov-tiles"></div>
+            <div class="ov-quiet" id="ov-quiet"></div>
             <div class="ov-note" id="ov-note"></div>
           </section>
 
@@ -6003,10 +6167,9 @@
           <section class="ov-section" id="ov-sec-haulage" style="order:3;">
             <div class="ov-card">
               <div class="ov-card-head ov-card-head-row">
-                <span>Haulage and loading</span>
+                <span>Trips dashboard</span>
                 <button class="ov-link" id="ov-trips-toggle" onclick="ovToggleTrips()">Open full trips view <span aria-hidden="true">›</span></button>
               </div>
-              <div class="ov-haul-strip" id="ov-haul-strip"></div>
               <div id="ov-trips-full" style="display:none;">
         <!-- STATS -->
         <div class="stats-row">
@@ -8997,6 +9160,15 @@
     </div>
   </div>
 
+  <!-- COMMAND PALETTE (⌘K / Ctrl+K) -->
+  <div class="cmdk-overlay" id="cmdk" onclick="if(event.target===this)ovCmdkClose()">
+    <div class="cmdk-box" role="dialog" aria-label="Jump to">
+      <div class="cmdk-input-row"><i class="fi fi-rr-search" aria-hidden="true"></i>
+        <input id="cmdk-input" type="text" placeholder="Jump to a page or action…" autocomplete="off" oninput="ovCmdkFilter()" /></div>
+      <div class="cmdk-list" id="cmdk-list"></div>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
@@ -9021,7 +9193,7 @@
     }
     // Set icon correctly on load
     document.addEventListener('DOMContentLoaded', () => {
-      setTheme(localStorage.getItem('tripman-theme') === 'dark');
+      setTheme(false); // light theme only
     });
 
     function openSidebar() {
@@ -15258,7 +15430,7 @@
     };
     const OV_GAP_LIMIT_MIN = 45;
     const OV_CACHE_MS = 5 * 60 * 1000;
-    let _ov = { rows: [], flags: null, key: '', at: 0, loading: false, error: false };
+    let _ov = { rows: [], flags: null, key: '', at: 0, loading: false, error: false, prev: null, updatedAt: 0 };
     let _ovToken = 0;
 
     function ovStoredView() {
@@ -15346,13 +15518,14 @@
       }
       navGo(key);
     }
-    function ovToggleTrips() {
+    function ovToggleTrips(forceOpen) {
       const box = document.getElementById('ov-trips-full');
-      const open = box.style.display === 'none';
+      const open = forceOpen === true ? true : box.style.display === 'none';
       box.style.display = open ? 'block' : 'none';
       document.getElementById('ov-trips-toggle').innerHTML = open
         ? 'Hide full trips view <span aria-hidden="true">⌃</span>'
         : 'Open full trips view <span aria-hidden="true">›</span>';
+      if (open) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ── data ──
@@ -15366,6 +15539,8 @@
       const { start, end } = ovRange();
       if (!start) return;
       const key = `${start}|${end}`;
+      _ov.updatedAt = Date.now(); // trips were just (re)loaded
+      ovLoadPrev(start, end);
       if (_ov.key === key && Date.now() - _ov.at < OV_CACHE_MS && !_ov.error) { ovRender(); return; }
       const token = ++_ovToken;
       _ov.loading = true; _ov.error = false;
@@ -15479,104 +15654,367 @@
     const ovFmt = n => n.toLocaleString('en-IN', { maximumFractionDigits: 1 });
 
     // ── render ──
+    const OV_CLASS_UI = {
+      haulage: { ico: 'truck-side', cls: 'c-haulage' }, loading: { ico: 'excavator', cls: 'c-loading' },
+      drilling: { ico: 'pickaxe', cls: 'c-drilling' }, support: { ico: 'tractor', cls: 'c-support' },
+      utility: { ico: 'gas-pump', cls: 'c-utility' }
+    };
+    const OV_MATERIALS = [['Coal', '#334155'], ['Soft OB', '#f59e0b'], ['Hard OB', '#ef4444'], ['Rehandling', '#3b82f6']];
+    const _ovShown = {};          // last value shown per counter, so numbers tick from there
+    let _ovFirstPaint = true;     // entrance animation runs once, not on every re-render
+    const ovReduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + 's'}`;
+
     function ovScopedRows() {
       const shifts = activeFilters.shifts;
       return _ov.rows.filter(r => !shifts.size || shifts.has(r.shift));
     }
-
+    function ovScopedTrips() {
+      const shifts = activeFilters.shifts;
+      return allTrips.filter(t => !shifts.size || shifts.has(t.shift));
+    }
     function ovRender() {
+      ovRenderHead();
       ovRenderTiles();
       ovRenderAttention();
+      ovRenderShiftBar();
+    }
+
+    function ovClassStats(rows, key) {
+      const mine = rows.filter(r => r.info && r.info.cls === key);
+      const due = mine.filter(r => ovShiftEnded(r.date, r.shift));
+      const sum = meter => { const v = mine.map(r => ovDelta(r, meter)).filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+      return {
+        units: new Set(mine.map(r => r.unit)).size,
+        pct: due.length ? Math.round(due.filter(r => ovStatus(r) === 'complete').length / due.length * 100) : null,
+        hours: sum('HMR'), km: sum('KMR'),
+        names: [...new Set(mine.map(r => r.info.name))].join(', ')
+      };
+    }
+    function ovBar(pct) {
+      if (pct === null) return '<div class="ov-bar"></div><div class="ov-bar-cap ov-none">Readings not due yet</div>';
+      const tone = pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'bad';
+      return `<div class="ov-bar"><i class="${tone}" style="width:${pct}%"></i></div><div class="ov-bar-cap ov-${tone}">${pct}% readings submitted</div>`;
+    }
+    const ovRangeWord = () => ({ today: 'so far today', '7': 'in the last 7 days', '30': 'in the last 30 days' }[dateRange.type] || 'in the selected range');
+
+    // Smooth area sparkline of trips: hourly for Today, daily for longer ranges.
+    function ovSpark(trips) {
+      let buckets = [], first = '', last = '';
+      if (dateRange.type === 'today') {
+        const n = Math.max(new Date().getHours() + 1, 2);
+        buckets = Array(n).fill(0);
+        trips.forEach(t => { const d = new Date(t.timestamp); if (!isNaN(d) && d.getHours() < n) buckets[d.getHours()]++; });
+        first = '12 am'; last = 'now';
+      } else {
+        const { start, end } = ovRange();
+        const days = dashboardDateRange(start, end || start, 31);
+        const idx = Object.fromEntries(days.map((d, i) => [d, i]));
+        buckets = Array(Math.max(days.length, 2)).fill(0);
+        trips.forEach(t => { const d = new Date(t.timestamp); if (isNaN(d)) return; const k = ovLocalDate(d); if (idx[k] !== undefined) buckets[idx[k]]++; });
+        const short = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
+        first = short(days[0]); last = short(days[days.length - 1]);
+      }
+      const max = Math.max(...buckets, 1), W = 300, H = 80;
+      const pts = buckets.map((v, i) => [i / (buckets.length - 1) * W, H - 6 - (v / max) * (H - 16)]);
+      let d = `M ${pts[0][0]} ${pts[0][1]}`;
+      for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1][0] + pts[i][0]) / 2; d += ` C ${mx} ${pts[i - 1][1]}, ${mx} ${pts[i][1]}, ${pts[i][0]} ${pts[i][1]}`; }
+      return `<svg class="ov-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Trips over time">
+        <defs><linearGradient id="ovSparkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8890c" stop-opacity=".35"/><stop offset="1" stop-color="#e8890c" stop-opacity="0"/></linearGradient></defs>
+        <path d="${d} L ${W} ${H} L 0 ${H} Z" fill="url(#ovSparkG)"/>
+        <path d="${d}" fill="none" stroke="#e8890c" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
+        <div class="ov-spark-cap"><span>${first}</span><span>${last}</span></div>`;
+    }
+    function ovLocalDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function ovShiftDate(str, days) {
+      const d = new Date(str + 'T00:00:00'); d.setDate(d.getDate() + days); return ovLocalDate(d);
+    }
+
+    function ovRing(pct) {
+      const r = 18, c = 2 * Math.PI * r;
+      return `<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${r}" fill="none" stroke="#ece9e1" stroke-width="5"/>
+        <circle cx="23" cy="23" r="${r}" fill="none" stroke="#e8890c" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(pct, 100) / 100)}" transform="rotate(-90 23 23)"/></svg>`;
+    }
+
+    function ovDeltaChip(current) {
+      const p = _ov.prev;
+      if (!p) return '';
+      const shifts = activeFilters.shifts;
+      const before = shifts.size ? [...shifts].reduce((s, k) => s + (p.counts[k] || 0), 0) : p.counts.all;
+      if (!before) return '';
+      const pct = Math.round((current - before) / before * 100);
+      const up = pct >= 0;
+      const vs = dateRange.type === 'today' ? 'vs yesterday, same time' : 'vs previous 7 days';
+      return `<span class="ov-chip ${up ? 'up' : 'down'}"><i class="fi fi-rr-arrow-trend-${up ? 'up' : 'down'}" aria-hidden="true"></i>${Math.abs(pct)}% <small>${vs}</small></span>`;
+    }
+
+    function ovCounter(key, value, dec) {
+      return `<span class="ov-num" data-key="${key}" data-count="${value}" data-dec="${dec || 0}">${value.toLocaleString('en-IN', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 })}</span>`;
+    }
+    function ovCountUp(root) {
+      root.querySelectorAll('[data-count]').forEach(el => {
+        const key = el.dataset.key, to = Number(el.dataset.count), dec = Number(el.dataset.dec || 0);
+        const from = _ovShown[key] !== undefined ? _ovShown[key] : 0;
+        _ovShown[key] = to;
+        const fmt = v => v.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        if (from === to || ovReduced()) { el.textContent = fmt(to); return; }
+        const t0 = performance.now(), dur = 700;
+        const step = now => {
+          const k = Math.min((now - t0) / dur, 1), e = 1 - Math.pow(1 - k, 3);
+          el.textContent = fmt(from + (to - from) * e);
+          if (k < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
     }
 
     function ovRenderTiles() {
       const host = document.getElementById('ov-tiles');
       if (!host) return;
       const rows = ovScopedRows();
-      const shifts = activeFilters.shifts;
-      const trips = allTrips.filter(t => !shifts.size || shifts.has(t.shift)).length;
+      const trips = ovScopedTrips();
       const pending = _ov.loading && !_ov.rows.length;
-      host.innerHTML = EQUIPMENT_CLASSES.map(c => {
-        const mine = rows.filter(r => r.info && r.info.cls === c.key);
-        const units = new Set(mine.map(r => r.unit)).size;
-        const due = mine.filter(r => ovShiftEnded(r.date, r.shift));
-        const pct = due.length ? Math.round(due.filter(r => ovStatus(r) === 'complete').length / due.length * 100) : null;
-        const sum = meter => { const v = mine.map(r => ovDelta(r, meter)).filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
-        const names = [...new Set(mine.map(r => r.info.name))].join(', ');
-        let value = '—', sub = pending ? 'loading…' : 'none deployed';
-        if (c.key === 'haulage') {
-          value = ovFmt(trips);
-          sub = `trips · ${units} unit${units === 1 ? '' : 's'}`;
-        } else if (units) {
-          const hrs = c.key === 'utility' ? sum('KMR') : sum('HMR');
-          value = hrs === null ? '—' : `${ovFmt(hrs)} ${c.key === 'utility' ? 'km' : 'h'}`;
-          sub = c.key === 'loading' ? `${units} excavator${units === 1 ? '' : 's'}`
-            : c.key === 'drilling' ? `${units} drill${units === 1 ? '' : 's'} · hole data pending`
-            : names;
-        }
-        let read = '<span class="ov-none">no readings due yet</span>', cls = 'ov-none';
-        if (!units) read = '&nbsp;';
-        if (pct !== null) { cls = pct >= 90 ? 'ov-ok' : pct >= 75 ? 'ov-warn' : 'ov-bad'; read = `<span class="${cls}">${pct}% readings</span>`; }
-        return `<div class="ov-tile"><div class="ov-tile-label">${c.label}</div><div class="ov-tile-value">${value}</div>
-          <div class="ov-tile-sub">${sub}</div><div class="ov-tile-read">${read}</div></div>`;
+      const stats = {};
+      EQUIPMENT_CLASSES.forEach(c => { stats[c.key] = ovClassStats(rows, c.key); });
+      const active = k => pending || stats[k].units > 0;
+      const loadingOn = active('loading');
+      const smalls = ['drilling', 'support', 'utility'].filter(active);
+      const quiet = ['loading', 'drilling', 'support', 'utility'].filter(k => !active(k));
+      const skel = pending ? ' skel' : '';
+      const rise = _ovFirstPaint ? ' rise' : '';
+      const ico = k => `<span class="ov-ico"><i class="fi fi-rr-${OV_CLASS_UI[k].ico}" aria-hidden="true"></i></span>`;
+      const label = k => EQUIPMENT_CLASSES.find(c => c.key === k).label;
+
+      // Haulage hero
+      const h = stats.haulage;
+      const counts = OV_MATERIALS.map(([n, col]) => [n, col, trips.filter(t => t.material_type === n).length]);
+      const total = counts.reduce((s, c) => s + c[2], 0);
+      const lfText = (document.getElementById('stat-loadfactor') || {}).textContent || '';
+      const lf = parseFloat(lfText);
+      const hero = `<div class="ov-t ov-hero c-haulage${rise}" style="--col:1 / ${loadingOn ? 7 : 13};">
+        <div class="ov-t-top">${ico('haulage')}<div><div class="ov-t-label">Haulage</div>
+          <div class="ov-t-sub">${pending ? 'loading…' : plural(h.units, 'unit') + ' on the road'}</div></div>
+          <button class="ov-linkbtn" style="margin-left:auto" onclick="ovToggleTrips(true)">Full trips view <span aria-hidden="true">›</span></button></div>
+        <div class="ov-hero-row"><div class="ov-t-value">${ovCounter('haulage', trips.length)}</div>${ovDeltaChip(trips.length)}</div>
+        <div class="ov-t-sub">trips ${ovRangeWord()}</div>
+        ${ovSpark(trips)}
+        <div class="ov-mat" role="img" aria-label="Trips by material">${counts.map(([n, col, v]) => `<i style="background:${col};flex-grow:${v};flex-basis:0" title="${n}: ${v}"></i>`).join('') || ''}</div>
+        <div class="ov-mat-legend">${counts.map(([n, col, v]) => `<span><em style="background:${col}"></em>${n}<b>${v.toLocaleString('en-IN')}</b></span>`).join('')}</div>
+        <div class="ov-hero-foot">
+          ${Number.isFinite(lf) ? `<div class="ov-ring">${ovRing(lf)}<div>Load factor<b>${lfText}</b></div></div>` : '<span></span>'}
+          <div style="min-width:180px;flex:1;max-width:260px;">${ovBar(h.pct)}</div>
+        </div></div>`;
+
+      // Loading
+      let loadingTile = '';
+      if (loadingOn) {
+        const l = stats.loading;
+        loadingTile = `<div class="ov-t ov-loadingt c-loading${smalls.length ? '' : ' tall'}${skel}${rise}" style="animation-delay:.06s">
+          <div class="ov-t-top">${ico('loading')}<div><div class="ov-t-label">Loading</div>
+            <div class="ov-t-sub">${pending ? 'loading…' : plural(l.units, 'excavator') + ' working'}</div></div></div>
+          <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovCounter('loading', l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
+          <div class="ov-t-sub">machine hours logged</div>${ovBar(l.pct)}</div>`;
+      }
+
+      // Small tiles share the free row
+      const cols = loadingOn ? 6 : 12, start = loadingOn ? 7 : 1;
+      const span = smalls.length ? cols / smalls.length : cols;
+      const smallTiles = smalls.map((k, i) => {
+        const s = stats[k];
+        const val = k === 'utility' ? s.km : s.hours;
+        const unit = k === 'utility' ? 'km' : 'h';
+        const sub = k === 'drilling' ? `${plural(s.units, 'drill')} · hole data pending` : (s.names || plural(s.units, 'unit'));
+        return `<div class="ov-t ov-small c-${k}${skel}${rise}" style="--col:${start + i * span} / span ${span};--row:${loadingOn ? 3 : 4};animation-delay:${.12 + i * .05}s">
+          <div class="ov-t-top">${ico(k)}<div class="ov-t-label">${label(k)}</div></div>
+          <div class="ov-t-value">${val === null || val === undefined ? '<span class="ov-none">—</span>' : ovCounter(k, val, 1) + `<span class="ov-unit">${unit}</span>`}</div>
+          <div class="ov-t-sub">${pending ? 'loading…' : sub}</div>${ovBar(s.pct)}</div>`;
       }).join('');
+
+      host.innerHTML = hero + loadingTile + smallTiles;
+      ovCountUp(host);
+      if (!pending) _ovFirstPaint = false;
+
+      document.getElementById('ov-quiet').innerHTML = quiet.length
+        ? '<span>Not deployed in this period:</span>' + quiet.map(k => `<span class="ov-pill"><i class="fi fi-rr-${OV_CLASS_UI[k].ico}" aria-hidden="true"></i>${label(k)}</span>`).join('')
+        : '';
 
       const stray = rows.filter(r => !r.info);
       const strayTypes = [...new Set(stray.map(r => r.rawType || 'blank type'))].slice(0, 3).join(', ');
-      const inProgress = rows.some(r => !ovShiftEnded(r.date, r.shift));
       const notes = [];
       if (stray.length) notes.push(`${new Set(stray.map(r => r.unit)).size} unit(s) have an equipment type not in any class (${strayTypes}) and are left out of the tiles.`);
-      if (inProgress) notes.push('Readings % counts finished shifts only.');
+      if (rows.some(r => !ovShiftEnded(r.date, r.shift))) notes.push('Readings % counts finished shifts only.');
       document.getElementById('ov-note').textContent = notes.join(' ');
     }
 
+    // ── needs attention ──
+    function ovAttentionCounts() {
+      const ready = !_ov.loading && !_ov.error && _ov.key;
+      const rows = ovScopedRows();
+      const due = rows.filter(r => ovShiftEnded(r.date, r.shift));
+      return {
+        ready,
+        missing: due.filter(r => ovStatus(r) === 'missing').length,
+        partial: due.filter(r => ovStatus(r) === 'partial').length,
+        gaps: rows.filter(r => { const g = ovGapMin(r); return g !== null && g > OV_GAP_LIMIT_MIN; }).length,
+        flags: _ov.flags || 0
+      };
+    }
     function ovRenderAttention() {
       const host = document.getElementById('ov-attention');
       if (!host) return;
-      const row = (icon, text, target, label) => {
+      const row = (tone, icon, title, desc, target, action) => {
         const go = target && canSeeShiftOps();
-        const inner = `${icon}<span class="ov-row-text">${text}</span>${go ? `<span class="ov-row-go">${label} <span aria-hidden="true">›</span></span>` : ''}`;
+        const inner = `<span class="ov-chipico ${tone}"><i class="fi fi-rr-${icon}" aria-hidden="true"></i></span>
+          <span class="ov-row-text"><b>${title}</b><small>${desc}</small></span>${go ? `<span class="ov-row-go">${action} <i class="fi fi-rr-angle-small-right" aria-hidden="true"></i></span>` : ''}`;
         return go ? `<button class="ov-row" onclick="ovGo('${target}')">${inner}</button>` : `<div class="ov-row">${inner}</div>`;
       };
-      const svg = d => `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">${d}</svg>`;
-      const icons = {
-        warn: `<span class="ov-bad">${svg('<path d="M9 2.5 16 15H2L9 2.5Z"/><path d="M9 7v3.5M9 12.6v.1"/>')}</span>`,
-        clock: `<span class="ov-warn">${svg('<circle cx="9" cy="9" r="6.5"/><path d="M9 5.5V9l2.5 1.5"/>')}</span>`,
-        flag: `<span class="ov-warn">${svg('<path d="M4 15.5V3h9l-1.8 3.2L13 9.5H4"/>')}</span>`,
-        ok: `<span class="ov-ok">${svg('<circle cx="9" cy="9" r="6.5"/><path d="M6 9.2l2.2 2.2L12.2 7"/>')}</span>`,
-      };
-      if (_ov.loading && !_ov.rows.length) { host.innerHTML = row('', '<span class="ov-none">Checking readings…</span>'); return; }
+      if (_ov.loading && !_ov.rows.length) { host.innerHTML = row('warn', 'refresh', 'Checking readings…', 'This takes a few seconds'); return; }
       if (_ov.error) {
-        host.innerHTML = `<div class="ov-row">${icons.warn}<span class="ov-row-text">Could not load readings data.</span><button class="ov-link" onclick="_ov.at=0;ovLoad()">Retry</button></div>`;
+        host.innerHTML = `<div class="ov-row"><span class="ov-chipico bad"><i class="fi fi-rr-triangle-warning" aria-hidden="true"></i></span><span class="ov-row-text"><b>Could not load readings data</b><small>Check your connection</small></span><button class="ov-link" onclick="_ov.at=0;ovLoad()">Retry</button></div>`;
         return;
       }
-      const rows = ovScopedRows();
-      const due = rows.filter(r => ovShiftEnded(r.date, r.shift));
-      const missing = due.filter(r => ovStatus(r) === 'missing').length;
-      const partial = due.filter(r => ovStatus(r) === 'partial').length;
-      const gaps = rows.filter(r => { const g = ovGapMin(r); return g !== null && g > OV_GAP_LIMIT_MIN; }).length;
-      const flags = _ov.flags;
+      const c = ovAttentionCounts();
       const out = [];
-      if (missing) out.push(row(icons.warn, `${missing} shift reading${missing === 1 ? '' : 's'} missing`, 'compliance', 'Compliance'));
-      if (partial) out.push(row(icons.warn, `${partial} shift reading${partial === 1 ? '' : 's'} incomplete`, 'compliance', 'Compliance'));
-      if (gaps) out.push(row(icons.clock, `${gaps} changeover gap${gaps === 1 ? '' : 's'} over ${OV_GAP_LIMIT_MIN} min`, 'changeover', 'Changeover'));
-      if (flags) out.push(row(icons.flag, `${flags} unresolved reading flag${flags === 1 ? '' : 's'}`, 'compliance', 'Flags queue'));
-      host.innerHTML = out.join('') || row(icons.ok, 'Nothing needs attention for this period.');
+      if (c.missing) out.push(row('bad', 'triangle-warning', plural(c.missing, 'shift reading') + ' missing', 'Shifts ended with no reading submitted', 'compliance', 'Review'));
+      if (c.partial) out.push(row('bad', 'clipboard-exclamation', plural(c.partial, 'shift reading') + ' incomplete', 'Opening or closing reading not entered', 'compliance', 'Review'));
+      if (c.gaps) out.push(row('warn', 'clock', `${plural(c.gaps, 'changeover gap')} over ${OV_GAP_LIMIT_MIN} min`, 'Deployed to first reading took too long', 'changeover', 'Open'));
+      if (c.flags) out.push(row('warn', 'flag', plural(c.flags, 'unresolved reading flag'), 'Waiting for review in the flags queue', 'compliance', 'Flags queue'));
+      host.innerHTML = out.join('') || row('ok', 'check-circle', 'Nothing needs attention', 'All readings and changeovers look healthy for this period');
+    }
+
+    // ── header: greeting, one-line summary, live status, shift timeline ──
+    function ovRenderHead() {
+      const greetEl = document.getElementById('ov-greet');
+      if (!greetEl) return;
+      const h = new Date().getHours();
+      const first = String((currentUser && currentUser.name) || '').trim().split(/\s+/)[0];
+      const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      greetEl.textContent = first ? `${hello}, ${first[0].toUpperCase()}${first.slice(1).toLowerCase()}` : hello;
+      const trips = ovScopedTrips().length;
+      const shifts = activeFilters.shifts;
+      const shiftWord = shifts.size === 1 ? ` on Shift ${[...shifts][0]}` : '';
+      const c = ovAttentionCounts();
+      const bits = [], nums = [];
+      [[c.missing, 'missing reading'], [c.partial, 'incomplete reading'], [c.gaps, 'changeover gap'], [c.flags, 'unresolved flag']]
+        .forEach(([n, w]) => { if (n) { bits.push(plural(n, w)); nums.push(n); } });
+      const one = bits.length === 1 && nums[0] === 1;
+      const list = bits.length > 1 ? bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1] : bits[0];
+      const tail = !c.ready ? '' : bits.length
+        ? ` <span class="ov-need">${list} ${one ? 'needs' : 'need'} attention.</span>`
+        : ' <span class="ov-clear">Everything is on track.</span>';
+      document.getElementById('ov-summary').innerHTML = `<b>${trips.toLocaleString('en-IN')} trips</b> ${ovRangeWord()}${shiftWord}.${tail}`;
+      ovTick();
+    }
+    function ovAgo(ms) {
+      const s = Math.max(0, Math.round(ms / 1000));
+      return s < 10 ? 'just now' : s < 60 ? `${s}s ago` : `${Math.round(s / 60)}m ago`;
+    }
+    function ovTick() {
+      const live = document.getElementById('ov-live');
+      if (!live) return;
+      live.classList.toggle('off', !!_ov.error);
+      document.getElementById('ov-live-text').textContent = _ov.error ? 'Offline · retrying' : (_ov.updatedAt ? `Live · updated ${ovAgo(Date.now() - _ov.updatedAt)}` : 'Live');
+      ovRenderShiftBar();
+    }
+    function ovRenderShiftBar() {
+      const host = document.getElementById('ov-shiftbar');
+      if (!host) return;
+      const now = new Date();
+      const m = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440; // minutes since 06:00
+      const segs = [['A', '06–14'], ['B', '14–22'], ['C', '22–06']];
+      const cur = Math.floor(m / 480), left = 480 - (m - cur * 480);
+      host.innerHTML = `<div class="ov-sb-track">${segs.map(([n, r], i) => {
+        const state = i < cur ? 'past' : i === cur ? 'now' : '';
+        const fill = i === cur ? `<i style="width:${(m - i * 480) / 480 * 100}%"></i>` : '';
+        return `<div class="ov-sb-seg ${state}">${fill}<span>${n} · ${r}</span></div>`;
+      }).join('')}<div class="ov-sb-now" style="left:${m / 1440 * 100}%"></div></div>
+        <div class="ov-sb-cap">Shift ${segs[cur][0]} · ${Math.floor(left / 60)}h ${left % 60}m left</div>`;
     }
 
     function ovRenderHaulStrip() {
-      const strip = document.getElementById('ov-haul-strip');
-      if (!strip) return;
-      const count = m => filteredTrips.filter(t => t.material_type === m).length;
-      const lf = (document.getElementById('stat-loadfactor') || {}).textContent || '';
-      const parts = [['Coal', count('Coal')], ['Soft OB', count('Soft OB')], ['Hard OB', count('Hard OB')], ['Rehandling', count('Rehandling')]]
-        .map(([n, v]) => `<span>${n} <b>${v.toLocaleString('en-IN')}</b></span>`);
-      if (lf && lf !== '—') parts.push(`<span>Load factor <b>${lf}</b></span>`);
-      strip.innerHTML = parts.join('');
+      // Called on every trips re-filter: keep the Filters badge and hero in step.
       const other = activeFilters.materials.size + activeFilters.vehicles.size + activeFilters.drivers.size + activeFilters.supervisors.size;
       const badge = document.getElementById('ov-filter-count');
       if (badge) { badge.textContent = other; badge.style.display = other ? '' : 'none'; }
+      ovRenderTiles();
+      ovRenderHead();
     }
+
+    // ── previous period, for the change chip on the Haulage hero ──
+    async function ovLoadPrev(start, end) {
+      if (dateRange.type !== 'today' && dateRange.type !== '7') { _ov.prev = null; return; }
+      const key = `${start}|${end}`;
+      if (_ov.prev && _ov.prev.key === key && Date.now() - _ov.prev.at < OV_CACHE_MS) return;
+      const n = dashboardDateRange(start, end || start, 31).length || 1;
+      try {
+        const trips = await fetchAllTripsForRange(ovShiftDate(start, -n), ovShiftDate(start, -1));
+        const cutoff = Date.now() - n * 86400000; // compare like-for-like: same elapsed time
+        const counts = { all: 0, A: 0, B: 0, C: 0 };
+        trips.forEach(t => {
+          const ts = new Date(t.timestamp).getTime();
+          if (isNaN(ts) || ts > cutoff) return;
+          counts.all++;
+          if (counts[t.shift] !== undefined) counts[t.shift]++;
+        });
+        _ov.prev = { key, at: Date.now(), counts };
+      } catch (_) { _ov.prev = null; }
+      ovRenderTiles();
+    }
+
+    // ── command palette (⌘K / Ctrl+K) ──
+    let _cmdk = { items: [], shown: [], sel: 0 };
+    function ovCmdkOpen() {
+      const nav = [...document.querySelectorAll('#app-nav .nav-item')].filter(b => b.style.display !== 'none').map(b => ({
+        label: b.textContent.trim(), icon: (b.querySelector('.fi') || {}).className || 'fi fi-rr-apps', run: () => navGo(b.dataset.nav)
+      }));
+      _cmdk.items = nav.concat([
+        { label: 'Refresh data', icon: 'fi fi-rr-refresh', run: refreshData },
+        { label: 'Open full trips view', icon: 'fi fi-rr-truck-side', run: () => ovToggleTrips(true) },
+        { label: 'Open trip filters', icon: 'fi fi-rr-settings-sliders', run: openSidebar },
+      ]);
+      const input = document.getElementById('cmdk-input');
+      input.value = '';
+      document.getElementById('cmdk').classList.add('open');
+      ovCmdkFilter();
+      input.focus();
+    }
+    function ovCmdkClose() { document.getElementById('cmdk').classList.remove('open'); }
+    function ovCmdkFilter() {
+      const q = document.getElementById('cmdk-input').value.trim().toLowerCase();
+      _cmdk.shown = _cmdk.items.filter(i => i.label.toLowerCase().includes(q));
+      _cmdk.sel = 0;
+      ovCmdkPaint();
+    }
+    function ovCmdkPaint() {
+      const list = document.getElementById('cmdk-list');
+      list.innerHTML = _cmdk.shown.length
+        ? _cmdk.shown.map((it, i) => `<button class="cmdk-item${i === _cmdk.sel ? ' sel' : ''}" onmousemove="_cmdk.sel=${i};ovCmdkPaint()" onclick="ovCmdkRun(${i})"><i class="${it.icon}" aria-hidden="true"></i>${it.label}</button>`).join('')
+        : '<div class="cmdk-empty">Nothing matches</div>';
+    }
+    function ovCmdkRun(i) {
+      const it = _cmdk.shown[i];
+      ovCmdkClose();
+      if (it) it.run();
+    }
+    document.addEventListener('keydown', e => {
+      const app = document.getElementById('app');
+      const open = document.getElementById('cmdk').classList.contains('open');
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && app && app.style.display === 'block') {
+        e.preventDefault(); open ? ovCmdkClose() : ovCmdkOpen(); return;
+      }
+      if (!open) return;
+      if (e.key === 'Escape') ovCmdkClose();
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = _cmdk.shown.length || 1;
+        _cmdk.sel = (_cmdk.sel + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+        ovCmdkPaint();
+        const el = document.querySelector('.cmdk-item.sel'); if (el) el.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') { e.preventDefault(); ovCmdkRun(_cmdk.sel); }
+    });
+    setInterval(() => { if (document.getElementById('app').style.display === 'block') ovTick(); }, 15000);
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
 
