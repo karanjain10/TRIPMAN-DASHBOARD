@@ -15735,7 +15735,7 @@
     function ovBar(s) {
       if (s.pct === null) return '<div class="ov-bar"></div><div class="ov-bar-cap ov-none">No readings due yet</div>';
       const tone = s.pct >= 90 ? 'ok' : s.pct >= 75 ? 'warn' : 'bad';
-      return `<div class="ov-bar"><i class="${tone}" style="width:${s.pct}%"></i></div><div class="ov-bar-cap"><span class="ov-${tone}">${s.pct}%</span> · ${s.done} of ${s.due} readings in</div>`;
+      return `<div class="ov-bar"><i class="${tone}" style="width:${s.pct}%"></i></div><div class="ov-bar-cap"><span class="ov-${tone}">${s.pct}%</span> · ${s.done} of ${s.due} readings submitted</div>`;
     }
     const ovRangeWord = () => ({ today: 'today', '7': 'in the last 7 days', '30': 'in the last 30 days' }[dateRange.type] || 'in the selected range');
 
