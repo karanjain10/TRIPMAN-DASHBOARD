@@ -5795,171 +5795,142 @@
       #app .sidebar { width: 88vw !important; right: -92vw; }
     }
 
-    /* ── OVERVIEW v2: bento tiles, header, palette, motion (light theme) ─────── */
-    :root {
-      --c-haulage: #e8890c; --c-loading: #2f6fed; --c-drilling: #7c4dff; --c-support: #0d9488; --c-utility: #64748b;
-      --shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 10px 28px -14px rgba(16, 24, 40, .16);
-      --shadow-lift: 0 2px 4px rgba(16, 24, 40, .05), 0 18px 36px -14px rgba(16, 24, 40, .22);
-    }
+    /* ── OVERVIEW: Swiss / functional ────────────────────────────────────────────
+       Hairline rules, near-square corners, no gradients, shadows, lift or pulse.
+       Figures in IBM Plex Mono, labels in DM Sans. Amber is the only accent;
+       green / amber / red appear only where they mean a status. */
+    :root { --rule: #cfccc2; --ink: #17171a; --amber: #e8890c; }
     .fi { line-height: 1; display: inline-flex; }
     .fi::before { display: block; }
-    #app .content { padding: 28px 32px 48px; }
-    .ov-num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    #app .content { padding: 28px 32px 56px; }
+    .ov-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
 
     /* header */
-    .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
-    .ov-greet { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; }
-    .ov-summary { margin-top: 6px; font-size: 15px; color: var(--text-secondary); max-width: 640px; }
-    .ov-summary b { color: var(--text-primary); font-weight: 600; }
-    .ov-summary .ov-need { color: var(--bad); font-weight: 600; }
-    .ov-summary .ov-clear { color: var(--ok); font-weight: 600; }
-    .ov-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; min-width: 260px; }
-    .ov-live { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px 5px 10px; }
-    .ov-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 0 rgba(34, 197, 94, .55); animation: ovPulse 2s infinite; }
-    .ov-live.off .ov-live-dot { background: #ef4444; animation: none; }
-    @keyframes ovPulse { 70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
-
-    /* shift timeline */
+    .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--ink); }
+    .ov-greet { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+    .ov-summary { margin-top: 8px; font-size: 20px; line-height: 1.35; color: var(--text-secondary); max-width: 760px; letter-spacing: -0.01em; }
+    .ov-summary b { color: var(--ink); font-weight: 600; }
+    .ov-summary .ov-need { color: var(--bad); font-weight: 500; }
+    .ov-summary .ov-clear { color: var(--ok); font-weight: 500; }
+    .ov-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 260px; }
+    .ov-live { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+    .ov-live-dot { width: 7px; height: 7px; background: #22a06b; }
+    .ov-live.off .ov-live-dot { background: #e5484d; }
     .ov-shiftbar { width: 100%; }
-    .ov-sb-track { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-    .ov-sb-seg { position: relative; height: 26px; border-radius: 8px; background: #ece9e1; overflow: hidden; display: flex; align-items: center; padding: 0 9px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
-    .ov-sb-seg i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, rgba(232, 137, 12, .28), rgba(232, 137, 12, .5)); }
+    .ov-sb-track { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+    .ov-sb-seg { position: relative; height: 24px; background: var(--surface); overflow: hidden; display: flex; align-items: center; padding: 0 8px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); }
+    .ov-sb-seg i { position: absolute; inset: 0 auto 0 0; background: #f6dfb8; }
     .ov-sb-seg span { position: relative; }
-    .ov-sb-seg.past { background: #e4e1d8; }
-    .ov-sb-seg.now { color: #7a4a00; }
-    .ov-sb-now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text-primary); border-radius: 2px; }
-    .ov-sb-cap { margin-top: 6px; font-size: 12px; color: var(--text-secondary); text-align: right; }
+    .ov-sb-seg.past { background: #ece9e1; }
+    .ov-sb-seg.now { color: var(--ink); font-weight: 500; }
+    .ov-sb-now { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
 
-    /* toolbar polish */
-    .ov-toolbar .date-btn { border-radius: 10px; height: 38px; }
-    .ov-toolbar .date-btn.active { background: #17171a; border-color: #17171a; }
-    .ov-toolbar .action-btn { height: 38px; border-radius: 10px; }
-    .ov-toolbar { margin-bottom: 20px; }
+    /* toolbar */
+    .ov-toolbar { margin-bottom: 18px; }
+    .ov-toolbar .date-btn, .ov-toolbar .action-btn { height: 34px; border-radius: 3px; border: 1px solid var(--rule); background: var(--surface); }
+    .ov-toolbar .date-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .ov-filter-count { border-radius: 2px; background: var(--amber); color: #17171a; font-family: var(--font-mono); font-weight: 600; }
 
-    /* bento grid */
-    .ov-tiles { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: minmax(92px, auto); gap: 16px; }
-    .ov-t {
-      --accent-c: var(--c-utility);
-      position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
-      padding: 20px 22px; box-shadow: var(--shadow-card); overflow: hidden;
-      transition: transform .18s ease, box-shadow .18s ease;
-    }
-    .ov-t.rise { animation: ovRise .5s ease both; }
-    .ov-unit { font-size: .42em; font-weight: 500; color: var(--text-secondary); margin-left: 6px; letter-spacing: 0; }
-    .ov-t:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
-    .ov-t::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--accent-c); opacity: .9; }
-    .ov-t.c-haulage { --accent-c: var(--c-haulage); background: radial-gradient(120% 80% at 100% 0%, rgba(232, 137, 12, .13), transparent 55%), var(--surface); }
-    .ov-t.c-loading { --accent-c: var(--c-loading); background: radial-gradient(120% 90% at 100% 0%, rgba(47, 111, 237, .11), transparent 55%), var(--surface); }
-    .ov-t.c-drilling { --accent-c: var(--c-drilling); }
-    .ov-t.c-support { --accent-c: var(--c-support); }
-    .ov-t.c-utility { --accent-c: var(--c-utility); }
-    @keyframes ovRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .ov-t-top { display: flex; align-items: center; gap: 10px; }
-    .ov-ico { width: 34px; height: 34px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; color: var(--accent-c); background: color-mix(in srgb, var(--accent-c) 13%, transparent); flex-shrink: 0; }
-    .ov-t-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-    .ov-t-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
-    .ov-t-value { font-size: 34px; font-weight: 600; line-height: 1.1; margin-top: 12px; }
-    .ov-hero { grid-column: var(--col, 1 / 7); grid-row: 1 / span 3; padding: 26px 28px; display: flex; flex-direction: column; }
-    .ov-hero .ov-t-value { font-size: 68px; font-weight: 600; margin-top: 14px; line-height: 1; }
-    .ov-loadingt { grid-column: 7 / 13; grid-row: 1 / span 2; padding: 24px 26px; }
+    /* tiles: one ruled grid, cells separated by hairlines */
+    .ov-tiles { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: minmax(88px, auto); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+    .ov-t { background: var(--surface); padding: 18px 20px; min-width: 0; }
+    .ov-t-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .ov-t-label { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); }
+    .ov-t-value { margin-top: 10px; font-family: var(--font-mono); font-size: 30px; font-weight: 500; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+    .ov-unit { font-family: var(--font-main); font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-secondary); margin-left: 7px; }
+    .ov-t-sub { margin-top: 6px; font-size: 12.5px; color: var(--text-secondary); }
+    .ov-t-sub b { color: var(--ink); font-weight: 500; }
+    .ov-delta { font-family: var(--font-mono); font-weight: 500; }
+    .ov-hero { grid-column: var(--col, 1 / 7); grid-row: 1 / span 3; padding: 22px 24px; display: flex; flex-direction: column; }
+    .ov-hero .ov-t-value { font-size: 84px; font-weight: 500; margin-top: 14px; letter-spacing: -0.06em; }
+    .ov-hero .ov-unit { font-size: 15px; }
+    .ov-loadingt { grid-column: 7 / 13; grid-row: 1 / span 2; padding: 22px 24px; }
     .ov-loadingt.tall { grid-row: 1 / span 3; }
-    .ov-loadingt .ov-t-value { font-size: 52px; margin-top: 12px; }
+    .ov-loadingt .ov-t-value { font-size: 54px; margin-top: 14px; }
     .ov-small { grid-column: var(--col); grid-row: var(--row, 3); }
-    .ov-small .ov-t-value { font-size: 28px; margin-top: 8px; }
-    .ov-small { padding: 16px 18px; }
-    .ov-hero-row { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-    .ov-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
-    .ov-chip.up { color: var(--ok); background: rgba(31, 107, 42, .1); }
-    .ov-chip.down { color: var(--bad); background: rgba(163, 45, 45, .1); }
-    .ov-chip small { font-weight: 400; color: var(--text-secondary); font-size: 12px; }
-    .ov-spark { margin-top: 18px; width: 100%; height: 96px; display: block; }
-    .ov-spark-cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-    .ov-mat { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: #ece9e1; margin-top: 22px; gap: 2px; }
-    .ov-mat i { display: block; min-width: 3px; transition: flex-grow .5s ease; }
-    .ov-mat-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: var(--text-secondary); }
-    .ov-mat-legend b { color: var(--text-primary); font-weight: 600; margin-left: 4px; }
-    .ov-mat-legend em { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-    .ov-hero-foot { margin-top: auto; padding-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-    .ov-ring { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-secondary); }
-    .ov-ring svg { display: block; }
-    .ov-ring b { display: block; font-size: 18px; color: var(--text-primary); font-weight: 600; }
-    .ov-bar { height: 7px; border-radius: 999px; background: #ece9e1; overflow: hidden; margin-top: 14px; }
-    .ov-bar i { display: block; height: 100%; border-radius: 999px; transition: width .7s cubic-bezier(.2, .8, .2, 1); }
-    .ov-bar-cap { margin-top: 6px; font-size: 12px; font-weight: 500; }
-    .ov-bar i.ok { background: #22a06b; } .ov-bar i.warn { background: #e8a20c; } .ov-bar i.bad { background: #e5484d; }
-    .ov-t.skel .ov-t-value, .ov-t.skel .ov-t-sub { color: transparent; border-radius: 8px; background: linear-gradient(90deg, #ece9e1 25%, #f6f4ee 50%, #ece9e1 75%); background-size: 200% 100%; animation: ovShimmer 1.2s infinite; }
-    .ov-t.skel .ov-t-value { width: 60%; }
+    .ov-small .ov-t-value { font-size: 26px; }
+    .ov-spark { margin-top: 20px; width: 100%; height: 72px; display: block; }
+    .ov-spark-cap { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
+    .ov-mat { display: flex; height: 6px; margin-top: 20px; gap: 1px; background: var(--surface); }
+    .ov-mat i { display: block; min-width: 2px; }
+    .ov-mat-legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 9px; font-size: 12.5px; color: var(--text-secondary); }
+    .ov-mat-legend b { font-family: var(--font-mono); color: var(--ink); font-weight: 500; margin-left: 6px; }
+    .ov-mat-legend em { display: inline-block; width: 7px; height: 7px; margin-right: 6px; }
+    .ov-hero-foot { margin-top: auto; padding-top: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .ov-hero-bar { min-width: 200px; flex: 1; max-width: 300px; }
+    .ov-bar { height: 3px; background: #e6e3da; margin-top: 16px; }
+    .ov-hero-bar .ov-bar { margin-top: 0; }
+    .ov-bar i { display: block; height: 100%; }
+    .ov-bar i.ok { background: #22a06b; } .ov-bar i.warn { background: #d99a06; } .ov-bar i.bad { background: #e5484d; }
+    .ov-bar-cap { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+    .ov-bar-cap span { font-family: var(--font-mono); font-weight: 500; }
+    .ov-t.skel .ov-t-value { color: transparent; width: 55%; background: linear-gradient(90deg, #ece9e1 25%, #f6f4ee 50%, #ece9e1 75%); background-size: 200% 100%; animation: ovShimmer 1.2s infinite; }
     @keyframes ovShimmer { to { background-position: -200% 0; } }
-    .ov-linkbtn { background: none; border: none; font: inherit; font-size: 13px; color: var(--text-secondary); cursor: pointer; padding: 0; }
-    .ov-linkbtn:hover { color: var(--text-primary); }
-
-    .ov-quiet { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--text-muted); }
+    .ov-linkbtn { background: none; border: none; font: inherit; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; padding: 0; text-transform: none; letter-spacing: 0; }
+    .ov-linkbtn:hover { color: var(--ink); text-decoration: underline; }
+    .ov-quiet { margin-top: 10px; font-size: 12.5px; color: var(--text-muted); }
     .ov-quiet:empty { display: none; }
-    .ov-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px dashed var(--border-strong); color: var(--text-secondary); }
-    .ov-pill i { color: var(--text-muted); }
 
-    /* needs attention v2 */
-    .ov-card { border-radius: 20px; box-shadow: var(--shadow-card); }
-    .ov-card-head { padding: 18px 22px 12px; font-size: 16px; }
-    .ov-row { padding: 14px 22px; gap: 14px; border-top: 1px solid var(--border); transition: background .12s; }
-    .ov-chipico { width: 38px; height: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
-    .ov-chipico.bad { color: var(--bad); background: rgba(163, 45, 45, .1); }
-    .ov-chipico.warn { color: var(--warn); background: rgba(138, 90, 0, .11); }
-    .ov-chipico.ok { color: var(--ok); background: rgba(31, 107, 42, .1); }
-    .ov-row-text { display: flex; flex-direction: column; gap: 1px; }
-    .ov-row-text b { font-size: 15px; font-weight: 600; }
-    .ov-row-text small { font-size: 12.5px; color: var(--text-secondary); font-weight: 400; }
-    .ov-row-go { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 999px; background: var(--bg); color: var(--text-primary); }
-    button.ov-row:hover .ov-row-go { background: #17171a; color: #fff; }
+    /* needs attention: number first, rows are ruled lines */
+    .ov-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; box-shadow: none; }
+    .ov-card-head { padding: 12px 20px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); }
+    .ov-row { display: flex; align-items: center; gap: 18px; width: 100%; padding: 13px 20px; border: none; border-top: 1px solid var(--rule); background: transparent; font: inherit; text-align: left; color: var(--ink); }
+    button.ov-row { cursor: pointer; }
+    button.ov-row:hover { background: #f7f5ef; }
+    button.ov-row:hover .ov-row-go { color: var(--ink); text-decoration: underline; }
+    .ov-row-n { font-family: var(--font-mono); font-size: 26px; font-weight: 500; letter-spacing: -0.04em; width: 64px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .ov-row-text { flex: 1; display: flex; flex-direction: column; gap: 1px; }
+    .ov-row-text b { font-size: 14.5px; font-weight: 600; }
+    .ov-row-text small { font-size: 12.5px; color: var(--text-secondary); }
+    .ov-row-go { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .ov-card-head-row { display: flex; align-items: center; justify-content: space-between; }
+    #ov-trips-full { background: var(--bg); }
 
-    /* nav v2 */
+    /* nav: icons stay here, flat */
     .app-nav { padding: 18px 14px 20px; }
-    .nav-group { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); padding: 20px 12px 6px; }
-    .nav-item { border-radius: 10px; padding: 9px 12px; gap: 12px; color: var(--text-secondary); font-weight: 500; transition: background .12s, color .12s; }
-    .nav-item .fi { font-size: 16px; color: var(--text-muted); transition: color .12s; }
-    .nav-item:hover { background: var(--bg); color: var(--text-primary); }
-    .nav-item:hover .fi { color: var(--text-primary); }
-    .nav-item.active { background: #17171a; color: #fff; }
-    .nav-item.active .fi { color: var(--c-haulage); }
+    .nav-group { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); padding: 20px 12px 6px; }
+    .nav-item { border-radius: 3px; padding: 8px 12px; gap: 12px; color: var(--text-secondary); font-weight: 500; }
+    .nav-item .fi { font-size: 15px; color: var(--text-muted); }
+    .nav-item:hover { background: var(--bg); color: var(--ink); }
+    .nav-item:hover .fi { color: var(--ink); }
+    .nav-item.active { background: var(--ink); color: #fff; }
+    .nav-item.active .fi { color: var(--amber); }
     .nav-credit { font-size: 10.5px; color: var(--text-muted); text-decoration: none; margin-top: 6px; }
     .nav-credit:hover { text-decoration: underline; }
-    .topbar { height: 60px; }
-    .topbar-title { font-weight: 600; }
+    .topbar { height: 56px; }
 
     /* command palette */
-    .cmdk-pill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; margin-left: auto; margin-right: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
-    .cmdk-pill:hover { border-color: var(--border-strong); color: var(--text-primary); }
-    .cmdk-pill kbd { font-family: var(--font-mono); font-size: 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+    .cmdk-pill { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; margin-left: auto; margin-right: 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+    .cmdk-pill:hover { color: var(--ink); border-color: var(--ink); }
+    .cmdk-pill kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--rule); padding: 0 4px; }
     .topbar-title { flex: 0 1 auto; }
-    .cmdk-overlay { display: none; position: fixed; inset: 0; z-index: 400; background: rgba(20, 20, 24, .38); backdrop-filter: blur(3px); align-items: flex-start; justify-content: center; padding-top: 14vh; }
+    .cmdk-overlay { display: none; position: fixed; inset: 0; z-index: 400; background: rgba(20, 20, 24, .4); align-items: flex-start; justify-content: center; padding-top: 14vh; }
     .cmdk-overlay.open { display: flex; }
-    .cmdk-box { width: min(560px, 92vw); background: var(--surface); border-radius: 18px; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .4); overflow: hidden; animation: ovRise .18s ease both; }
-    .cmdk-input-row { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 17px; }
-    .cmdk-input-row input { flex: 1; border: none; outline: none; background: transparent; font: inherit; font-size: 16px; color: var(--text-primary); }
-    .cmdk-list { max-height: 50vh; overflow-y: auto; padding: 8px; }
-    .cmdk-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: none; border-radius: 10px; background: transparent; font: inherit; font-size: 14px; color: var(--text-primary); text-align: left; cursor: pointer; }
-    .cmdk-item .fi { color: var(--text-muted); font-size: 16px; }
-    .cmdk-item.sel { background: var(--bg); }
-    .cmdk-item.sel .fi { color: var(--c-haulage); }
+    .cmdk-box { width: min(540px, 92vw); background: var(--surface); border: 1px solid var(--ink); border-radius: 3px; overflow: hidden; }
+    .cmdk-input-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--rule); color: var(--text-muted); font-size: 16px; }
+    .cmdk-input-row input { flex: 1; border: none; outline: none; background: transparent; font: inherit; font-size: 15px; color: var(--ink); }
+    .cmdk-list { max-height: 50vh; overflow-y: auto; padding: 6px; }
+    .cmdk-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 10px; border: none; border-radius: 3px; background: transparent; font: inherit; font-size: 14px; color: var(--ink); text-align: left; cursor: pointer; }
+    .cmdk-item .fi { color: var(--text-muted); font-size: 15px; }
+    .cmdk-item.sel { background: var(--ink); color: #fff; }
+    .cmdk-item.sel .fi { color: var(--amber); }
     .cmdk-empty { padding: 22px; text-align: center; color: var(--text-muted); font-size: 14px; }
 
-    @media (prefers-reduced-motion: reduce) {
-      .ov-t, .ov-t.rise, .ov-live-dot, .cmdk-box, .ov-t.skel .ov-t-value { animation: none !important; }
-      .ov-t { transition: none; } .ov-bar i, .ov-mat i { transition: none; }
-    }
+    @media (prefers-reduced-motion: reduce) { .ov-t.skel .ov-t-value { animation: none; } }
     @media (max-width: 1100px) {
-      .ov-hero, .ov-loadingt, .ov-loadingt.tall { grid-column: 1 / -1; grid-row: auto; }
-      .ov-loadingt { grid-column: 1 / -1; }
-      .ov-small { grid-column: span 6; grid-row: auto; }
+      .ov-tiles { display: block; }
+      .ov-t { border-bottom: 1px solid var(--rule); }
+      .ov-t:last-child { border-bottom: none; }
+      .ov-hero .ov-t-value { font-size: 68px; }
       .ov-head-right { align-items: stretch; width: 100%; }
     }
     @media (max-width: 640px) {
       #app .content { padding: 18px 14px 40px; }
-      .ov-greet { font-size: 24px; }
-      .ov-hero .ov-t-value { font-size: 52px; }
-      .ov-small { grid-column: 1 / -1; }
+      .ov-summary { font-size: 17px; }
+      .ov-hero .ov-t-value { font-size: 56px; }
+      .ov-row-n { width: 48px; font-size: 22px; }
       .cmdk-pill span, .cmdk-pill kbd { display: none; }
-      .cmdk-pill { width: 34px; padding: 0; justify-content: center; }
+      .cmdk-pill { width: 32px; padding: 0; justify-content: center; }
     }
   </style>
 </head>
@@ -15654,16 +15625,10 @@
     const ovFmt = n => n.toLocaleString('en-IN', { maximumFractionDigits: 1 });
 
     // ── render ──
-    const OV_CLASS_UI = {
-      haulage: { ico: 'truck-side', cls: 'c-haulage' }, loading: { ico: 'excavator', cls: 'c-loading' },
-      drilling: { ico: 'pickaxe', cls: 'c-drilling' }, support: { ico: 'tractor', cls: 'c-support' },
-      utility: { ico: 'gas-pump', cls: 'c-utility' }
-    };
     const OV_MATERIALS = [['Coal', '#334155'], ['Soft OB', '#f59e0b'], ['Hard OB', '#ef4444'], ['Rehandling', '#3b82f6']];
-    const _ovShown = {};          // last value shown per counter, so numbers tick from there
-    let _ovFirstPaint = true;     // entrance animation runs once, not on every re-render
-    const ovReduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + 's'}`;
+    const ovPad = n => String(n).padStart(2, '0');
+    const ovClock = d => `${ovPad(d.getHours())}:${ovPad(d.getMinutes())}`;
 
     function ovScopedRows() {
       const shifts = activeFilters.shifts;
@@ -15683,92 +15648,64 @@
     function ovClassStats(rows, key) {
       const mine = rows.filter(r => r.info && r.info.cls === key);
       const due = mine.filter(r => ovShiftEnded(r.date, r.shift));
+      const done = due.filter(r => ovStatus(r) === 'complete').length;
       const sum = meter => { const v = mine.map(r => ovDelta(r, meter)).filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
       return {
         units: new Set(mine.map(r => r.unit)).size,
-        pct: due.length ? Math.round(due.filter(r => ovStatus(r) === 'complete').length / due.length * 100) : null,
+        due: due.length, done, pct: due.length ? Math.round(done / due.length * 100) : null,
         hours: sum('HMR'), km: sum('KMR'),
         names: [...new Set(mine.map(r => r.info.name))].join(', ')
       };
     }
-    function ovBar(pct) {
-      if (pct === null) return '<div class="ov-bar"></div><div class="ov-bar-cap ov-none">Readings not due yet</div>';
-      const tone = pct >= 90 ? 'ok' : pct >= 75 ? 'warn' : 'bad';
-      return `<div class="ov-bar"><i class="${tone}" style="width:${pct}%"></i></div><div class="ov-bar-cap ov-${tone}">${pct}% readings submitted</div>`;
+    // Readings coverage: a flat rule plus the actual counts, not just a percentage.
+    function ovBar(s) {
+      if (s.pct === null) return '<div class="ov-bar"></div><div class="ov-bar-cap ov-none">No readings due yet</div>';
+      const tone = s.pct >= 90 ? 'ok' : s.pct >= 75 ? 'warn' : 'bad';
+      return `<div class="ov-bar"><i class="${tone}" style="width:${s.pct}%"></i></div><div class="ov-bar-cap"><span class="ov-${tone}">${s.pct}%</span> · ${s.done} of ${plural(s.due, 'reading')} in</div>`;
     }
-    const ovRangeWord = () => ({ today: 'so far today', '7': 'in the last 7 days', '30': 'in the last 30 days' }[dateRange.type] || 'in the selected range');
+    const ovRangeWord = () => ({ today: 'today', '7': 'in the last 7 days', '30': 'in the last 30 days' }[dateRange.type] || 'in the selected range');
 
-    // Smooth area sparkline of trips: hourly for Today, daily for longer ranges.
+    // Trips per hour (Today) or per day: plain bars, latest bar in the accent colour.
     function ovSpark(trips) {
       let buckets = [], first = '', last = '';
       if (dateRange.type === 'today') {
-        const n = Math.max(new Date().getHours() + 1, 2);
+        const n = new Date().getHours() + 1;
         buckets = Array(n).fill(0);
         trips.forEach(t => { const d = new Date(t.timestamp); if (!isNaN(d) && d.getHours() < n) buckets[d.getHours()]++; });
-        first = '12 am'; last = 'now';
+        first = '00:00'; last = `${ovPad(n - 1)}:00`;
       } else {
         const { start, end } = ovRange();
         const days = dashboardDateRange(start, end || start, 31);
         const idx = Object.fromEntries(days.map((d, i) => [d, i]));
-        buckets = Array(Math.max(days.length, 2)).fill(0);
+        buckets = Array(Math.max(days.length, 1)).fill(0);
         trips.forEach(t => { const d = new Date(t.timestamp); if (isNaN(d)) return; const k = ovLocalDate(d); if (idx[k] !== undefined) buckets[idx[k]]++; });
         const short = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
         first = short(days[0]); last = short(days[days.length - 1]);
       }
-      const max = Math.max(...buckets, 1), W = 300, H = 80;
-      const pts = buckets.map((v, i) => [i / (buckets.length - 1) * W, H - 6 - (v / max) * (H - 16)]);
-      let d = `M ${pts[0][0]} ${pts[0][1]}`;
-      for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1][0] + pts[i][0]) / 2; d += ` C ${mx} ${pts[i - 1][1]}, ${mx} ${pts[i][1]}, ${pts[i][0]} ${pts[i][1]}`; }
-      return `<svg class="ov-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Trips over time">
-        <defs><linearGradient id="ovSparkG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8890c" stop-opacity=".35"/><stop offset="1" stop-color="#e8890c" stop-opacity="0"/></linearGradient></defs>
-        <path d="${d} L ${W} ${H} L 0 ${H} Z" fill="url(#ovSparkG)"/>
-        <path d="${d}" fill="none" stroke="#e8890c" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
+      const max = Math.max(...buckets, 1), W = 300, H = 72, gap = 2, bw = W / buckets.length;
+      const bars = buckets.map((v, i) => {
+        const h = Math.max(v ? (v / max) * (H - 4) : 1, 1);
+        return `<rect x="${i * bw + gap / 2}" y="${H - h}" width="${Math.max(bw - gap, 1)}" height="${h}" fill="${i === buckets.length - 1 ? '#e8890c' : '#17171a'}"><title>${v} trips</title></rect>`;
+      }).join('');
+      return `<svg class="ov-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Trips over time">${bars}</svg>
         <div class="ov-spark-cap"><span>${first}</span><span>${last}</span></div>`;
     }
-    function ovLocalDate(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
+    function ovLocalDate(d) { return `${d.getFullYear()}-${ovPad(d.getMonth() + 1)}-${ovPad(d.getDate())}`; }
     function ovShiftDate(str, days) {
       const d = new Date(str + 'T00:00:00'); d.setDate(d.getDate() + days); return ovLocalDate(d);
     }
 
-    function ovRing(pct) {
-      const r = 18, c = 2 * Math.PI * r;
-      return `<svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="${r}" fill="none" stroke="#ece9e1" stroke-width="5"/>
-        <circle cx="23" cy="23" r="${r}" fill="none" stroke="#e8890c" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - Math.min(pct, 100) / 100)}" transform="rotate(-90 23 23)"/></svg>`;
-    }
-
-    function ovDeltaChip(current) {
+    function ovDeltaText(current) {
       const p = _ov.prev;
       if (!p) return '';
       const shifts = activeFilters.shifts;
       const before = shifts.size ? [...shifts].reduce((s, k) => s + (p.counts[k] || 0), 0) : p.counts.all;
       if (!before) return '';
       const pct = Math.round((current - before) / before * 100);
-      const up = pct >= 0;
-      const vs = dateRange.type === 'today' ? 'vs yesterday, same time' : 'vs previous 7 days';
-      return `<span class="ov-chip ${up ? 'up' : 'down'}"><i class="fi fi-rr-arrow-trend-${up ? 'up' : 'down'}" aria-hidden="true"></i>${Math.abs(pct)}% <small>${vs}</small></span>`;
+      const vs = dateRange.type === 'today' ? `yesterday at ${ovClock(new Date())} (${before})` : `the previous 7 days (${before})`;
+      return `<span class="ov-delta ${pct >= 0 ? 'ov-ok' : 'ov-bad'}">${pct >= 0 ? '+' : '−'}${Math.abs(pct)}%</span> vs ${vs}`;
     }
-
-    function ovCounter(key, value, dec) {
-      return `<span class="ov-num" data-key="${key}" data-count="${value}" data-dec="${dec || 0}">${value.toLocaleString('en-IN', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 })}</span>`;
-    }
-    function ovCountUp(root) {
-      root.querySelectorAll('[data-count]').forEach(el => {
-        const key = el.dataset.key, to = Number(el.dataset.count), dec = Number(el.dataset.dec || 0);
-        const from = _ovShown[key] !== undefined ? _ovShown[key] : 0;
-        _ovShown[key] = to;
-        const fmt = v => v.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-        if (from === to || ovReduced()) { el.textContent = fmt(to); return; }
-        const t0 = performance.now(), dur = 700;
-        const step = now => {
-          const k = Math.min((now - t0) / dur, 1), e = 1 - Math.pow(1 - k, 3);
-          el.textContent = fmt(from + (to - from) * e);
-          if (k < 1) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      });
-    }
+    const ovNum = (v, dec) => `<span class="ov-num">${v.toLocaleString('en-IN', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 })}</span>`;
 
     function ovRenderTiles() {
       const host = document.getElementById('ov-tiles');
@@ -15783,68 +15720,60 @@
       const smalls = ['drilling', 'support', 'utility'].filter(active);
       const quiet = ['loading', 'drilling', 'support', 'utility'].filter(k => !active(k));
       const skel = pending ? ' skel' : '';
-      const rise = _ovFirstPaint ? ' rise' : '';
-      const ico = k => `<span class="ov-ico"><i class="fi fi-rr-${OV_CLASS_UI[k].ico}" aria-hidden="true"></i></span>`;
       const label = k => EQUIPMENT_CLASSES.find(c => c.key === k).label;
 
-      // Haulage hero
+      // Haulage: the largest cell
       const h = stats.haulage;
       const counts = OV_MATERIALS.map(([n, col]) => [n, col, trips.filter(t => t.material_type === n).length]);
-      const total = counts.reduce((s, c) => s + c[2], 0);
       const lfText = (document.getElementById('stat-loadfactor') || {}).textContent || '';
-      const lf = parseFloat(lfText);
-      const hero = `<div class="ov-t ov-hero c-haulage${rise}" style="--col:1 / ${loadingOn ? 7 : 13};">
-        <div class="ov-t-top">${ico('haulage')}<div><div class="ov-t-label">Haulage</div>
-          <div class="ov-t-sub">${pending ? 'loading…' : plural(h.units, 'unit') + ' on the road'}</div></div>
-          <button class="ov-linkbtn" style="margin-left:auto" onclick="ovToggleTrips(true)">Full trips view <span aria-hidden="true">›</span></button></div>
-        <div class="ov-hero-row"><div class="ov-t-value">${ovCounter('haulage', trips.length)}</div>${ovDeltaChip(trips.length)}</div>
-        <div class="ov-t-sub">trips ${ovRangeWord()}</div>
+      const hero = `<div class="ov-t ov-hero" style="--col:1 / ${loadingOn ? 7 : 13};">
+        <div class="ov-t-top"><span class="ov-t-label">Haulage</span>
+          <button class="ov-linkbtn" onclick="ovToggleTrips(true)">Full trips view →</button></div>
+        <div class="ov-t-value">${ovNum(trips.length)}<span class="ov-unit">trips</span></div>
+        <div class="ov-t-sub">${trips.length ? `${ovRangeWord()} · ${pending ? '…' : plural(h.units, 'unit')} deployed` : `No trips logged ${ovRangeWord()} yet`}</div>
+        <div class="ov-t-sub">${ovDeltaText(trips.length)}</div>
         ${ovSpark(trips)}
-        <div class="ov-mat" role="img" aria-label="Trips by material">${counts.map(([n, col, v]) => `<i style="background:${col};flex-grow:${v};flex-basis:0" title="${n}: ${v}"></i>`).join('') || ''}</div>
+        <div class="ov-mat" role="img" aria-label="Trips by material">${counts.map(([n, col, v]) => `<i style="background:${col};flex-grow:${v};flex-basis:0" title="${n}: ${v}"></i>`).join('')}</div>
         <div class="ov-mat-legend">${counts.map(([n, col, v]) => `<span><em style="background:${col}"></em>${n}<b>${v.toLocaleString('en-IN')}</b></span>`).join('')}</div>
         <div class="ov-hero-foot">
-          ${Number.isFinite(lf) ? `<div class="ov-ring">${ovRing(lf)}<div>Load factor<b>${lfText}</b></div></div>` : '<span></span>'}
-          <div style="min-width:180px;flex:1;max-width:260px;">${ovBar(h.pct)}</div>
+          <div class="ov-t-sub">${lfText && lfText !== '—' ? `Load factor <b class="ov-num">${lfText}</b>` : 'Load factor: no survey data'}</div>
+          <div class="ov-hero-bar">${ovBar(h)}</div>
         </div></div>`;
 
-      // Loading
+      // Loading: second largest
       let loadingTile = '';
       if (loadingOn) {
         const l = stats.loading;
-        loadingTile = `<div class="ov-t ov-loadingt c-loading${smalls.length ? '' : ' tall'}${skel}${rise}" style="animation-delay:.06s">
-          <div class="ov-t-top">${ico('loading')}<div><div class="ov-t-label">Loading</div>
-            <div class="ov-t-sub">${pending ? 'loading…' : plural(l.units, 'excavator') + ' working'}</div></div></div>
-          <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovCounter('loading', l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
-          <div class="ov-t-sub">machine hours logged</div>${ovBar(l.pct)}</div>`;
+        loadingTile = `<div class="ov-t ov-loadingt${smalls.length ? '' : ' tall'}${skel}">
+          <div class="ov-t-top"><span class="ov-t-label">Loading</span></div>
+          <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
+          <div class="ov-t-sub">${pending ? '…' : `${plural(l.units, 'excavator')} · machine hours from closed readings`}</div>${ovBar(l)}</div>`;
       }
 
-      // Small tiles share the free row
+      // Other classes share the free row
       const cols = loadingOn ? 6 : 12, start = loadingOn ? 7 : 1;
       const span = smalls.length ? cols / smalls.length : cols;
       const smallTiles = smalls.map((k, i) => {
         const s = stats[k];
         const val = k === 'utility' ? s.km : s.hours;
-        const unit = k === 'utility' ? 'km' : 'h';
         const sub = k === 'drilling' ? `${plural(s.units, 'drill')} · hole data pending` : (s.names || plural(s.units, 'unit'));
-        return `<div class="ov-t ov-small c-${k}${skel}${rise}" style="--col:${start + i * span} / span ${span};--row:${loadingOn ? 3 : 4};animation-delay:${.12 + i * .05}s">
-          <div class="ov-t-top">${ico(k)}<div class="ov-t-label">${label(k)}</div></div>
-          <div class="ov-t-value">${val === null || val === undefined ? '<span class="ov-none">—</span>' : ovCounter(k, val, 1) + `<span class="ov-unit">${unit}</span>`}</div>
-          <div class="ov-t-sub">${pending ? 'loading…' : sub}</div>${ovBar(s.pct)}</div>`;
+        return `<div class="ov-t ov-small${skel}" style="--col:${start + i * span} / span ${span};--row:${loadingOn ? 3 : 4}">
+          <div class="ov-t-top"><span class="ov-t-label">${label(k)}</span></div>
+          <div class="ov-t-value">${val === null || val === undefined ? '<span class="ov-none">—</span>' : ovNum(val, 1) + `<span class="ov-unit">${k === 'utility' ? 'km' : 'h'}</span>`}</div>
+          <div class="ov-t-sub">${pending ? '…' : sub}</div>${ovBar(s)}</div>`;
       }).join('');
 
       host.innerHTML = hero + loadingTile + smallTiles;
-      ovCountUp(host);
-      if (!pending) _ovFirstPaint = false;
 
       document.getElementById('ov-quiet').innerHTML = quiet.length
-        ? '<span>Not deployed in this period:</span>' + quiet.map(k => `<span class="ov-pill"><i class="fi fi-rr-${OV_CLASS_UI[k].ico}" aria-hidden="true"></i>${label(k)}</span>`).join('')
+        ? `Nothing deployed ${ovRangeWord()}: ` + quiet.map(label).join(', ') + '.'
         : '';
 
       const stray = rows.filter(r => !r.info);
       const strayTypes = [...new Set(stray.map(r => r.rawType || 'blank type'))].slice(0, 3).join(', ');
       const notes = [];
       if (stray.length) notes.push(`${new Set(stray.map(r => r.unit)).size} unit(s) have an equipment type not in any class (${strayTypes}) and are left out of the tiles.`);
-      if (rows.some(r => !ovShiftEnded(r.date, r.shift))) notes.push('Readings % counts finished shifts only.');
+      if (rows.some(r => !ovShiftEnded(r.date, r.shift))) notes.push('Readings count finished shifts only.');
       document.getElementById('ov-note').textContent = notes.join(' ');
     }
 
@@ -15854,7 +15783,7 @@
       const rows = ovScopedRows();
       const due = rows.filter(r => ovShiftEnded(r.date, r.shift));
       return {
-        ready,
+        ready, due: due.length,
         missing: due.filter(r => ovStatus(r) === 'missing').length,
         partial: due.filter(r => ovStatus(r) === 'partial').length,
         gaps: rows.filter(r => { const g = ovGapMin(r); return g !== null && g > OV_GAP_LIMIT_MIN; }).length,
@@ -15864,47 +15793,46 @@
     function ovRenderAttention() {
       const host = document.getElementById('ov-attention');
       if (!host) return;
-      const row = (tone, icon, title, desc, target, action) => {
+      const row = (tone, n, title, desc, target, action) => {
         const go = target && canSeeShiftOps();
-        const inner = `<span class="ov-chipico ${tone}"><i class="fi fi-rr-${icon}" aria-hidden="true"></i></span>
-          <span class="ov-row-text"><b>${title}</b><small>${desc}</small></span>${go ? `<span class="ov-row-go">${action} <i class="fi fi-rr-angle-small-right" aria-hidden="true"></i></span>` : ''}`;
+        const inner = `<span class="ov-row-n ov-${tone}">${n}</span>
+          <span class="ov-row-text"><b>${title}</b><small>${desc}</small></span>${go ? `<span class="ov-row-go">${action} →</span>` : ''}`;
         return go ? `<button class="ov-row" onclick="ovGo('${target}')">${inner}</button>` : `<div class="ov-row">${inner}</div>`;
       };
-      if (_ov.loading && !_ov.rows.length) { host.innerHTML = row('warn', 'refresh', 'Checking readings…', 'This takes a few seconds'); return; }
+      if (_ov.loading && !_ov.rows.length) { host.innerHTML = row('none', '…', 'Reading shift readings and flags', 'Usually a few seconds'); return; }
       if (_ov.error) {
-        host.innerHTML = `<div class="ov-row"><span class="ov-chipico bad"><i class="fi fi-rr-triangle-warning" aria-hidden="true"></i></span><span class="ov-row-text"><b>Could not load readings data</b><small>Check your connection</small></span><button class="ov-link" onclick="_ov.at=0;ovLoad()">Retry</button></div>`;
+        host.innerHTML = `<div class="ov-row"><span class="ov-row-n ov-bad">!</span><span class="ov-row-text"><b>Shift readings did not load</b><small>The server did not answer. Check the connection, then retry.</small></span><button class="ov-link" onclick="_ov.at=0;ovLoad()">Retry</button></div>`;
         return;
       }
       const c = ovAttentionCounts();
       const out = [];
-      if (c.missing) out.push(row('bad', 'triangle-warning', plural(c.missing, 'shift reading') + ' missing', 'Shifts ended with no reading submitted', 'compliance', 'Review'));
-      if (c.partial) out.push(row('bad', 'clipboard-exclamation', plural(c.partial, 'shift reading') + ' incomplete', 'Opening or closing reading not entered', 'compliance', 'Review'));
-      if (c.gaps) out.push(row('warn', 'clock', `${plural(c.gaps, 'changeover gap')} over ${OV_GAP_LIMIT_MIN} min`, 'Deployed to first reading took too long', 'changeover', 'Open'));
-      if (c.flags) out.push(row('warn', 'flag', plural(c.flags, 'unresolved reading flag'), 'Waiting for review in the flags queue', 'compliance', 'Flags queue'));
-      host.innerHTML = out.join('') || row('ok', 'check-circle', 'Nothing needs attention', 'All readings and changeovers look healthy for this period');
+      if (c.missing) out.push(row('bad', c.missing, c.missing === 1 ? 'shift reading missing' : 'shift readings missing', 'Shift ended and no reading was submitted', 'compliance', 'Compliance'));
+      if (c.partial) out.push(row('bad', c.partial, c.partial === 1 ? 'shift reading incomplete' : 'shift readings incomplete', 'Opening or closing reading not entered', 'compliance', 'Compliance'));
+      if (c.gaps) out.push(row('warn', c.gaps, c.gaps === 1 ? `changeover gap over ${OV_GAP_LIMIT_MIN} min` : `changeover gaps over ${OV_GAP_LIMIT_MIN} min`, 'Deployed, then more than 45 min to the opening reading', 'changeover', 'Changeover'));
+      if (c.flags) out.push(row('warn', c.flags, c.flags === 1 ? 'unresolved reading flag' : 'unresolved reading flags', 'Open in the flags queue, oldest first', 'compliance', 'Flags queue'));
+      host.innerHTML = out.join('') || row('ok', '0', 'Nothing open', c.due ? `All ${c.due} due shift readings are in as of ${ovClock(new Date())}` : `No shift readings were due as of ${ovClock(new Date())}`);
     }
 
-    // ── header: greeting, one-line summary, live status, shift timeline ──
+    // ── header: date, shift, one factual line ──
     function ovRenderHead() {
-      const greetEl = document.getElementById('ov-greet');
-      if (!greetEl) return;
-      const h = new Date().getHours();
-      const first = String((currentUser && currentUser.name) || '').trim().split(/\s+/)[0];
-      const hello = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-      greetEl.textContent = first ? `${hello}, ${first[0].toUpperCase()}${first.slice(1).toLowerCase()}` : hello;
+      const dateEl = document.getElementById('ov-greet');
+      if (!dateEl) return;
+      const now = new Date();
+      const segs = ['A', 'B', 'C'];
+      const m = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440;
+      const cur = Math.floor(m / 480), left = 480 - (m - cur * 480);
+      dateEl.textContent = `${now.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${segs[cur]} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
       const trips = ovScopedTrips().length;
       const shifts = activeFilters.shifts;
-      const shiftWord = shifts.size === 1 ? ` on Shift ${[...shifts][0]}` : '';
+      const shiftWord = shifts.size === 1 ? `, Shift ${[...shifts][0]} only` : '';
       const c = ovAttentionCounts();
-      const bits = [], nums = [];
-      [[c.missing, 'missing reading'], [c.partial, 'incomplete reading'], [c.gaps, 'changeover gap'], [c.flags, 'unresolved flag']]
-        .forEach(([n, w]) => { if (n) { bits.push(plural(n, w)); nums.push(n); } });
-      const one = bits.length === 1 && nums[0] === 1;
-      const list = bits.length > 1 ? bits.slice(0, -1).join(', ') + ' and ' + bits[bits.length - 1] : bits[0];
-      const tail = !c.ready ? '' : bits.length
-        ? ` <span class="ov-need">${list} ${one ? 'needs' : 'need'} attention.</span>`
-        : ' <span class="ov-clear">Everything is on track.</span>';
-      document.getElementById('ov-summary').innerHTML = `<b>${trips.toLocaleString('en-IN')} trips</b> ${ovRangeWord()}${shiftWord}.${tail}`;
+      const open = [];
+      if (c.missing) open.push(plural(c.missing, 'missing reading'));
+      if (c.partial) open.push(plural(c.partial, 'incomplete reading'));
+      if (c.gaps) open.push(plural(c.gaps, 'changeover gap'));
+      if (c.flags) open.push(plural(c.flags, 'unresolved flag'));
+      const tail = !c.ready ? '' : open.length ? ` Open: <span class="ov-need">${open.join(', ')}.</span>` : ` <span class="ov-clear">No open items.</span>`;
+      document.getElementById('ov-summary').innerHTML = `<b>${trips.toLocaleString('en-IN')} trips</b> ${ovRangeWord()}${shiftWord}, counted to ${ovClock(now)}.${tail}`;
       ovTick();
     }
     function ovAgo(ms) {
@@ -15915,7 +15843,7 @@
       const live = document.getElementById('ov-live');
       if (!live) return;
       live.classList.toggle('off', !!_ov.error);
-      document.getElementById('ov-live-text').textContent = _ov.error ? 'Offline · retrying' : (_ov.updatedAt ? `Live · updated ${ovAgo(Date.now() - _ov.updatedAt)}` : 'Live');
+      document.getElementById('ov-live-text').textContent = _ov.error ? 'Not updating' : (_ov.updatedAt ? `Updated ${ovAgo(Date.now() - _ov.updatedAt)}` : 'Waiting for data');
       ovRenderShiftBar();
     }
     function ovRenderShiftBar() {
@@ -15924,13 +15852,12 @@
       const now = new Date();
       const m = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440; // minutes since 06:00
       const segs = [['A', '06–14'], ['B', '14–22'], ['C', '22–06']];
-      const cur = Math.floor(m / 480), left = 480 - (m - cur * 480);
+      const cur = Math.floor(m / 480);
       host.innerHTML = `<div class="ov-sb-track">${segs.map(([n, r], i) => {
         const state = i < cur ? 'past' : i === cur ? 'now' : '';
         const fill = i === cur ? `<i style="width:${(m - i * 480) / 480 * 100}%"></i>` : '';
-        return `<div class="ov-sb-seg ${state}">${fill}<span>${n} · ${r}</span></div>`;
-      }).join('')}<div class="ov-sb-now" style="left:${m / 1440 * 100}%"></div></div>
-        <div class="ov-sb-cap">Shift ${segs[cur][0]} · ${Math.floor(left / 60)}h ${left % 60}m left</div>`;
+        return `<div class="ov-sb-seg ${state}">${fill}<span>${n} ${r}</span></div>`;
+      }).join('')}<div class="ov-sb-now" style="left:${m / 1440 * 100}%"></div></div>`;
     }
 
     function ovRenderHaulStrip() {
