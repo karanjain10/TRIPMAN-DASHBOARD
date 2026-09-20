@@ -5801,12 +5801,12 @@
        Figures in IBM Plex Mono, labels in DM Sans. Amber is the only accent;
        green / amber / red appear only where they mean a status. */
     :root {
-      --brand: #1a3a5c;        /* numbers, headings, links (the Total Trips blue) */
-      --brand-fill: #1a3a5c;   /* solid fills: bars, active buttons */
+      --brand: #0f2540;        /* numbers, headings, links: the Total Trips blue, darkened */
+      --brand-fill: #0f2540;   /* solid fills: bars, active buttons */
       --brand-soft: #e8eef5;   /* active nav background */
       --rule: #cfccc2; --track: #e6e3da; --hover: #f7f5ef;
       --seg: #f6dfb8; --seg-past: #ece9e1; --amber: #e8890c;
-      --sh-a: #8fb0d8; --sh-b: #4a78b0; --sh-c: #1a3a5c;
+      --sh-a: #8fb0d8; --sh-b: #3d6699; --sh-c: #0f2540;
       --mat-coal: #334155; --mat-soft: #f59e0b; --mat-hard: #ef4444; --mat-rehand: #3b82f6;
     }
     :root[data-theme="dark"] {
@@ -5873,6 +5873,14 @@
     em.sh-a { background: var(--sh-a); } em.sh-b { background: var(--sh-b); } em.sh-c { background: var(--sh-c); }
     .ov-spark-note { margin-top: 4px; font-size: 11.5px; color: var(--text-muted); }
     .ov-loading-foot { margin-top: 6px; }
+    .ov-rate-head { margin-top: 20px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); }
+    .ov-rate { display: flex; gap: 14px; align-items: flex-end; margin-top: 10px; height: 118px; }
+    .ov-rate-col { flex: 1; max-width: 120px; height: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
+    .ov-rate-val { font-size: 24px; font-weight: 500; color: var(--brand); text-align: left; line-height: 1; }
+    .ov-rate-bar { flex: 1; display: flex; align-items: flex-end; background: var(--track); }
+    .ov-rate-bar i { display: block; width: 100%; }
+    .ov-rate-bar i.sh-a { background: var(--sh-a); } .ov-rate-bar i.sh-b { background: var(--sh-b); } .ov-rate-bar i.sh-c { background: var(--sh-c); }
+    .ov-rate-shift { font-size: 12px; color: var(--text-secondary); }
     .ov-spark-cap { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
     .ov-mat { display: flex; height: 6px; margin-top: 20px; gap: 1px; background: var(--surface); }
     .ov-mat i { display: block; min-width: 2px; }
@@ -15810,19 +15818,29 @@
           <div class="ov-hero-bar">${ovBar(h)}</div>
         </div></div>`;
 
-      // Loading: second largest. Production excavators only; trips per hour split by shift.
+      // Loading: hours on the meter, plus trips per machine hour for each shift.
+      // Production excavators only (mine development machines are left out).
       let loadingTile = '';
       if (loadingOn) {
         const l = stats.loading;
-        const lt = ovLoaderTrips(trips);
-        const ser = ovSeries(lt);
-        const byShift = ['A', 'B', 'C'].map(k => [k, ser.slots.reduce((n, s) => n + s[k], 0)]);
+        const shownShifts = activeFilters.shifts.size ? ['A', 'B', 'C'].filter(k => activeFilters.shifts.has(k)) : ['A', 'B', 'C'];
+        const loaderTrips = ovLoaderTrips(allTrips);
+        const rate = shownShifts.map(k => {
+          const tripsK = loaderTrips.filter(t => (t.shift || ovShiftOfHour(new Date(t.timestamp).getHours())) === k).length;
+          const hoursK = _ov.rows.filter(r => r.info && r.info.cls === 'loading' && !r.mineDev && r.shift === k)
+            .map(r => ovDelta(r, 'HMR')).filter(x => x !== null).reduce((a, b) => a + b, 0);
+          return { k, trips: tripsK, hours: hoursK, perHour: hoursK > 0 ? tripsK / hoursK : null };
+        });
+        const top = Math.max(...rate.map(r => r.perHour || 0), 1);
         loadingTile = `<div class="ov-t ov-loadingt${smalls.length ? '' : ' tall'}${skel}">
           <div class="ov-t-top"><span class="ov-t-label">Loading</span></div>
-          <div class="ov-t-value">${ovNum(lt.length)}<span class="ov-unit">Trips loaded</span></div>
-          <div class="ov-t-sub">${pending ? '…' : `${plural(l.units, 'excavator')} in production${l.hours === null ? '' : ` · ${l.hours.toLocaleString('en-IN', { maximumFractionDigits: 1 })} h on the meter`}`}</div>
-          ${ovBars(ser, true)}
-          <div class="ov-mat-legend">${byShift.map(([k, v]) => `<span><em class="sh-${k.toLowerCase()}"></em>Shift ${k}<b>${v.toLocaleString('en-IN')}</b></span>`).join('')}</div>
+          <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
+          <div class="ov-t-sub">${pending ? '…' : `${plural(l.units, 'excavator')} in production · Hours from closed readings`}</div>
+          <div class="ov-rate-head">Trips per hour, by shift</div>
+          <div class="ov-rate">${rate.map(r => `<div class="ov-rate-col" title="${r.trips} trips over ${r.hours.toLocaleString('en-IN', { maximumFractionDigits: 1 })} h">
+            <span class="ov-rate-val ov-num">${r.perHour === null ? '—' : r.perHour.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+            <span class="ov-rate-bar"><i class="sh-${r.k.toLowerCase()}" style="height:${r.perHour === null ? 0 : Math.max(r.perHour / top * 100, 3)}%"></i></span>
+            <span class="ov-rate-shift">Shift ${r.k}</span></div>`).join('')}</div>
           <div class="ov-loading-foot">${ovBar(l)}</div></div>`;
       }
 
