@@ -15998,9 +15998,27 @@
         const deployed = r.deployedAt ? new Date(r.deployedAt).getTime() : 0;
         const ref = last || Math.max(deployed, shiftStart.getTime());
         const min = Math.round((now - ref) / 60000);
-        if (min > OV_SILENT_MIN) out.push({ name: `${cap(r.info.name)} ${r.code || r.unit}`, min, none: !last });
+        if (min > OV_SILENT_MIN) out.push({ type: cap(r.info.name), code: String(r.code || r.unit), min, none: !last });
       });
       return out.sort((a, b) => b.min - a.min);
+    }
+
+    // One line per machine type: "Tippers 35, 36, 37 · no trips this shift".
+    // Machines that did trip earlier get their minutes in brackets: "Excavator E4 (52 min)".
+    function ovSilentText(list) {
+      const groups = new Map();
+      list.forEach(u => {
+        const k = `${u.type}|${u.none}`;
+        if (!groups.has(k)) groups.set(k, { type: u.type, none: u.none, items: [] });
+        groups.get(k).items.push(u);
+      });
+      const MAX = 8;
+      return [...groups.values()].map(g => {
+        const items = g.items.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+        const codes = items.slice(0, MAX).map(u => g.none ? u.code : `${u.code} (${u.min} min)`).join(', ');
+        const more = items.length > MAX ? ` and ${items.length - MAX} more` : '';
+        return `${items.length > 1 ? g.type + 's' : g.type} ${codes}${more}${g.none ? ' · no trips this shift' : ''}`;
+      }).join('<br>');
     }
 
     // ── needs attention ──
@@ -16034,9 +16052,8 @@
       const c = ovAttentionCounts();
       const out = [];
       if (c.silent.length) {
-        const shown = c.silent.slice(0, 3).map(u => `${u.name} · ${u.none ? 'no trips this shift' : u.min + ' min'}`).join(', ');
         out.push(row(c.silent.some(u => u.min > 90) ? 'bad' : 'warn', c.silent.length, c.silent.length === 1 ? `Machine silent for over ${OV_SILENT_MIN} min` : `Machines silent for over ${OV_SILENT_MIN} min`,
-          shown + (c.silent.length > 3 ? ` and ${c.silent.length - 3} more` : ''), 'deployments', 'Deployments'));
+          ovSilentText(c.silent), 'deployments', 'Deployments'));
       }
       if (c.missing) out.push(row('bad', c.missing, c.missing === 1 ? 'Shift reading missing' : 'Shift readings missing', 'Shift ended and no reading was submitted', 'compliance', 'Compliance'));
       if (c.partial) out.push(row('bad', c.partial, c.partial === 1 ? 'Shift reading incomplete' : 'Shift readings incomplete', 'Opening or closing reading not entered', 'compliance', 'Compliance'));
