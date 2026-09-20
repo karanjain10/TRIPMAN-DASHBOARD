@@ -5878,12 +5878,9 @@
     .ov-spark-note { margin-top: 4px; font-size: 11.5px; color: var(--text-muted); }
     .ov-loading-foot { margin-top: 6px; }
     .ov-rate-head { margin-top: 20px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); }
-    .ov-rate { display: flex; gap: 14px; align-items: flex-end; margin-top: 10px; height: 118px; }
-    .ov-rate-col { flex: 1; max-width: 120px; height: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 4px; }
-    .ov-rate-val { font-size: 24px; font-weight: 500; color: var(--brand); text-align: left; line-height: 1; }
-    .ov-rate-bar { flex: 1; display: flex; align-items: flex-end; background: var(--track); }
-    .ov-rate-bar i { display: block; width: 100%; }
-    .ov-rate-bar i.sh-a { background: var(--sh-a); } .ov-rate-bar i.sh-b { background: var(--sh-b); } .ov-rate-bar i.sh-c { background: var(--sh-c); }
+    .ov-rate { display: flex; flex-wrap: wrap; gap: 8px 32px; margin-top: 10px; }
+    .ov-rate-col { display: flex; flex-direction: column; gap: 4px; }
+    .ov-rate-val { font-size: 30px; font-weight: 500; color: var(--brand); line-height: 1; }
     .ov-rate-shift { font-size: 12px; color: var(--text-secondary); }
     .ov-spark-cap { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
     .ov-mat { display: flex; height: 6px; margin-top: 20px; gap: 1px; background: var(--surface); }
@@ -5969,6 +5966,22 @@
       .cmdk-pill span, .cmdk-pill kbd { display: none; }
       .cmdk-pill { width: 32px; padding: 0; justify-content: center; }
     }
+
+    /* print layout for "Save as PDF": header + summary + cards only */
+    .ov-print-title { display: none; }
+    @media print { @page { size: A4 landscape; margin: 12mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    body.ov-printing { background: #fff; }
+    body.ov-printing .topbar, body.ov-printing .app-nav, body.ov-printing #sidebar, body.ov-printing #sidebar-overlay,
+    body.ov-printing .ov-toolbar, body.ov-printing .date-custom-row, body.ov-printing .ov-head-right,
+    body.ov-printing #ov-sec-attention, body.ov-printing #ov-sec-haulage, body.ov-printing .ov-quiet, body.ov-printing .ov-note,
+    body.ov-printing .ov-linkbtn, body.ov-printing .toast, body.ov-printing .cmdk-overlay { display: none !important; }
+    body.ov-printing .main-layout { display: block; }
+    body.ov-printing #app .content { padding: 0; }
+    body.ov-printing .ov-print-title { display: block; font-size: 13px; font-weight: 600; color: var(--brand); margin-bottom: 6px; }
+    body.ov-printing .ov-head { margin-bottom: 14px; }
+    body.ov-printing .ov-tiles { display: grid; break-inside: avoid; }
+    body.ov-printing .ov-hero { border-bottom: none; }
+    body.ov-printing .ov-hero .ov-t-value { font-size: 72px; }
   </style>
 </head>
 
@@ -6119,6 +6132,7 @@
         <!-- PAGE HEADER: greeting, live status, shift timeline -->
         <header class="ov-head" id="ov-head">
           <div class="ov-head-left">
+            <div class="ov-print-title" id="ov-print-title"></div>
             <div class="ov-greet" id="ov-greet">&nbsp;</div>
             <div class="ov-summary" id="ov-summary"></div>
           </div>
@@ -6145,7 +6159,8 @@
           <button class="date-btn" onclick="openSidebar()">
             <i class="fi fi-rr-settings-sliders" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Filters<span id="ov-filter-count" class="ov-filter-count" style="display:none;"></span>
           </button>
-          <button class="action-btn" onclick="refreshData()" style="margin-left:auto;" title="Refresh"><i class="fi fi-rr-refresh" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Refresh</button>
+          <button class="action-btn" onclick="ovSavePdf()" style="margin-left:auto;" title="Save the header and the five cards as a PDF"><i class="fi fi-rr-file-pdf" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Save as PDF</button>
+          <button class="action-btn" onclick="refreshData()" title="Refresh"><i class="fi fi-rr-refresh" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Refresh</button>
           <span id="trips-auto-refresh-indicator" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;"></span>
         </div>
 
@@ -15558,9 +15573,7 @@
       const live = [], history = [], readings = [];
       let failed = 0;
       try {
-        const flagsParams = new URLSearchParams({ resolved: 'false', limit: '1', offset: '0', date_from: start, date_to: end || start });
-        const flagsPromise = apiFetch(`${API}/reading-flags?${flagsParams}`)
-          .then(r => r.ok ? r.json() : null).catch(() => null);
+        const flagsPromise = ovFetchFlagCount(start, end || start);
         await Promise.all(dates.map(async d => {
           const p = new URLSearchParams({ date: d });
           try {
@@ -15579,7 +15592,7 @@
         const flagsRes = await flagsPromise;
         if (token !== _ovToken) return; // a newer load superseded this one
         _ov.rows = ovBuildRows(live, history, readings, start, end || start);
-        _ov.flags = flagsRes ? srcFlagItems(flagsRes).total : null;
+        _ov.flags = flagsRes;
         _ov.error = dates.length > 0 && failed >= dates.length * 2;
       } catch (e) {
         if (token !== _ovToken) return;
@@ -15587,6 +15600,23 @@
       }
       _ov.key = key; _ov.at = Date.now(); _ov.loading = false;
       ovRender();
+    }
+
+    // Unresolved flags whose reading date falls inside the range. The endpoint's own
+    // total can cover every date, so the items are fetched and dated on this side.
+    async function ovFetchFlagCount(start, end) {
+      try {
+        const items = [];
+        for (let offset = 0, page = 0; page < 6; page++, offset += 500) {
+          const p = new URLSearchParams({ resolved: 'false', limit: '500', offset: String(offset), date_from: start, date_to: end });
+          const res = await apiFetch(`${API}/reading-flags?${p}`);
+          if (!res.ok) return null;
+          const got = srcFlagItems(await res.json()).items;
+          items.push(...got);
+          if (got.length < 500) break;
+        }
+        return items.filter(f => !f.resolved && dashboardDateInRange(srcFlagDate(f) || dashboardDate(f.flagged_at || f.created_at || f.timestamp), start, end)).length;
+      } catch (_) { return null; }
     }
 
     // One row per unit + shift + date. Same reading-matching rules as Shift Compliance
@@ -15836,16 +15866,15 @@
             .map(r => ovDelta(r, 'HMR')).filter(x => x !== null).reduce((a, b) => a + b, 0);
           return { k, trips: tripsK, hours: hoursK, perHour: hoursK > 0 ? tripsK / hoursK : null };
         });
-        const top = Math.max(...rate.map(r => r.perHour || 0), 1);
+        const withData = rate.filter(r => r.perHour !== null); // shifts with no hours are left out silently
         loadingTile = `<div class="ov-t ov-loadingt${skel}">
           <div class="ov-t-top"><span class="ov-t-label">Loading</span></div>
           <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
           <div class="ov-t-sub">${pending ? '…' : `${plural(l.units, 'excavator')}, ${prodUnits} in production · Hours from closed readings`}</div>
-          <div class="ov-rate-head">Trips per hour, by shift (production only)</div>
-          <div class="ov-rate">${rate.map(r => `<div class="ov-rate-col" title="${r.trips} trips over ${r.hours.toLocaleString('en-IN', { maximumFractionDigits: 1 })} production hours">
-            <span class="ov-rate-val ov-num">${r.perHour === null ? '—' : r.perHour.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
-            <span class="ov-rate-bar"><i class="sh-${r.k.toLowerCase()}" style="height:${r.perHour === null ? 0 : Math.max(r.perHour / top * 100, 3)}%"></i></span>
-            <span class="ov-rate-shift">Shift ${r.k}</span></div>`).join('')}</div>
+          ${withData.length ? `<div class="ov-rate-head">Trips per hour, by shift (production only)</div>
+          <div class="ov-rate">${withData.map(r => `<div class="ov-rate-col" title="${r.trips} trips over ${r.hours.toLocaleString('en-IN', { maximumFractionDigits: 1 })} production hours">
+            <span class="ov-rate-val ov-num">${r.perHour.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+            <span class="ov-rate-shift">Shift ${r.k}</span></div>`).join('')}</div>` : ''}
           <div class="ov-loading-foot">${ovBar(l)}</div></div>`;
       }
 
@@ -15909,7 +15938,7 @@
       if (c.missing) out.push(row('bad', c.missing, c.missing === 1 ? 'Shift reading missing' : 'Shift readings missing', 'Shift ended and no reading was submitted', 'compliance', 'Compliance'));
       if (c.partial) out.push(row('bad', c.partial, c.partial === 1 ? 'Shift reading incomplete' : 'Shift readings incomplete', 'Opening or closing reading not entered', 'compliance', 'Compliance'));
       if (c.gaps) out.push(row('warn', c.gaps, c.gaps === 1 ? `Changeover gap over ${OV_GAP_LIMIT_MIN} min` : `Changeover gaps over ${OV_GAP_LIMIT_MIN} min`, 'Deployed, then more than 45 min to the opening reading', 'changeover', 'Changeover'));
-      if (c.flags) out.push(row('warn', c.flags, c.flags === 1 ? 'Unresolved reading flag' : 'Unresolved reading flags', 'Open in the flags queue, oldest first', 'compliance', 'Flags queue'));
+      if (c.flags) out.push(row('warn', c.flags, c.flags === 1 ? 'Unresolved reading flag' : 'Unresolved reading flags', 'Flagged readings from this period, not yet reviewed', 'compliance', 'Flags queue'));
       host.innerHTML = out.join('') || row('ok', '0', 'Nothing open', c.due ? `All ${c.due} due shift readings are in as of ${ovClock(new Date())}` : `No shift readings were due as of ${ovClock(new Date())}`);
     }
 
@@ -15990,6 +16019,26 @@
       ovRenderTiles();
     }
 
+    // ── Save as PDF: prints only the header line, the summary and the five cards ──
+    // Uses the browser's print dialog ("Save as PDF" destination), so the text stays sharp.
+    function ovSavePdf() {
+      ovRenderHead(); // refresh the "counted to" time before it is printed
+      const wasDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const oldTitle = document.title;
+      document.getElementById('ov-print-title').textContent = `Tripman · ${currentCompanyName || currentCompanyCode || ''} · Fleet overview`;
+      document.title = `Tripman overview ${ovLocalDate(new Date())}${currentCompanyCode ? ' ' + currentCompanyCode : ''}`;
+      document.body.classList.add('ov-printing');
+      if (wasDark) document.documentElement.removeAttribute('data-theme'); // print on white
+      const done = () => {
+        window.removeEventListener('afterprint', done);
+        document.body.classList.remove('ov-printing');
+        if (wasDark) document.documentElement.setAttribute('data-theme', 'dark');
+        document.title = oldTitle;
+      };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 60);
+    }
+
     // ── command palette (⌘K / Ctrl+K) ──
     let _cmdk = { items: [], shown: [], sel: 0 };
     function ovCmdkOpen() {
@@ -15997,6 +16046,7 @@
         label: b.textContent.trim(), icon: (b.querySelector('.fi') || {}).className || 'fi fi-rr-apps', run: () => navGo(b.dataset.nav)
       }));
       _cmdk.items = nav.concat([
+        { label: 'Save overview as PDF', icon: 'fi fi-rr-file-pdf', run: ovSavePdf },
         { label: 'Refresh data', icon: 'fi fi-rr-refresh', run: refreshData },
         { label: 'Open full trips view', icon: 'fi fi-rr-truck-side', run: () => ovToggleTrips(true) },
         { label: 'Open trip filters', icon: 'fi fi-rr-settings-sliders', run: openSidebar },
