@@ -5871,10 +5871,12 @@
     .ov-small { padding: 14px 16px; }
     .ov-small .ov-t-value { font-size: 24px; margin-top: 8px; }
     .ov-small .ov-t-sub { overflow-wrap: anywhere; }
-    .ov-spark { margin-top: 20px; width: 100%; height: 72px; display: block; }
-    .ov-rect { fill: var(--brand-fill); } .ov-rect.now { fill: var(--amber); }
-    rect.sh-a { fill: var(--sh-a); } rect.sh-b { fill: var(--sh-b); } rect.sh-c { fill: var(--sh-c); }
-    em.sh-a { background: var(--sh-a); } em.sh-b { background: var(--sh-b); } em.sh-c { background: var(--sh-c); }
+    .ov-chart { margin-top: 20px; }
+    .ov-hbars { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
+    .ov-hcol { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+    .ov-hbar { display: block; background: var(--brand-fill); }
+    .ov-hbar.now { background: var(--amber); }
+    .ov-hcount, .ov-htick { display: none; text-align: center; font-family: var(--font-mono); line-height: 1; }
     .ov-spark-note { margin-top: 4px; font-size: 11.5px; color: var(--text-muted); }
     .ov-loading-foot { margin-top: 6px; }
     .ov-rate-head { margin-top: 20px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); }
@@ -5967,6 +5969,22 @@
       .cmdk-pill { width: 32px; padding: 0; justify-content: center; }
     }
 
+
+    /* collapsible left menu (desktop): icon rail, saved per browser */
+    .nav-collapse { display: none; }
+    @media (min-width: 901px) {
+      .nav-collapse { display: inline-flex; align-items: center; justify-content: center; align-self: flex-end; width: 28px; height: 28px; margin: -4px 0 4px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-secondary); cursor: pointer; font-size: 14px; }
+      .nav-collapse:hover { color: var(--brand); border-color: var(--brand-fill); }
+      .app-nav { transition: width .18s ease; }
+      .app-nav.collapsed { width: 64px; padding-left: 10px; padding-right: 10px; }
+      .app-nav.collapsed .nav-collapse { align-self: center; }
+      .app-nav.collapsed .nav-collapse .fi { transform: rotate(180deg); }
+      .app-nav.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+      .app-nav.collapsed .nav-item span, .app-nav.collapsed .nav-foot { display: none; }
+      .app-nav.collapsed .nav-item .fi { font-size: 18px; }
+      .app-nav.collapsed .nav-group { font-size: 0; height: 1px; padding: 0; margin: 12px 8px; background: var(--rule); }
+    }
+    @media (prefers-reduced-motion: reduce) { .app-nav { transition: none; } }
     /* print layout for "Save as PDF": header + summary + cards only */
     .ov-print-title { display: none; }
     @media print { @page { size: A4 landscape; margin: 12mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -5977,7 +5995,13 @@
     body.ov-printing .ov-linkbtn, body.ov-printing .toast, body.ov-printing .cmdk-overlay { display: none !important; }
     body.ov-printing .main-layout { display: block; }
     body.ov-printing #app .content { padding: 0; }
-    body.ov-printing .ov-print-title { display: block; font-size: 13px; font-weight: 600; color: var(--brand); margin-bottom: 6px; }
+    body.ov-printing .ov-print-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--brand); margin-bottom: 10px; }
+    body.ov-printing .ov-print-title .topbar-tripman-logo { margin-right: 0; }
+    /* Subtle counts in the PDF: small, muted mono figures above each bar, hour under it */
+    body.ov-printing .ov-hbars { height: 84px; }
+    body.ov-printing .ov-hcount { display: block; font-size: 8.5px; color: var(--text-secondary); margin-bottom: 2px; }
+    body.ov-printing .ov-htick { display: block; font-size: 8px; color: var(--text-muted); margin-top: 3px; }
+    body.ov-printing .ov-chart.hourly .ov-spark-cap { display: none; }
     body.ov-printing .ov-head { margin-bottom: 14px; }
     body.ov-printing .ov-tiles { display: grid; break-inside: avoid; }
     body.ov-printing .ov-hero { border-bottom: none; }
@@ -6039,6 +6063,7 @@
 
       <!-- LEFT NAV -->
       <nav class="app-nav" id="app-nav" aria-label="Main navigation">
+        <button class="nav-collapse" id="nav-collapse" onclick="navToggleCollapse()" aria-label="Collapse menu" title="Collapse menu"><i class="fi fi-rr-angle-double-small-left" aria-hidden="true"></i></button>
         <button class="nav-item active" data-nav="overview" onclick="navGo('overview')"><i class="fi fi-rr-apps" aria-hidden="true"></i><span>Overview</span></button>
 
         <div class="nav-group">Production</div>
@@ -6132,7 +6157,7 @@
         <!-- PAGE HEADER: greeting, live status, shift timeline -->
         <header class="ov-head" id="ov-head">
           <div class="ov-head-left">
-            <div class="ov-print-title" id="ov-print-title"></div>
+            <div class="ov-print-title" id="ov-print-title"><span class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></span><span id="ov-print-co"></span></div>
             <div class="ov-greet" id="ov-greet">&nbsp;</div>
             <div class="ov-summary" id="ov-summary"></div>
           </div>
@@ -15767,29 +15792,23 @@
       }
       return { slots, skipped };
     }
-    // Bars: one colour for the hero, or stacked by shift for the Loading tile.
-    function ovBars(series, byShift) {
+    // Hourly (or daily) trip bars. The count above each bar and the hour under it are
+    // hidden on screen and only appear in the saved PDF (see body.ov-printing).
+    function ovBars(series) {
       const { slots, skipped } = series;
       if (!slots.length) return '';
-      const W = 300, H = 72, gap = 2, bw = W / slots.length;
-      const max = Math.max(...slots.map(s => s.A + s.B + s.C), 1);
-      const bars = slots.map((s, i) => {
-        const x = i * bw + gap / 2, w = Math.max(bw - gap, 1), total = s.A + s.B + s.C;
-        const tip = `<title>${s.label}: ${total} trips${byShift ? ` (A ${s.A}, B ${s.B}, C ${s.C})` : ''}</title>`;
-        if (!byShift) {
-          const h = Math.max(total ? total / max * (H - 4) : 1, 1);
-          return `<rect class="${i === slots.length - 1 ? 'ov-rect now' : 'ov-rect'}" x="${x}" y="${H - h}" width="${w}" height="${h}">${tip}</rect>`;
-        }
-        let y = H;
-        return ['A', 'B', 'C'].map(k => {
-          if (!s[k]) return '';
-          const h = s[k] / max * (H - 4); y -= h;
-          return `<rect class="sh-${k.toLowerCase()}" x="${x}" y="${y}" width="${w}" height="${h}">${tip}</rect>`;
-        }).join('');
+      const H = 60, max = Math.max(...slots.map(s => s.A + s.B + s.C), 1);
+      const hourly = dateRange.type === 'today';
+      const cols = slots.map((s, i) => {
+        const total = s.A + s.B + s.C;
+        const h = Math.max(total ? total / max * H : 1, 1);
+        return `<div class="ov-hcol" title="${s.label}: ${total} trips"><span class="ov-hcount">${total}</span>` +
+          `<span class="ov-hbar${i === slots.length - 1 ? ' now' : ''}" style="height:${h.toFixed(1)}px"></span>` +
+          `<span class="ov-htick">${hourly ? s.label.slice(0, 2) : (slots.length <= 12 ? s.label : '')}</span></div>`;
       }).join('');
-      return `<svg class="ov-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Trips over time">${bars}</svg>
+      return `<div class="ov-chart${hourly ? ' hourly' : ''}"><div class="ov-hbars" role="img" aria-label="Trips over time">${cols}</div>
         <div class="ov-spark-cap"><span>${slots[0].label}</span><span>${slots[slots.length - 1].label}</span></div>
-        ${skipped ? `<div class="ov-spark-note">${skipped.toLocaleString('en-IN')} trips before 06:00 are not shown.</div>` : ''}`;
+        ${skipped ? `<div class="ov-spark-note">${skipped.toLocaleString('en-IN')} trips before 06:00 are not shown.</div>` : ''}</div>`;
     }
     // Trips loaded by production excavators only (mine development machines are left out).
     function ovLoaderTrips(trips) {
@@ -15845,7 +15864,7 @@
         <div class="ov-t-value">${ovNum(trips.length)}<span class="ov-unit">Trips</span></div>
         <div class="ov-t-sub">${trips.length ? cap(`${ovRangeWord()} · ${pending ? '…' : plural(h.units, 'unit')} deployed`) : `No trips logged ${ovRangeWord()} yet`}</div>
         <div class="ov-t-sub">${ovDeltaText(trips.length)}</div>
-        ${ovBars(ovSeries(trips), false)}
+        ${ovBars(ovSeries(trips))}
         <div class="ov-mat" role="img" aria-label="Trips by material">${counts.map(([n, col, v]) => `<i style="background:${col};flex-grow:${v};flex-basis:0" title="${n}: ${v}"></i>`).join('')}</div>
         <div class="ov-mat-legend">${counts.map(([n, col, v]) => `<span><em style="background:${col}"></em>${n}<b>${v.toLocaleString('en-IN')}</b></span>`).join('')}</div>
         <div class="ov-hero-foot">
@@ -16019,13 +16038,29 @@
       ovRenderTiles();
     }
 
+    // ── collapsible left menu ──
+    function navApplyCollapsed(collapsed) {
+      const nav = document.getElementById('app-nav');
+      nav.classList.toggle('collapsed', collapsed);
+      const btn = document.getElementById('nav-collapse');
+      btn.title = collapsed ? 'Expand menu' : 'Collapse menu';
+      btn.setAttribute('aria-label', btn.title);
+      nav.querySelectorAll('.nav-item').forEach(b => { b.title = collapsed ? b.textContent.trim() : ''; }); // labels become tooltips
+    }
+    function navToggleCollapse() {
+      const collapsed = !document.getElementById('app-nav').classList.contains('collapsed');
+      navApplyCollapsed(collapsed);
+      try { localStorage.setItem('tripman_nav_collapsed', collapsed ? '1' : ''); } catch (_) { }
+    }
+    try { navApplyCollapsed(localStorage.getItem('tripman_nav_collapsed') === '1'); } catch (_) { }
+
     // ── Save as PDF: prints only the header line, the summary and the five cards ──
     // Uses the browser's print dialog ("Save as PDF" destination), so the text stays sharp.
     function ovSavePdf() {
       ovRenderHead(); // refresh the "counted to" time before it is printed
       const wasDark = document.documentElement.getAttribute('data-theme') === 'dark';
       const oldTitle = document.title;
-      document.getElementById('ov-print-title').textContent = `Tripman · ${currentCompanyName || currentCompanyCode || ''} · Fleet overview`;
+      document.getElementById('ov-print-co').textContent = `${currentCompanyName || currentCompanyCode || ''} · Fleet overview`;
       document.title = `Tripman overview ${ovLocalDate(new Date())}${currentCompanyCode ? ' ' + currentCompanyCode : ''}`;
       document.body.classList.add('ov-printing');
       if (wasDark) document.documentElement.removeAttribute('data-theme'); // print on white
