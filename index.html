@@ -5674,6 +5674,140 @@
     @media (max-width:800px) { .dos-body { padding:16px; } .dos-summary { grid-template-columns:1fr; } }
 
     /* ── DEPLOYMENTS SECTION END ── */
+
+    /* ── FLEET OVERVIEW SHELL: left nav + overview ───────────────── */
+    :root {
+      --ok: #1f6b2a; --warn: #8a5a00; --bad: #a32d2d;
+      --nav-w: 232px;
+    }
+    :root[data-theme="dark"] { --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; }
+
+    .app-nav {
+      width: var(--nav-w);
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 16px 12px 20px;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .nav-group {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 16px 12px 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-primary);
+      font-family: var(--font-main);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .nav-item:hover { background: var(--bg); }
+    .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+    .nav-item:focus-visible, .ov-link:focus-visible, .ov-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .nav-foot { margin-top: auto; padding: 16px 12px 0; display: flex; flex-direction: column; gap: 4px; }
+    .nav-foot label { font-size: 11px; color: var(--text-muted); }
+    .nav-foot select {
+      height: 32px; border: 1px solid var(--border); border-radius: 7px; padding: 0 8px;
+      background: var(--bg); color: var(--text-primary); font-family: var(--font-main); font-size: 12px;
+    }
+    .nav-burger {
+      display: none; background: none; border: 1px solid var(--border); border-radius: 7px;
+      width: 34px; height: 34px; font-size: 16px; color: var(--text-secondary); cursor: pointer;
+    }
+
+    /* Trip filters become a drawer at every width */
+    #app .sidebar {
+      position: fixed; top: 56px; left: auto; right: -320px;
+      width: 300px !important; height: calc(100vh - 56px);
+      z-index: 200; transition: right 0.25s ease;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.12);
+      overflow-y: auto;
+    }
+    #app .sidebar.open { right: 0; left: auto; }
+    .drawer-head {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 15px; font-weight: 600; margin-bottom: 16px;
+    }
+    .drawer-close { background: none; border: none; font-size: 22px; line-height: 1; color: var(--text-muted); cursor: pointer; }
+    #app .content { min-width: 0; }
+
+    /* Toolbar */
+    .ov-toolbar { margin-bottom: 16px; }
+    .ov-divider { width: 1px; height: 22px; background: var(--border-strong); margin: 0 4px; }
+    select.ov-select { appearance: none; -webkit-appearance: none; padding-right: 14px; font-family: var(--font-main); }
+    .ov-filter-count {
+      margin-left: 6px; background: var(--accent); color: #fff; border-radius: 10px;
+      font-size: 11px; padding: 1px 6px;
+    }
+
+    /* Layout of the three overview sections (reordered per role via `order`) */
+    .ov-stack { display: flex; flex-direction: column; gap: 16px; }
+    .ov-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .ov-tile {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; min-height: 118px;
+    }
+    .ov-tile-label { font-size: 13px; color: var(--text-secondary); }
+    .ov-tile-value { font-size: 28px; font-weight: 600; line-height: 1.15; margin-top: 2px; }
+    .ov-tile-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .ov-tile-read { font-size: 13px; margin-top: 6px; font-weight: 500; }
+    .ov-ok { color: var(--ok); } .ov-warn { color: var(--warn); } .ov-bad { color: var(--bad); } .ov-none { color: var(--text-muted); }
+    .ov-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+    .ov-note:empty { display: none; }
+    .ov-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .ov-card-head { padding: 14px 18px; font-size: 15px; font-weight: 600; }
+    .ov-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .ov-row {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+      padding: 12px 18px; border: none; border-top: 1px solid var(--border);
+      background: transparent; color: var(--text-primary); font-family: var(--font-main);
+      font-size: 14px; text-align: left;
+    }
+    button.ov-row { cursor: pointer; }
+    button.ov-row:hover { background: var(--bg); }
+    .ov-row-text { flex: 1; }
+    .ov-row-go { color: var(--text-secondary); white-space: nowrap; }
+    .ov-row svg { flex-shrink: 0; }
+    .ov-link {
+      background: none; border: none; color: var(--text-secondary); font-family: var(--font-main);
+      font-size: 14px; font-weight: 400; cursor: pointer; padding: 0;
+    }
+    .ov-link:hover { color: var(--text-primary); }
+    .ov-haul-strip { display: flex; flex-wrap: wrap; gap: 4px 28px; padding: 0 18px 16px; color: var(--text-secondary); font-size: 15px; }
+    .ov-haul-strip b { color: var(--text-primary); font-weight: 500; }
+    #ov-trips-full { border-top: 1px solid var(--border); padding: 18px; background: var(--bg); }
+
+    @media (max-width: 1100px) { .ov-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 900px) {
+      .nav-burger { display: inline-flex; align-items: center; justify-content: center; }
+      .app-nav {
+        position: fixed; top: 56px; left: -280px; width: 264px; z-index: 200;
+        transition: left 0.25s ease; box-shadow: 4px 0 20px rgba(0, 0, 0, 0.12);
+      }
+      .app-nav.open { left: 0; }
+    }
+    @media (max-width: 640px) {
+      .ov-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .ov-tile { padding: 12px; min-height: 0; }
+      .ov-tile-value { font-size: 24px; }
+      #app .sidebar { width: 88vw !important; right: -92vw; }
+    }
   </style>
 </head>
 
@@ -5708,6 +5842,7 @@
   <div id="app">
     <div class="topbar">
       <div style="display:flex;align-items:center;gap:8px;">
+        <button class="nav-burger" id="nav-burger" onclick="openNav()" aria-label="Open menu">☰</button>
         <!-- Tripman Logo in topbar -->
         <div class="topbar-tripman-logo">
           <span class="topbar-tripman-text">Tripman</span>
@@ -5716,34 +5851,60 @@
           style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-secondary);padding:4px;display:flex;align-items:center;"
           title="Toggle Theme"></button>
       </div>
-      <div class="topbar-title"><span class="company-name-display" id="topbar-company-name"></span>Trip Reports</div>
+      <div class="topbar-title"><span class="company-name-display" id="topbar-company-name"></span>Fleet Operations</div>
       <div class="topbar-user">
         <span id="topbar-username"></span>
-        <button class="action-btn" onclick="openCutoffChooser()" style="height:30px;font-size:12px;">⏱ Cutoff
-          Check</button>
-        <button class="action-btn" onclick="openLfPage()" style="height:30px;font-size:12px;">⚖ Load Factor</button>
-        <button class="action-btn" onclick="openHandoverPage()" style="height:30px;font-size:12px;">📋 Handover</button>
-        <button class="action-btn" onclick="openReportsHub()" style="height:30px;font-size:12px;">📊 Reports</button>
-        <button class="action-btn" onclick="openHaulPage()" style="height:30px;font-size:12px;">📍 Haul Distance</button>
-        <button class="action-btn" onclick="openLiveMapPage()" style="height:30px;font-size:12px;">🗺 Live Map</button>
-        <button class="action-btn" onclick="openEqHealthPage()" style="height:30px;font-size:12px;">🔧 Equipment
-          Health</button>
-        <button class="action-btn" onclick="openDeploymentsPage()" style="height:30px;font-size:12px;">🚛 Deployments</button>
-        <button class="action-btn" id="compliance-btn" onclick="openCompliancePage()" style="height:30px;font-size:12px;display:none;">📋 Shift Compliance</button>
-        <button class="action-btn" id="changeover-btn" onclick="openChangeoverPage()" style="height:30px;font-size:12px;display:none;">⏱ Changeover Analysis</button>
-        <button class="action-btn" id="manual-trip-btn" onclick="openManualTripPage()"
-          style="height:30px;font-size:12px;display:none;background:#1a3a5c;color:#fff;border-color:#1a3a5c;">✏ Manual
-          Entry</button>
         <span class="topbar-logout" onclick="doLogout()">Sign out</span>
       </div>
     </div>
 
     <div class="main-layout">
-      <!-- MOBILE SIDEBAR OVERLAY -->
-      <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+      <!-- OVERLAY (shared by nav + filters drawers) -->
+      <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar(); closeNav()"></div>
 
-      <!-- SIDEBAR -->
+      <!-- LEFT NAV -->
+      <nav class="app-nav" id="app-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-nav="overview" onclick="navGo('overview')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+          Overview
+        </button>
+
+        <div class="nav-group">Production</div>
+        <button class="nav-item" data-nav="reports" onclick="navGo('reports')">Trips and reports</button>
+        <button class="nav-item" data-nav="loadfactor" onclick="navGo('loadfactor')">Load factor</button>
+        <button class="nav-item" data-nav="haul" onclick="navGo('haul')">Haul distance</button>
+        <button class="nav-item" data-nav="cutoff" onclick="navGo('cutoff')">Cutoff check</button>
+
+        <div class="nav-group">Fleet</div>
+        <button class="nav-item" data-nav="deployments" onclick="navGo('deployments')">Deployments</button>
+        <button class="nav-item" data-nav="eqhealth" onclick="navGo('eqhealth')">Equipment health</button>
+        <button class="nav-item" data-nav="livemap" onclick="navGo('livemap')">Live map</button>
+
+        <div class="nav-group" id="nav-group-shiftops">Shift operations</div>
+        <button class="nav-item" id="compliance-btn" data-nav="compliance" onclick="navGo('compliance')">Compliance</button>
+        <button class="nav-item" id="changeover-btn" data-nav="changeover" onclick="navGo('changeover')">Changeover</button>
+        <button class="nav-item" data-nav="handover" onclick="navGo('handover')">Handover</button>
+
+        <div class="nav-group" id="nav-group-admin" style="display:none;">Admin</div>
+        <button class="nav-item" id="manual-trip-btn" data-nav="manual" onclick="navGo('manual')" style="display:none;">Manual entry</button>
+
+        <div class="nav-foot">
+          <label for="home-view-select">Home layout</label>
+          <select id="home-view-select" onchange="ovSetHomeView(this.value)">
+            <option value="">Auto (by role)</option>
+            <option value="manager">Mines manager</option>
+            <option value="supervisor">Production supervisor</option>
+            <option value="owner">Owner</option>
+          </select>
+        </div>
+      </nav>
+
+      <!-- FILTERS DRAWER (trip filters) -->
       <div class="sidebar" id="sidebar">
+        <div class="drawer-head">
+          <span>Filters</span>
+          <button class="drawer-close" onclick="closeSidebar()" aria-label="Close filters">×</button>
+        </div>
         <!-- SHIFT -->
         <div class="filter-section">
           <div class="filter-label">Shift</div>
@@ -5795,15 +5956,24 @@
 
       <!-- CONTENT -->
       <div class="content">
-        <!-- DATE ROW -->
-        <div class="date-row">
-          <button class="filter-toggle" onclick="openSidebar()">⚙ Filters</button>
+        <!-- GLOBAL TOOLBAR: date + shift -->
+        <div class="date-row ov-toolbar">
           <button class="date-btn active" data-range="today" onclick="setDateRange('today', this)">Today</button>
-          <button class="date-btn" data-range="7" onclick="setDateRange('7', this)">7 Days</button>
-          <button class="date-btn" data-range="30" onclick="setDateRange('30', this)">30 Days</button>
+          <button class="date-btn" data-range="7" onclick="setDateRange('7', this)">7 days</button>
+          <button class="date-btn" data-range="30" onclick="setDateRange('30', this)">30 days</button>
           <button class="date-btn" data-range="custom" onclick="setDateRange('custom', this)">Custom</button>
-          <button class="action-btn" onclick="refreshData()" style="margin-left:auto;" title="Refresh">↻
-            Refresh</button>
+          <span class="ov-divider"></span>
+          <select class="date-btn ov-select" id="ov-shift-select" onchange="ovSetShift(this.value)" aria-label="Shift">
+            <option value="all">Shift: all</option>
+            <option value="A">Shift: A</option>
+            <option value="B">Shift: B</option>
+            <option value="C">Shift: C</option>
+            <option value="multi" hidden>Shift: mixed</option>
+          </select>
+          <button class="date-btn" onclick="openSidebar()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="vertical-align:-2px;margin-right:4px;"><path d="M3 4h10M3 8h10M3 12h10"/><circle cx="6" cy="4" r="1.5" fill="var(--surface)"/><circle cx="10" cy="8" r="1.5" fill="var(--surface)"/><circle cx="5" cy="12" r="1.5" fill="var(--surface)"/></svg>Filters<span id="ov-filter-count" class="ov-filter-count" style="display:none;"></span>
+          </button>
+          <button class="action-btn" onclick="refreshData()" style="margin-left:auto;" title="Refresh">↻ Refresh</button>
           <span id="trips-auto-refresh-indicator" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;"></span>
         </div>
 
@@ -5814,6 +5984,30 @@
           <button class="apply-btn" onclick="applyCustomRange()">Apply</button>
         </div>
 
+        <div class="ov-stack" id="ov-stack">
+          <!-- CLASS TILES -->
+          <section class="ov-section" id="ov-sec-tiles" style="order:1;">
+            <div class="ov-tiles" id="ov-tiles"></div>
+            <div class="ov-note" id="ov-note"></div>
+          </section>
+
+          <!-- NEEDS ATTENTION -->
+          <section class="ov-section" id="ov-sec-attention" style="order:2;">
+            <div class="ov-card">
+              <div class="ov-card-head">Needs attention</div>
+              <div id="ov-attention"></div>
+            </div>
+          </section>
+
+          <!-- HAULAGE AND LOADING (existing trips dashboard) -->
+          <section class="ov-section" id="ov-sec-haulage" style="order:3;">
+            <div class="ov-card">
+              <div class="ov-card-head ov-card-head-row">
+                <span>Haulage and loading</span>
+                <button class="ov-link" id="ov-trips-toggle" onclick="ovToggleTrips()">Open full trips view <span aria-hidden="true">›</span></button>
+              </div>
+              <div class="ov-haul-strip" id="ov-haul-strip"></div>
+              <div id="ov-trips-full" style="display:none;">
         <!-- STATS -->
         <div class="stats-row">
           <div class="stat-card stat-total">
@@ -5966,6 +6160,10 @@
             </div>
           </div>
         </div>
+              </div><!-- /ov-trips-full -->
+            </div><!-- /ov-card -->
+          </section>
+        </div><!-- /ov-stack -->
       </div>
     </div>
   </div>
@@ -8836,6 +9034,16 @@
       document.getElementById('sidebar-overlay').classList.remove('open');
     }
 
+    function openNav() {
+      document.getElementById('app-nav').classList.add('open');
+      document.getElementById('sidebar-overlay').classList.add('open');
+    }
+
+    function closeNav() {
+      document.getElementById('app-nav').classList.remove('open');
+      document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+
     // ⚠️ UPDATE THIS to your new TRIPMAN backend URL
     const API = 'https://adasa3-preview.emergent.host/api';
 
@@ -9175,6 +9383,7 @@
           allSessions = Array.isArray(sessRes) ? sessRes : (sessRes.sessions || []);
         }
         applyFilters();
+        ovLoad();
       } catch (e) {
         showToast('Failed to load trips. Check connection.');
       }
@@ -9269,6 +9478,7 @@
       setC('stat-hardob-cum',     filteredTrips.filter(t => t.material_type === 'Hard OB'));
       setC('stat-rehandling-cum', filteredTrips.filter(t => t.material_type === 'Rehandling'));
       lfUpdateHomeStat();
+      ovRenderHaulStrip();
     }
 
     function getVehicleNum(id) {
@@ -9418,6 +9628,7 @@
     }
 
     async function refreshData() {
+      _ov.at = 0; // force the Overview tiles to refetch too
       await loadTrips();
       showToast('Data refreshed');
     }
@@ -9474,6 +9685,7 @@
           chip.classList.add('active');
         }
         applyFilters();
+        ovAfterFilterChange();
       });
     });
 
@@ -14978,22 +15190,392 @@
     }
 
     // ─── ADMIN UI ─────────────────────────────────────────────────────────────────
+    // Who may open Compliance / Changeover. Owner, manager and supervisor roles use the
+    // Overview "Needs attention" list, so they are allowed through to those pages too.
+    // (Frontend gate only — the backend still decides what data each role gets.)
+    const SHIFT_OPS_ROLES = ['worker', 'admin', 'owner', 'manager', 'supervisor'];
+    function userRoleKey() {
+      return String((currentUser && (currentUser.role || currentUser.designation || currentUser.user_type)) || '')
+        .toLowerCase().replace(/[_-]+/g, ' ').trim();
+    }
+    function canSeeShiftOps() {
+      if (!currentUser) return false;
+      if (currentUser.is_admin) return true;
+      const r = userRoleKey();
+      return SHIFT_OPS_ROLES.some(k => r.includes(k));
+    }
+
     function updateAdminUI() {
-      const btn = document.getElementById('manual-trip-btn');
-      if (btn) btn.style.display = (currentUser && currentUser.is_admin === true) ? 'flex' : 'none';
-      // Compliance page: visible to worker, admin (or is_admin flag)
-      const compBtn = document.getElementById('compliance-btn');
-      if (compBtn) {
-        const role = (currentUser && (currentUser.role || '')).toLowerCase();
-        const allowed = ['worker','admin'];
-        compBtn.style.display = (currentUser && (currentUser.is_admin || allowed.includes(role))) ? 'inline-flex' : 'none';
+      const isAdmin = !!(currentUser && currentUser.is_admin === true);
+      const manual = document.getElementById('manual-trip-btn');
+      if (manual) manual.style.display = isAdmin ? 'flex' : 'none';
+      const adminGroup = document.getElementById('nav-group-admin');
+      if (adminGroup) adminGroup.style.display = isAdmin ? '' : 'none';
+      const showOps = canSeeShiftOps();
+      ['compliance-btn', 'changeover-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = showOps ? 'flex' : 'none';
+      });
+      ovApplyProfile();
+    }
+
+    // ─── FLEET OVERVIEW (home) ────────────────────────────────────────────────────
+    // Equipment classes: the single table the Overview reads. First matching entry
+    // wins, so the specific tanker types sit above the generic tipper/truck match.
+    // `readings` = which meter readings a unit of that type submits each shift.
+    const EQUIPMENT_CLASSES = [
+      { key: 'haulage',  label: 'Haulage'  },
+      { key: 'loading',  label: 'Loading'  },
+      { key: 'drilling', label: 'Drilling' },
+      { key: 'support',  label: 'Support'  },
+      { key: 'utility',  label: 'Utility'  },
+    ];
+    const EQUIPMENT_TYPES = [
+      { name: 'water tanker',  cls: 'support',  readings: ['HMR', 'KMR'], match: ['water tanker', 'water bowser', 'bowser'] },
+      { name: 'diesel tanker', cls: 'utility',  readings: ['HMR', 'KMR'], match: ['diesel'] },
+      { name: 'tipper',        cls: 'haulage',  readings: ['HMR', 'KMR'], match: ['tipper', 'dumper', 'truck'] },
+      { name: 'excavator',     cls: 'loading',  readings: ['HMR'],        match: ['excavator'] },
+      { name: 'drill',         cls: 'drilling', readings: ['HMR'],        match: ['drill'] },
+      { name: 'dozer',         cls: 'support',  readings: ['HMR'],        match: ['dozer'] },
+      { name: 'grader',        cls: 'support',  readings: ['HMR'],        match: ['grader'] },
+      { name: 'LMV',           cls: 'utility',  readings: ['KMR'],        match: ['lmv', 'light motor', 'light vehicle'] },
+    ];
+    function eqRawType(rec) {
+      return String(rec.equipment_type || rec.vehicle_type || rec.entity_type || '').trim();
+    }
+    function eqClassify(rec) {
+      const t = eqRawType(rec).toLowerCase().replace(/[_-]+/g, ' ');
+      return EQUIPMENT_TYPES.find(e => e.match.some(m => t.includes(m))) || null;
+    }
+
+    // Role → default home view. The login response's real role values are not
+    // confirmed yet (see the console line logged at sign-in), so matching is by
+    // substring with "manager" as the fallback.
+    const HOME_PROFILES = {
+      manager:    { label: 'Mines manager',         range: 'today', shift: null,      order: ['tiles', 'attention', 'haulage'] },
+      supervisor: { label: 'Production supervisor', range: 'today', shift: 'current', order: ['attention', 'tiles', 'haulage'] },
+      owner:      { label: 'Owner',                 range: '7',     shift: null,      order: ['tiles', 'haulage', 'attention'] },
+    };
+    const OV_GAP_LIMIT_MIN = 45;
+    const OV_CACHE_MS = 5 * 60 * 1000;
+    let _ov = { rows: [], flags: null, key: '', at: 0, loading: false, error: false };
+    let _ovToken = 0;
+
+    function ovStoredView() {
+      try { return localStorage.getItem('tripman_home_view') || ''; } catch (_) { return ''; }
+    }
+    function ovProfileKey() {
+      const picked = ovStoredView();
+      if (HOME_PROFILES[picked]) return picked;
+      const r = userRoleKey();
+      if (r.includes('owner')) return 'owner';
+      if (/supervisor|in ?charge|foreman/.test(r)) return 'supervisor';
+      return 'manager';
+    }
+    function ovCurrentShift() {
+      const h = new Date().getHours();
+      return h >= 6 && h < 14 ? 'A' : h >= 14 && h < 22 ? 'B' : 'C';
+    }
+
+    function ovApplyProfile(reload) {
+      if (currentUser && !reload) {
+        console.info('[home] sign-in user fields', {
+          role: currentUser.role, designation: currentUser.designation, user_type: currentUser.user_type,
+          is_admin: currentUser.is_admin, keys: Object.keys(currentUser)
+        });
       }
-      const coBtn = document.getElementById('changeover-btn');
-      if (coBtn) {
-        const role = (currentUser && (currentUser.role || '')).toLowerCase();
-        const allowed = ['worker','admin'];
-        coBtn.style.display = (currentUser && (currentUser.is_admin || allowed.includes(role))) ? 'inline-flex' : 'none';
+      const sel = document.getElementById('home-view-select');
+      if (sel) sel.value = HOME_PROFILES[ovStoredView()] ? ovStoredView() : '';
+      const profile = HOME_PROFILES[ovProfileKey()];
+      profile.order.forEach((sec, i) => {
+        const el = document.getElementById('ov-sec-' + sec);
+        if (el) el.style.order = String(i + 1);
+      });
+      dateRange.type = profile.range;
+      document.querySelectorAll('.date-btn[data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === profile.range));
+      document.getElementById('custom-row').classList.remove('visible');
+      ovSetShiftFilters(profile.shift === 'current' ? [ovCurrentShift()] : []);
+      if (reload) { _ov.at = 0; loadTrips(); }
+    }
+    function ovSetHomeView(v) {
+      try { localStorage.setItem('tripman_home_view', v); } catch (_) { }
+      ovApplyProfile(true);
+    }
+
+    // ── shift filter (shared with the Filters drawer chips) ──
+    function ovSetShiftFilters(shifts) {
+      activeFilters.shifts = new Set(shifts);
+      document.querySelectorAll('.filter-chip[data-type="shift"]').forEach(c => c.classList.toggle('active', activeFilters.shifts.has(c.dataset.val)));
+      ovSyncShiftSelect();
+    }
+    function ovSyncShiftSelect() {
+      const sel = document.getElementById('ov-shift-select');
+      if (!sel) return;
+      const n = activeFilters.shifts.size;
+      sel.value = n === 0 ? 'all' : n === 1 ? [...activeFilters.shifts][0] : 'multi';
+    }
+    function ovSetShift(v) {
+      ovSetShiftFilters(v === 'all' || v === 'multi' ? [] : [v]);
+      applyFilters();
+      ovRender();
+    }
+    function ovAfterFilterChange() {
+      ovSyncShiftSelect();
+      ovRender();
+    }
+
+    // ── navigation ──
+    function navGo(key) {
+      closeNav();
+      if (key === 'overview') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      const targets = {
+        reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
+        deployments: openDeploymentsPage, eqhealth: openEqHealthPage, livemap: openLiveMapPage,
+        compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
+        manual: openManualTripPage
+      };
+      if (targets[key]) targets[key]();
+    }
+    // From an attention row: carry the Overview date range into the target page.
+    function ovGo(key) {
+      const { start, end } = ovRange();
+      const ids = { compliance: ['src-date-from', 'src-date-to'], changeover: ['co-date-from', 'co-date-to'] }[key];
+      if (ids && start) {
+        document.getElementById(ids[0]).value = start;
+        document.getElementById(ids[1]).value = end || start;
       }
+      navGo(key);
+    }
+    function ovToggleTrips() {
+      const box = document.getElementById('ov-trips-full');
+      const open = box.style.display === 'none';
+      box.style.display = open ? 'block' : 'none';
+      document.getElementById('ov-trips-toggle').innerHTML = open
+        ? 'Hide full trips view <span aria-hidden="true">⌃</span>'
+        : 'Open full trips view <span aria-hidden="true">›</span>';
+    }
+
+    // ── data ──
+    function ovRange() {
+      const p = new URLSearchParams(buildDateParams());
+      return { start: p.get('start_date'), end: p.get('end_date') };
+    }
+    const ovHas = v => v !== undefined && v !== null && v !== '';
+
+    async function ovLoad() {
+      const { start, end } = ovRange();
+      if (!start) return;
+      const key = `${start}|${end}`;
+      if (_ov.key === key && Date.now() - _ov.at < OV_CACHE_MS && !_ov.error) { ovRender(); return; }
+      const token = ++_ovToken;
+      _ov.loading = true; _ov.error = false;
+      ovRender();
+      const dates = dashboardDateRange(start, end || start, 31);
+      const live = [], history = [], readings = [];
+      let failed = 0;
+      try {
+        const flagsParams = new URLSearchParams({ resolved: 'false', limit: '1', offset: '0', date_from: start, date_to: end || start });
+        const flagsPromise = apiFetch(`${API}/reading-flags?${flagsParams}`)
+          .then(r => r.ok ? r.json() : null).catch(() => null);
+        await Promise.all(dates.map(async d => {
+          const p = new URLSearchParams({ date: d });
+          try {
+            const [sRes, rRes] = await Promise.all([
+              apiFetch(`${API}/deployments/summary?${p}`),
+              apiFetch(`${API}/shift-readings?${p}`),
+            ]);
+            if (sRes.ok) {
+              const sd = await sRes.json();
+              if (Array.isArray(sd.live)) live.push(...sd.live);
+              if (Array.isArray(sd.history)) history.push(...sd.history);
+            } else failed++;
+            if (rRes.ok) { const rd = await rRes.json(); if (Array.isArray(rd)) readings.push(...rd); } else failed++;
+          } catch (_) { failed++; }
+        }));
+        const flagsRes = await flagsPromise;
+        if (token !== _ovToken) return; // a newer load superseded this one
+        _ov.rows = ovBuildRows(live, history, readings, start, end || start);
+        _ov.flags = flagsRes ? srcFlagItems(flagsRes).total : null;
+        _ov.error = dates.length > 0 && failed >= dates.length * 2;
+      } catch (e) {
+        if (token !== _ovToken) return;
+        _ov.error = true;
+      }
+      _ov.key = key; _ov.at = Date.now(); _ov.loading = false;
+      ovRender();
+    }
+
+    // One row per unit + shift + date. Same reading-matching rules as Shift Compliance
+    // (vehicle id first, truck number as fallback); readings with no deployment are kept.
+    function ovBuildRows(live, history, readings, start, end) {
+      const shiftOf = r => String(r.shift || '').toUpperCase();
+      const keysOf = r => {
+        const shift = shiftOf(r), date = dashboardDate(r.date || r.deployed_since), ks = [];
+        if (r.vehicle_id) ks.push(`v:${r.vehicle_id}|${shift}|${date}`);
+        if (r.truck_number) ks.push(`t:${r.truck_number}|${shift}|${date}`);
+        return ks;
+      };
+      const byKey = {};
+      readings.forEach(r => keysOf(r).forEach(k => (byKey[k] = byKey[k] || []).push(r)));
+      const filled = r => ['HMR', 'KMR'].reduce((n, m) => {
+        const v = (r.readings && r.readings[m]) || {};
+        return n + (ovHas(v.opening_value) || v.opening_added ? 1 : 0) + (ovHas(v.closing_value) || v.closing_added ? 1 : 0);
+      }, 0);
+      const used = new Set(), seen = new Set(), rows = [];
+      const push = (rec, reading) => {
+        const info = eqClassify(rec) || (reading && eqClassify(reading)) || null;
+        rows.push({
+          unit: String(rec.vehicle_id || rec.truck_number || rec.equipment_code || ''),
+          info, rawType: eqRawType(rec) || (reading ? eqRawType(reading) : ''),
+          shift: shiftOf(rec), date: dashboardDate(rec.date || rec.deployed_since),
+          deployedAt: rec.deployed_since || null, reading
+        });
+      };
+      [...live, ...history].forEach(dep => {
+        const id = `${dep.vehicle_id || dep.truck_number || ''}|${shiftOf(dep)}|${dashboardDate(dep.date || dep.deployed_since)}`;
+        if (seen.has(id)) return;
+        seen.add(id);
+        const matches = keysOf(dep).flatMap(k => byKey[k] || []);
+        const best = matches.sort((a, b) => filled(b) - filled(a))[0] || null;
+        matches.forEach(m => used.add(m));
+        push(dep, best);
+      });
+      readings.forEach(r => { if (!used.has(r)) push(r, r); });
+      return rows.filter(r => r.unit && dashboardDateInRange(r.date, start, end));
+    }
+
+    function ovStatus(row) {
+      const rd = row.reading;
+      if (!rd) return 'missing';
+      const need = row.info ? row.info.readings : ['HMR'];
+      let got = 0;
+      need.forEach(m => {
+        const v = (rd.readings && rd.readings[m]) || {};
+        if (ovHas(v.opening_value) || v.opening_added) got++;
+        if (ovHas(v.closing_value) || v.closing_added) got++;
+      });
+      return got === 0 ? 'missing' : got === need.length * 2 ? 'complete' : 'partial';
+    }
+    function ovShiftEnded(date, shift) {
+      const endHour = { A: 14, B: 22, C: 6 }[shift];
+      const [y, m, d] = String(date).split('-').map(Number);
+      if (endHour === undefined || !y) return true;
+      const end = new Date(y, m - 1, d, endHour, 0);
+      if (shift === 'C') end.setDate(end.getDate() + 1); // C runs into the next morning
+      return new Date() >= end;
+    }
+    function ovDelta(row, meter) {
+      const v = row.reading && row.reading.readings && row.reading.readings[meter];
+      if (!v || !ovHas(v.opening_value) || !ovHas(v.closing_value)) return null;
+      const diff = Number(v.closing_value) - Number(v.opening_value);
+      return Number.isFinite(diff) && diff >= 0 ? diff : null;
+    }
+    function ovGapMin(row) {
+      const rd = row.reading && row.reading.readings;
+      if (!rd) return null;
+      const open = (rd.KMR && rd.KMR.opening_ts) || (rd.HMR && rd.HMR.opening_ts) || null;
+      return coDiffMin(row.deployedAt, open);
+    }
+    const ovFmt = n => n.toLocaleString('en-IN', { maximumFractionDigits: 1 });
+
+    // ── render ──
+    function ovScopedRows() {
+      const shifts = activeFilters.shifts;
+      return _ov.rows.filter(r => !shifts.size || shifts.has(r.shift));
+    }
+
+    function ovRender() {
+      ovRenderTiles();
+      ovRenderAttention();
+    }
+
+    function ovRenderTiles() {
+      const host = document.getElementById('ov-tiles');
+      if (!host) return;
+      const rows = ovScopedRows();
+      const shifts = activeFilters.shifts;
+      const trips = allTrips.filter(t => !shifts.size || shifts.has(t.shift)).length;
+      const pending = _ov.loading && !_ov.rows.length;
+      host.innerHTML = EQUIPMENT_CLASSES.map(c => {
+        const mine = rows.filter(r => r.info && r.info.cls === c.key);
+        const units = new Set(mine.map(r => r.unit)).size;
+        const due = mine.filter(r => ovShiftEnded(r.date, r.shift));
+        const pct = due.length ? Math.round(due.filter(r => ovStatus(r) === 'complete').length / due.length * 100) : null;
+        const sum = meter => { const v = mine.map(r => ovDelta(r, meter)).filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+        const names = [...new Set(mine.map(r => r.info.name))].join(', ');
+        let value = '—', sub = pending ? 'loading…' : 'none deployed';
+        if (c.key === 'haulage') {
+          value = ovFmt(trips);
+          sub = `trips · ${units} unit${units === 1 ? '' : 's'}`;
+        } else if (units) {
+          const hrs = c.key === 'utility' ? sum('KMR') : sum('HMR');
+          value = hrs === null ? '—' : `${ovFmt(hrs)} ${c.key === 'utility' ? 'km' : 'h'}`;
+          sub = c.key === 'loading' ? `${units} excavator${units === 1 ? '' : 's'}`
+            : c.key === 'drilling' ? `${units} drill${units === 1 ? '' : 's'} · hole data pending`
+            : names;
+        }
+        let read = '<span class="ov-none">no readings due yet</span>', cls = 'ov-none';
+        if (!units) read = '&nbsp;';
+        if (pct !== null) { cls = pct >= 90 ? 'ov-ok' : pct >= 75 ? 'ov-warn' : 'ov-bad'; read = `<span class="${cls}">${pct}% readings</span>`; }
+        return `<div class="ov-tile"><div class="ov-tile-label">${c.label}</div><div class="ov-tile-value">${value}</div>
+          <div class="ov-tile-sub">${sub}</div><div class="ov-tile-read">${read}</div></div>`;
+      }).join('');
+
+      const stray = rows.filter(r => !r.info);
+      const strayTypes = [...new Set(stray.map(r => r.rawType || 'blank type'))].slice(0, 3).join(', ');
+      const inProgress = rows.some(r => !ovShiftEnded(r.date, r.shift));
+      const notes = [];
+      if (stray.length) notes.push(`${new Set(stray.map(r => r.unit)).size} unit(s) have an equipment type not in any class (${strayTypes}) and are left out of the tiles.`);
+      if (inProgress) notes.push('Readings % counts finished shifts only.');
+      document.getElementById('ov-note').textContent = notes.join(' ');
+    }
+
+    function ovRenderAttention() {
+      const host = document.getElementById('ov-attention');
+      if (!host) return;
+      const row = (icon, text, target, label) => {
+        const go = target && canSeeShiftOps();
+        const inner = `${icon}<span class="ov-row-text">${text}</span>${go ? `<span class="ov-row-go">${label} <span aria-hidden="true">›</span></span>` : ''}`;
+        return go ? `<button class="ov-row" onclick="ovGo('${target}')">${inner}</button>` : `<div class="ov-row">${inner}</div>`;
+      };
+      const svg = d => `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">${d}</svg>`;
+      const icons = {
+        warn: `<span class="ov-bad">${svg('<path d="M9 2.5 16 15H2L9 2.5Z"/><path d="M9 7v3.5M9 12.6v.1"/>')}</span>`,
+        clock: `<span class="ov-warn">${svg('<circle cx="9" cy="9" r="6.5"/><path d="M9 5.5V9l2.5 1.5"/>')}</span>`,
+        flag: `<span class="ov-warn">${svg('<path d="M4 15.5V3h9l-1.8 3.2L13 9.5H4"/>')}</span>`,
+        ok: `<span class="ov-ok">${svg('<circle cx="9" cy="9" r="6.5"/><path d="M6 9.2l2.2 2.2L12.2 7"/>')}</span>`,
+      };
+      if (_ov.loading && !_ov.rows.length) { host.innerHTML = row('', '<span class="ov-none">Checking readings…</span>'); return; }
+      if (_ov.error) {
+        host.innerHTML = `<div class="ov-row">${icons.warn}<span class="ov-row-text">Could not load readings data.</span><button class="ov-link" onclick="_ov.at=0;ovLoad()">Retry</button></div>`;
+        return;
+      }
+      const rows = ovScopedRows();
+      const due = rows.filter(r => ovShiftEnded(r.date, r.shift));
+      const missing = due.filter(r => ovStatus(r) === 'missing').length;
+      const partial = due.filter(r => ovStatus(r) === 'partial').length;
+      const gaps = rows.filter(r => { const g = ovGapMin(r); return g !== null && g > OV_GAP_LIMIT_MIN; }).length;
+      const flags = _ov.flags;
+      const out = [];
+      if (missing) out.push(row(icons.warn, `${missing} shift reading${missing === 1 ? '' : 's'} missing`, 'compliance', 'Compliance'));
+      if (partial) out.push(row(icons.warn, `${partial} shift reading${partial === 1 ? '' : 's'} incomplete`, 'compliance', 'Compliance'));
+      if (gaps) out.push(row(icons.clock, `${gaps} changeover gap${gaps === 1 ? '' : 's'} over ${OV_GAP_LIMIT_MIN} min`, 'changeover', 'Changeover'));
+      if (flags) out.push(row(icons.flag, `${flags} unresolved reading flag${flags === 1 ? '' : 's'}`, 'compliance', 'Flags queue'));
+      host.innerHTML = out.join('') || row(icons.ok, 'Nothing needs attention for this period.');
+    }
+
+    function ovRenderHaulStrip() {
+      const strip = document.getElementById('ov-haul-strip');
+      if (!strip) return;
+      const count = m => filteredTrips.filter(t => t.material_type === m).length;
+      const lf = (document.getElementById('stat-loadfactor') || {}).textContent || '';
+      const parts = [['Coal', count('Coal')], ['Soft OB', count('Soft OB')], ['Hard OB', count('Hard OB')], ['Rehandling', count('Rehandling')]]
+        .map(([n, v]) => `<span>${n} <b>${v.toLocaleString('en-IN')}</b></span>`);
+      if (lf && lf !== '—') parts.push(`<span>Load factor <b>${lf}</b></span>`);
+      strip.innerHTML = parts.join('');
+      const other = activeFilters.materials.size + activeFilters.vehicles.size + activeFilters.drivers.size + activeFilters.supervisors.size;
+      const badge = document.getElementById('ov-filter-count');
+      if (badge) { badge.textContent = other; badge.style.display = other ? '' : 'none'; }
     }
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
