@@ -5875,6 +5875,7 @@
     .ov-hbars { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
     .ov-hcol { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
     .ov-hbar { display: block; background: var(--brand-fill); }
+    .ov-hcol.future .ov-hbar { background: var(--track); }
     .ov-hbar.now { background: var(--amber); }
     .ov-hcount, .ov-htick { display: none; text-align: center; font-family: var(--font-mono); line-height: 1; }
     .ov-spark-note { margin-top: 4px; font-size: 11.5px; color: var(--text-muted); }
@@ -15481,7 +15482,7 @@
     };
     const OV_GAP_LIMIT_MIN = 45;
     const OV_CACHE_MS = 5 * 60 * 1000;
-    let _ov = { rows: [], flags: null, key: '', at: 0, loading: false, error: false, prev: null, updatedAt: 0 };
+    let _ov = { rows: [], flags: null, key: '', at: 0, loading: false, error: false, prev: null, updatedAt: 0, extraTrips: [], extra: {} };
     let _ovToken = 0;
 
     function ovStoredView() {
@@ -15580,9 +15581,49 @@
     }
 
     // ── data ──
+    // The mining day runs 06:00 to 05:59 the next morning. "Today" is the mining day now in
+    // progress, so at 03:00 it is still yesterday's. Ranges are lists of mining days.
+    const ovMiningDate = d => ovLocalDate(new Date(d.getTime() - 6 * 3600e3));
     function ovRange() {
-      const p = new URLSearchParams(buildDateParams());
-      return { start: p.get('start_date'), end: p.get('end_date') };
+      const m = ovMiningDate(new Date());
+      if (dateRange.type === '7') return { start: ovShiftDate(m, -6), end: m };
+      if (dateRange.type === '30') return { start: ovShiftDate(m, -29), end: m };
+      if (dateRange.type === 'custom' && dateRange.from && dateRange.to) return { start: dateRange.from, end: dateRange.to };
+      return { start: m, end: m };
+    }
+    function ovWindow() {
+      const { start, end } = ovRange();
+      return { from: new Date(start + 'T06:00:00'), to: new Date(ovShiftDate(end, 1) + 'T06:00:00') };
+    }
+    // Trips inside the mining-day window. allTrips holds calendar days, so the days it does
+    // not cover (for example yesterday, seen from 03:00) are fetched separately.
+    function ovMiningTrips() {
+      const w = ovWindow(), seen = new Set(), out = [];
+      [...allTrips, ..._ov.extraTrips].forEach(t => {
+        const ts = new Date(t.timestamp).getTime();
+        if (isNaN(ts) || ts < w.from.getTime() || ts >= w.to.getTime()) return;
+        const id = t._id || t.id;
+        if (id) { if (seen.has(id)) return; seen.add(id); }
+        out.push(t);
+      });
+      return out;
+    }
+    async function ovLoadExtraTrips(start, end) {
+      const cal = new URLSearchParams(buildDateParams());
+      const cs = cal.get('start_date'), ce = cal.get('end_date');
+      const today = ovLocalDate(new Date());
+      const needTo = ovShiftDate(end, 1) > today ? today : ovShiftDate(end, 1);
+      const key = `${start}|${end}|${cs}|${ce}`;
+      if (_ov.extra.key === key && Date.now() - _ov.extra.at < OV_CACHE_MS) return;
+      const spans = [];
+      if (cs && start < cs) spans.push([start, ovShiftDate(cs, -1)]);
+      if (ce && needTo > ce) spans.push([ovShiftDate(ce, 1), needTo]);
+      try {
+        const got = await Promise.all(spans.map(([a, b]) => fetchAllTripsForRange(a, b)));
+        _ov.extraTrips = got.flat();
+        _ov.extra = { key, at: Date.now() };
+      } catch (_) { _ov.extraTrips = []; }
+      ovRender();
     }
     const ovHas = v => v !== undefined && v !== null && v !== '';
 
@@ -15592,6 +15633,7 @@
       const key = `${start}|${end}`;
       _ov.updatedAt = Date.now(); // trips were just (re)loaded
       ovLoadPrev(start, end);
+      ovLoadExtraTrips(start, end);
       if (_ov.key === key && Date.now() - _ov.at < OV_CACHE_MS && !_ov.error) { ovRender(); return; }
       const token = ++_ovToken;
       _ov.loading = true; _ov.error = false;
@@ -15663,6 +15705,7 @@
         return n + (ovHas(v.opening_value) || v.opening_added ? 1 : 0) + (ovHas(v.closing_value) || v.closing_added ? 1 : 0);
       }, 0);
       const used = new Set(), seen = new Set(), rows = [];
+      const liveSet = new Set(live);
       const push = (rec, reading, isDeployment) => {
         const info = eqClassify(rec) || (reading && eqClassify(reading)) || null;
         // Same production / mine development rule as the Deployments page.
@@ -15674,7 +15717,7 @@
           unit: String(rec.vehicle_id || rec.truck_number || rec.equipment_code || ''),
           info, rawType: eqRawType(rec) || (reading ? eqRawType(reading) : ''),
           shift: shiftOf(rec), date: dashboardDate(rec.date || rec.deployed_since),
-          deployedAt: rec.deployed_since || null, reading
+          deployedAt: rec.deployed_since || null, reading, live: liveSet.has(rec)
         });
       };
       [...live, ...history].forEach(dep => {
@@ -15737,7 +15780,7 @@
     }
     function ovScopedTrips() {
       const shifts = activeFilters.shifts;
-      return allTrips.filter(t => !shifts.size || shifts.has(t.shift));
+      return ovMiningTrips().filter(t => !shifts.size || shifts.has(t.shift));
     }
     function ovRender() {
       ovRenderHead();
@@ -15764,53 +15807,54 @@
       const tone = s.pct >= 90 ? 'ok' : s.pct >= 75 ? 'warn' : 'bad';
       return `<div class="ov-bar"><i class="${tone}" style="width:${s.pct}%"></i></div><div class="ov-bar-cap"><span class="ov-${tone}">${s.pct}%</span> · ${s.done} of ${s.due} readings submitted</div>`;
     }
-    const ovRangeWord = () => ({ today: 'today', '7': 'in the last 7 days', '30': 'in the last 30 days' }[dateRange.type] || 'in the selected range');
+    const ovRangeWord = () => ({ today: `since 06:00 ${new Date().getHours() >= 6 ? 'today' : 'yesterday'}`, '7': 'in the last 7 days', '30': 'in the last 30 days' }[dateRange.type] || 'in the selected range');
 
     // The mining day runs 06:00 to 06:00, so every chart starts at 06:00.
     const ovShiftOfHour = h => (h >= 6 && h < 14 ? 'A' : h >= 14 && h < 22 ? 'B' : 'C');
     function ovSeries(trips) {
-      const now = new Date(), slots = [];
-      let skipped = 0;
+      const now = Date.now(), slots = [];
+      let nowIdx = -1;
       if (dateRange.type === 'today') {
-        const startH = now.getHours() >= 6 ? 6 : 0;
-        for (let h = startH; h <= now.getHours(); h++) slots.push({ label: `${ovPad(h)}:00`, A: 0, B: 0, C: 0 });
+        // 24 hourly slots, 06:00 to 05:00 of the next morning; hours still ahead stay empty
+        const from = ovWindow().from.getTime();
+        for (let i = 0; i < 24; i++) slots.push({ label: `${ovPad((6 + i) % 24)}:00`, A: 0, B: 0, C: 0, future: from + i * 3600e3 > now });
+        nowIdx = Math.min(Math.max(Math.floor((now - from) / 3600e3), 0), 23);
         trips.forEach(t => {
-          const d = new Date(t.timestamp);
-          const i = isNaN(d) ? -1 : d.getHours() - startH;
-          if (i < 0 || i >= slots.length) { skipped++; return; }
-          slots[i][ovShiftOfHour(d.getHours())]++;
+          const ts = new Date(t.timestamp).getTime();
+          const i = Math.floor((ts - from) / 3600e3);
+          if (isNaN(ts) || i < 0 || i > 23) return;
+          slots[i][ovShiftOfHour(new Date(ts).getHours())]++;
         });
       } else {
         const { start, end } = ovRange();
         const days = dashboardDateRange(start, end || start, 31);
         const idx = Object.fromEntries(days.map((d, i) => [d, i]));
         days.forEach(d => slots.push({ label: new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }), A: 0, B: 0, C: 0 }));
+        nowIdx = slots.length - 1;
         trips.forEach(t => {
           const d = new Date(t.timestamp);
-          const i = isNaN(d) ? undefined : idx[ovLocalDate(new Date(d.getTime() - 6 * 3600e3))]; // mining day
-          if (i === undefined) { skipped++; return; }
-          slots[i][ovShiftOfHour(d.getHours())]++;
+          const i = isNaN(d) ? undefined : idx[ovMiningDate(d)];
+          if (i !== undefined) slots[i][ovShiftOfHour(d.getHours())]++;
         });
       }
-      return { slots, skipped };
+      return { slots, nowIdx };
     }
     // Hourly (or daily) trip bars. The count above each bar and the hour under it are
     // hidden on screen and only appear in the saved PDF (see body.ov-printing).
     function ovBars(series) {
-      const { slots, skipped } = series;
+      const { slots, nowIdx } = series;
       if (!slots.length) return '';
       const H = 60, max = Math.max(...slots.map(s => s.A + s.B + s.C), 1);
       const hourly = dateRange.type === 'today';
       const cols = slots.map((s, i) => {
         const total = s.A + s.B + s.C;
-        const h = Math.max(total ? total / max * H : 1, 1);
-        return `<div class="ov-hcol" title="${s.label}: ${total} trips"><span class="ov-hcount">${total}</span>` +
-          `<span class="ov-hbar${i === slots.length - 1 ? ' now' : ''}" style="height:${h.toFixed(1)}px"></span>` +
+        const h = s.future ? 1 : Math.max(total ? total / max * H : 1, 1);
+        return `<div class="ov-hcol${s.future ? ' future' : ''}" title="${s.label}: ${s.future ? 'not reached yet' : total + ' trips'}"><span class="ov-hcount">${s.future ? '' : total}</span>` +
+          `<span class="ov-hbar${i === nowIdx ? ' now' : ''}" style="height:${h.toFixed(1)}px"></span>` +
           `<span class="ov-htick">${hourly ? s.label.slice(0, 2) : (slots.length <= 12 ? s.label : '')}</span></div>`;
       }).join('');
       return `<div class="ov-chart${hourly ? ' hourly' : ''}"><div class="ov-hbars" role="img" aria-label="Trips over time">${cols}</div>
-        <div class="ov-spark-cap"><span>${slots[0].label}</span><span>${slots[slots.length - 1].label}</span></div>
-        ${skipped ? `<div class="ov-spark-note">${skipped.toLocaleString('en-IN')} trips before 06:00 are not shown.</div>` : ''}</div>`;
+        <div class="ov-spark-cap"><span>${slots[0].label}</span><span>${slots[slots.length - 1].label}</span></div></div>`;
     }
     // Trips loaded by production excavators only (mine development machines are left out).
     function ovLoaderTrips(trips) {
@@ -15880,7 +15924,7 @@
         const l = stats.loading;
         const prodUnits = new Set(rows.filter(r => r.info && r.info.cls === 'loading' && !r.mineDev).map(r => r.unit)).size;
         const shownShifts = activeFilters.shifts.size ? ['A', 'B', 'C'].filter(k => activeFilters.shifts.has(k)) : ['A', 'B', 'C'];
-        const loaderTrips = ovLoaderTrips(allTrips);
+        const loaderTrips = ovLoaderTrips(ovMiningTrips());
         const rate = shownShifts.map(k => {
           const tripsK = loaderTrips.filter(t => (t.shift || ovShiftOfHour(new Date(t.timestamp).getHours())) === k).length;
           const hoursK = _ov.rows.filter(r => r.info && r.info.cls === 'loading' && !r.mineDev && r.shift === k)
@@ -15927,6 +15971,38 @@
       document.getElementById('ov-note').textContent = notes.join(' ');
     }
 
+    // ── silent machines ──
+    // Deployed haulage units and production excavators that have logged no trip for more than
+    // OV_SILENT_MIN in the shift now running. The first OV_SILENT_MIN after deployment is grace.
+    const OV_SILENT_MIN = 45;
+    function ovSilentUnits() {
+      if (!_ov.key || _ov.error || ovRange().end < ovMiningDate(new Date())) return []; // range must include today
+      const now = Date.now(), shift = ovShiftOfHour(new Date().getHours());
+      const shiftStart = new Date(ovMiningDate(new Date()) + 'T00:00:00');
+      shiftStart.setHours({ A: 6, B: 14, C: 22 }[shift], 0, 0, 0);
+      const lastVeh = {}, lastMach = {};
+      const bump = (map, k, ts) => { k = String(k || '').toLowerCase(); if (k && !(map[k] >= ts)) map[k] = ts; };
+      ovMiningTrips().forEach(t => {
+        const ts = new Date(t.timestamp).getTime();
+        if (ts < shiftStart.getTime()) return;
+        if (t.vehicle_id) { bump(lastVeh, t.vehicle_id, ts); bump(lastVeh, getVehicleNum(t.vehicle_id), ts); }
+        if (t.machine_id) { bump(lastMach, t.machine_id, ts); bump(lastMach, getMachineLabel(t.machine_id), ts); }
+      });
+      const seen = new Set(), out = [];
+      _ov.rows.forEach(r => {
+        const haul = r.info && r.info.cls === 'haulage', load = r.info && r.info.cls === 'loading' && !r.mineDev;
+        if (!r.live || r.shift !== shift || !(haul || load) || seen.has(r.unit)) return;
+        seen.add(r.unit);
+        const map = haul ? lastVeh : lastMach;
+        const last = Math.max(0, ...[r.unit, r.code].map(k => map[String(k).toLowerCase()] || 0));
+        const deployed = r.deployedAt ? new Date(r.deployedAt).getTime() : 0;
+        const ref = last || Math.max(deployed, shiftStart.getTime());
+        const min = Math.round((now - ref) / 60000);
+        if (min > OV_SILENT_MIN) out.push({ name: `${cap(r.info.name)} ${r.code || r.unit}`, min, none: !last });
+      });
+      return out.sort((a, b) => b.min - a.min);
+    }
+
     // ── needs attention ──
     function ovAttentionCounts() {
       const ready = !_ov.loading && !_ov.error && _ov.key;
@@ -15937,14 +16013,15 @@
         missing: due.filter(r => ovStatus(r) === 'missing').length,
         partial: due.filter(r => ovStatus(r) === 'partial').length,
         gaps: rows.filter(r => { const g = ovGapMin(r); return g !== null && g > OV_GAP_LIMIT_MIN; }).length,
-        flags: _ov.flags || 0
+        flags: _ov.flags || 0,
+        silent: ovSilentUnits()
       };
     }
     function ovRenderAttention() {
       const host = document.getElementById('ov-attention');
       if (!host) return;
       const row = (tone, n, title, desc, target, action) => {
-        const go = target && canSeeShiftOps();
+        const go = target && (target === 'deployments' || canSeeShiftOps());
         const inner = `<span class="ov-row-n ov-${tone}">${n}</span>
           <span class="ov-row-text"><b>${title}</b><small>${desc}</small></span>${go ? `<span class="ov-row-go">${action} →</span>` : ''}`;
         return go ? `<button class="ov-row" onclick="ovGo('${target}')">${inner}</button>` : `<div class="ov-row">${inner}</div>`;
@@ -15956,6 +16033,11 @@
       }
       const c = ovAttentionCounts();
       const out = [];
+      if (c.silent.length) {
+        const shown = c.silent.slice(0, 3).map(u => `${u.name} · ${u.none ? 'no trips this shift' : u.min + ' min'}`).join(', ');
+        out.push(row(c.silent.some(u => u.min > 90) ? 'bad' : 'warn', c.silent.length, c.silent.length === 1 ? `Machine silent for over ${OV_SILENT_MIN} min` : `Machines silent for over ${OV_SILENT_MIN} min`,
+          shown + (c.silent.length > 3 ? ` and ${c.silent.length - 3} more` : ''), 'deployments', 'Deployments'));
+      }
       if (c.missing) out.push(row('bad', c.missing, c.missing === 1 ? 'Shift reading missing' : 'Shift readings missing', 'Shift ended and no reading was submitted', 'compliance', 'Compliance'));
       if (c.partial) out.push(row('bad', c.partial, c.partial === 1 ? 'Shift reading incomplete' : 'Shift readings incomplete', 'Opening or closing reading not entered', 'compliance', 'Compliance'));
       if (c.gaps) out.push(row('warn', c.gaps, c.gaps === 1 ? `Changeover gap over ${OV_GAP_LIMIT_MIN} min` : `Changeover gaps over ${OV_GAP_LIMIT_MIN} min`, 'Deployed, then more than 45 min to the opening reading', 'changeover', 'Changeover'));
@@ -15971,12 +16053,13 @@
       const segs = ['A', 'B', 'C'];
       const m = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440;
       const cur = Math.floor(m / 480), left = 480 - (m - cur * 480);
-      dateEl.textContent = `${now.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${segs[cur]} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
+      dateEl.textContent = `${new Date(ovMiningDate(now) + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${segs[cur]} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
       const trips = ovScopedTrips().length;
       const shifts = activeFilters.shifts;
       const shiftWord = shifts.size === 1 ? `, Shift ${[...shifts][0]} only` : '';
       const c = ovAttentionCounts();
       const open = [];
+      if (c.silent.length) open.push(plural(c.silent.length, 'silent machine'));
       if (c.missing) open.push(plural(c.missing, 'missing reading'));
       if (c.partial) open.push(plural(c.partial, 'incomplete reading'));
       if (c.gaps) open.push(plural(c.gaps, 'changeover gap'));
@@ -16025,13 +16108,14 @@
       const key = `${start}|${end}`;
       if (_ov.prev && _ov.prev.key === key && Date.now() - _ov.prev.at < OV_CACHE_MS) return;
       const n = dashboardDateRange(start, end || start, 31).length || 1;
+      const prevFrom = ovWindow().from; prevFrom.setDate(prevFrom.getDate() - n);
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - n); // like-for-like: same elapsed time
       try {
-        const trips = await fetchAllTripsForRange(ovShiftDate(start, -n), ovShiftDate(start, -1));
-        const cutoff = Date.now() - n * 86400000; // compare like-for-like: same elapsed time
+        const trips = await fetchAllTripsForRange(ovLocalDate(prevFrom), ovLocalDate(cutoff));
         const counts = { all: 0, A: 0, B: 0, C: 0 };
         trips.forEach(t => {
           const ts = new Date(t.timestamp).getTime();
-          if (isNaN(ts) || ts > cutoff) return;
+          if (isNaN(ts) || ts < prevFrom.getTime() || ts > cutoff.getTime()) return;
           counts.all++;
           if (counts[t.shift] !== undefined) counts[t.shift]++;
         });
@@ -16128,7 +16212,7 @@
         const el = document.querySelector('.cmdk-item.sel'); if (el) el.scrollIntoView({ block: 'nearest' });
       } else if (e.key === 'Enter') { e.preventDefault(); ovCmdkRun(_cmdk.sel); }
     });
-    setInterval(() => { if (document.getElementById('app').style.display === 'block') ovTick(); }, 15000);
+    setInterval(() => { if (document.getElementById('app').style.display === 'block') { ovRenderAttention(); ovRenderHead(); } }, 15000); // minutes count up between fetches
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
 
