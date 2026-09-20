@@ -5875,7 +5875,6 @@
     .ov-hbars { display: flex; align-items: flex-end; gap: 2px; height: 60px; }
     .ov-hcol { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
     .ov-hbar { display: block; background: var(--brand-fill); }
-    .ov-hcol.future .ov-hbar { background: var(--track); }
     .ov-hbar.now { background: var(--amber); }
     .ov-hcount, .ov-htick { display: none; text-align: center; font-family: var(--font-mono); line-height: 1; }
     .ov-spark-note { margin-top: 4px; font-size: 11.5px; color: var(--text-muted); }
@@ -15815,14 +15814,15 @@
       const now = Date.now(), slots = [];
       let nowIdx = -1;
       if (dateRange.type === 'today') {
-        // 24 hourly slots, 06:00 to 05:00 of the next morning; hours still ahead stay empty
+        // Hourly slots from 06:00 up to the current hour. A new slot is added when the next
+        // hour starts; the day runs to 05:59 the next morning, so at most 24 slots.
         const from = ovWindow().from.getTime();
-        for (let i = 0; i < 24; i++) slots.push({ label: `${ovPad((6 + i) % 24)}:00`, A: 0, B: 0, C: 0, future: from + i * 3600e3 > now });
         nowIdx = Math.min(Math.max(Math.floor((now - from) / 3600e3), 0), 23);
+        for (let i = 0; i <= nowIdx; i++) slots.push({ label: `${ovPad((6 + i) % 24)}:00`, A: 0, B: 0, C: 0 });
         trips.forEach(t => {
           const ts = new Date(t.timestamp).getTime();
           const i = Math.floor((ts - from) / 3600e3);
-          if (isNaN(ts) || i < 0 || i > 23) return;
+          if (isNaN(ts) || i < 0 || i > nowIdx) return;
           slots[i][ovShiftOfHour(new Date(ts).getHours())]++;
         });
       } else {
@@ -15848,8 +15848,8 @@
       const hourly = dateRange.type === 'today';
       const cols = slots.map((s, i) => {
         const total = s.A + s.B + s.C;
-        const h = s.future ? 1 : Math.max(total ? total / max * H : 1, 1);
-        return `<div class="ov-hcol${s.future ? ' future' : ''}" title="${s.label}: ${s.future ? 'not reached yet' : total + ' trips'}"><span class="ov-hcount">${s.future ? '' : total}</span>` +
+        const h = Math.max(total ? total / max * H : 1, 1);
+        return `<div class="ov-hcol" title="${s.label}: ${total} trips"><span class="ov-hcount">${total}</span>` +
           `<span class="ov-hbar${i === nowIdx ? ' now' : ''}" style="height:${h.toFixed(1)}px"></span>` +
           `<span class="ov-htick">${hourly ? s.label.slice(0, 2) : (slots.length <= 12 ? s.label : '')}</span></div>`;
       }).join('');
