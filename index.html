@@ -2388,7 +2388,7 @@
         display: none !important;
       }
 
-      body:not(.ov-printing)>*:not(#handover-page) {
+      body:not(.ov-printing):not(.ld-printing)>*:not(#handover-page) {
         display: none !important;
       }
 
@@ -6008,6 +6008,76 @@
     body.ov-printing .ov-tiles { display: grid; break-inside: avoid; }
     body.ov-printing .ov-hero { border-bottom: none; }
     body.ov-printing .ov-hero .ov-t-value { font-size: 72px; }
+
+    /* ── LOADING SCREEN ─────────────────────────────────────────────────────────── */
+    #loading-page { display: none; min-height: 100vh; background: var(--bg); }
+    .ld-main { max-width: 1240px; margin: 0 auto; padding: 26px 32px 60px; }
+    #loading-page .topbar-user { margin-left: auto; }
+    .ld-h1 { margin-top: 6px; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; color: var(--brand); }
+    .ld-head .ov-summary { margin-top: 6px; font-size: 15px; }
+    .ov-click { cursor: pointer; }
+    .ov-click:hover .ov-linkbtn { color: var(--brand); text-decoration: underline; }
+    .ov-click:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: -2px; }
+    .ld-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; margin-bottom: 16px; }
+    .ld-cell { background: var(--surface); padding: 18px 20px; }
+    .ld-val { margin-top: 10px; font-family: var(--font-mono); font-size: 38px; font-weight: 500; line-height: 1; color: var(--brand); letter-spacing: -0.04em; }
+    .ld-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; margin-bottom: 16px; }
+    .ld-scroll { overflow-x: auto; }
+    .ld-table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    .ld-table th { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); text-align: right; padding: 12px 16px; border-bottom: 1px solid var(--rule); white-space: nowrap; cursor: pointer; user-select: none; }
+    .ld-table th:hover { color: var(--brand); }
+    .ld-table th:first-child, .ld-table td:first-child, .ld-table .l { text-align: left; }
+    .ld-arrow { color: var(--brand); }
+    .ld-table td { padding: 13px 16px; border-bottom: 1px solid var(--rule); text-align: right; font-size: 14px; }
+    .ld-table td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; font-size: 15px; }
+    .ld-table td.rd { font-family: var(--font-main); font-size: 13px; letter-spacing: 0; }
+    tr.ld-m { cursor: pointer; }
+    tr.ld-m:hover td { background: var(--hover); }
+    tr.ld-m td:first-child { font-weight: 600; }
+    .ld-chev { display: inline-block; width: 16px; color: var(--text-muted); font-size: 11px; }
+    tr.ld-sub td { background: var(--hover); font-size: 13px; padding: 9px 16px; color: var(--text-secondary); }
+    tr.ld-sub td:first-child { padding-left: 44px; }
+    tr.ld-sub td.num { font-size: 13px; }
+    tr.ld-grp td { background: var(--bg); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-secondary); text-align: left; padding: 10px 16px; }
+    tr.ld-dev { cursor: default; } tr.ld-dev td { color: var(--text-muted); } tr.ld-dev td:first-child { font-weight: 500; }
+    tr.ld-tot td { font-weight: 600; border-bottom: none; background: var(--hover); }
+    .ld-tag { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border: 1px solid var(--rule); border-radius: 2px; color: var(--text-secondary); margin-left: 8px; }
+    .ld-down { margin: 3px 0 0 16px; font-size: 12px; font-weight: 400; color: var(--warn); }
+    .ld-best { color: var(--brand); font-weight: 600; } .ld-low { color: var(--warn); font-weight: 600; }
+    .ld-trend { display: inline-flex; align-items: flex-end; gap: 2px; height: 26px; vertical-align: middle; }
+    .ld-trend i { display: block; width: 6px; background: var(--brand-fill); } .ld-trend i.now { background: var(--amber); }
+    .ld-pct { margin-left: 10px; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-secondary); }
+    .ld-note { margin: -4px 0 16px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+    .ld-note b { color: var(--text-primary); }
+    .ld-heatcard { padding: 18px 22px; overflow-x: auto; }
+    .ld-heat { min-width: 560px; display: flex; flex-direction: column; gap: 2px; }
+    .ld-hrow { display: grid; grid-template-columns: 70px repeat(var(--cols), minmax(0, 1fr)); gap: 2px; align-items: center; }
+    .ld-hname { font-size: 13px; font-weight: 600; }
+    .ld-hlab { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-align: center; }
+    .ld-hc { height: 28px; background: var(--track); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+    .ld-hc.down { background-image: repeating-linear-gradient(135deg, rgba(163, 45, 45, .55) 0 2px, transparent 2px 6px); box-shadow: inset 0 0 0 1px rgba(163, 45, 45, .6); }
+    .ld-legend { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
+    .ld-ramp { display: inline-block; width: 120px; height: 10px; background: linear-gradient(90deg, color-mix(in srgb, var(--brand-fill) 10%, var(--surface)), var(--brand-fill)); }
+    .ld-key { width: 22px; height: 12px; margin-left: 12px; }
+    @media (max-width: 900px) { .ld-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ld-main { padding: 18px 14px 40px; } .ld-h1 { font-size: 21px; } }
+    /* print: only the Loading screen */
+    body.ld-printing { background: #fff; }
+    body.ld-printing > *:not(#loading-page) { display: none !important; }
+    body.ld-printing #loading-page .topbar, body.ld-printing #ld-toolbar, body.ld-printing #ld-custom { display: none !important; }
+    body.ld-printing .ov-print-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--brand); margin-bottom: 10px; }
+    body.ld-printing .ov-print-title .topbar-tripman-logo { margin-right: 0; }
+    body.ld-printing #loading-page { background: #fff; min-height: 0; }
+    body.ld-printing .ld-main { padding: 0; max-width: none; }
+    body.ld-printing .ld-sum { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    body.ld-printing .ld-cell { padding: 12px 16px; }
+    body.ld-printing .ld-val { font-size: 30px; margin-top: 6px; }
+    body.ld-printing .ld-table td { padding: 9px 14px; }
+    body.ld-printing .ld-h1 { font-size: 22px; }
+    body.ld-printing .ld-heatcard { break-before: page; }
+    body.ld-printing .ld-card, body.ld-printing .ld-sum { break-inside: avoid; }
+    body.ld-printing .ld-scroll { overflow: visible; }
+    body.ld-printing .ld-table { min-width: 0; }
+    body.ld-printing tr.ld-m { cursor: default; }
   </style>
 </head>
 
@@ -6379,6 +6449,49 @@
           </section>
         </div><!-- /ov-stack -->
       </div>
+    </div>
+  </div>
+
+  <!-- LOADING SCREEN: machine breakdown -->
+  <div id="loading-page">
+    <div class="topbar">
+      <button class="action-btn" onclick="ldClose()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Loading · Machine breakdown</div>
+      <div class="topbar-user">
+        <button class="action-btn" onclick="ldSavePdf()"><i class="fi fi-rr-file-pdf" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Save as PDF</button>
+        <button class="action-btn" onclick="ldRefresh()"><i class="fi fi-rr-refresh" aria-hidden="true" style="vertical-align:-1px;margin-right:6px;"></i>Refresh</button>
+      </div>
+    </div>
+    <div class="ld-main">
+      <header class="ov-head ld-head">
+        <div>
+          <div class="ov-print-title"><span class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></span><span id="ld-print-co"></span></div>
+          <div class="ov-greet" id="ld-eyebrow"></div>
+          <div class="ld-h1" id="ld-h1"></div>
+          <div class="ov-summary" id="ld-lede"></div>
+        </div>
+      </header>
+      <div class="ov-toolbar date-row" id="ld-toolbar">
+        <button class="date-btn active" data-range="today" onclick="ldSetRange('today')">Today</button>
+        <button class="date-btn" data-range="7" onclick="ldSetRange('7')">7 days</button>
+        <button class="date-btn" data-range="30" onclick="ldSetRange('30')">30 days</button>
+        <button class="date-btn" data-range="custom" onclick="ldSetRange('custom')">Custom</button>
+        <span class="ov-divider"></span>
+        <button class="date-btn active" data-shift="all" onclick="ldSetShift('all')">All shifts</button>
+        <button class="date-btn" data-shift="A" onclick="ldSetShift('A')">A</button>
+        <button class="date-btn" data-shift="B" onclick="ldSetShift('B')">B</button>
+        <button class="date-btn" data-shift="C" onclick="ldSetShift('C')">C</button>
+        <span class="ov-divider"></span>
+        <button class="date-btn" id="ld-dev-btn" onclick="ldToggleDev()"></button>
+      </div>
+      <div class="date-custom-row" id="ld-custom" style="display:none;">
+        <input type="date" class="date-input" id="ld-date-from" />
+        <span style="color: var(--text-muted); font-size: 13px;">to</span>
+        <input type="date" class="date-input" id="ld-date-to" />
+        <button class="apply-btn" onclick="ldApplyCustom()">Apply</button>
+      </div>
+      <div id="ld-body"></div>
     </div>
   </div>
 
@@ -15786,6 +15899,7 @@
       ovRenderTiles();
       ovRenderAttention();
       ovRenderShiftBar();
+      ldRender(); // no-op unless the Loading screen is open
     }
 
     function ovClassStats(rows, key) {
@@ -15932,8 +16046,8 @@
           return { k, trips: tripsK, hours: hoursK, perHour: hoursK > 0 ? tripsK / hoursK : null };
         });
         const withData = rate.filter(r => r.perHour !== null); // shifts with no hours are left out silently
-        loadingTile = `<div class="ov-t ov-loadingt${skel}">
-          <div class="ov-t-top"><span class="ov-t-label">Loading</span></div>
+        loadingTile = `<div class="ov-t ov-loadingt ov-click${skel}" onclick="ldOpen()" onkeydown="if(event.key==='Enter')ldOpen()" role="button" tabindex="0" aria-label="Open the Loading machine breakdown">
+          <div class="ov-t-top"><span class="ov-t-label">Loading</span><span class="ov-linkbtn">Machine breakdown →</span></div>
           <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
           <div class="ov-t-sub">${pending ? '…' : `${plural(l.units, 'excavator')}, ${prodUnits} in production · Hours from closed readings`}</div>
           ${withData.length ? `<div class="ov-rate-head">Trips per hour, by shift (production only)</div>
@@ -16141,6 +16255,297 @@
       ovRenderTiles();
     }
 
+    // ─── LOADING SCREEN: machine-by-machine breakdown ─────────────────────────────
+    // Opens from the Loading card. Reuses the Overview's rows and mining-day trips; only the
+    // 7-day trend trips and the Equipment health stop logs are fetched here.
+    let _ld = { open: new Set(), showDev: true, sort: { key: 'tph', dir: -1 }, trend: [], logs: [], extraKey: '', busy: false };
+    const ldVisible = () => { const p = document.getElementById('loading-page'); return !!p && p.style.display === 'block'; };
+    const ldF1 = n => n.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const ldEsc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ldNat = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
+    const ldDur = min => min >= 60 ? `${Math.floor(min / 60)}h ${ovPad(Math.round(min % 60))}m` : `${Math.round(min)} min`;
+
+    function ldOpen() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('loading-page').style.display = 'block';
+      window.scrollTo(0, 0);
+      ldRender();
+    }
+    function ldClose() {
+      document.getElementById('loading-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+    function ldRefresh() { _ld.extraKey = ''; _ov.at = 0; loadTrips(); }
+
+    // Range and shift controls drive the same state as the home page.
+    function ldSetRange(type) {
+      dateRange.type = type;
+      document.querySelectorAll('.date-btn[data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === type));
+      document.getElementById('custom-row').classList.remove('visible');
+      if (type === 'custom') { ldSyncControls(); return; }
+      loadTrips();
+    }
+    function ldApplyCustom() {
+      const from = document.getElementById('ld-date-from').value, to = document.getElementById('ld-date-to').value;
+      if (!from || !to) { showToast('Select both dates.'); return; }
+      dateRange.type = 'custom'; dateRange.from = from; dateRange.to = to;
+      loadTrips();
+    }
+    function ldSetShift(v) { ovSetShift(v); }
+    function ldToggleDev() { _ld.showDev = !_ld.showDev; ldRender(); }
+    function ldToggle(unit) { _ld.open.has(unit) ? _ld.open.delete(unit) : _ld.open.add(unit); ldRender(); }
+    function ldSort(key) {
+      _ld.sort = _ld.sort.key === key ? { key, dir: -_ld.sort.dir } : { key, dir: key === 'code' || key === 'avg' ? 1 : -1 };
+      ldRender();
+    }
+    function ldSyncControls() {
+      document.querySelectorAll('#loading-page .date-btn[data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === dateRange.type));
+      const n = activeFilters.shifts.size, only = n === 1 ? [...activeFilters.shifts][0] : 'all';
+      document.querySelectorAll('#loading-page .date-btn[data-shift]').forEach(b => b.classList.toggle('active', n <= 1 ? b.dataset.shift === only : false));
+      document.getElementById('ld-custom').style.display = dateRange.type === 'custom' ? 'flex' : 'none';
+      document.getElementById('ld-dev-btn').innerHTML = `<i class="fi fi-rr-${_ld.showDev ? 'eye-crossed' : 'eye'}" aria-hidden="true"></i> ${_ld.showDev ? 'Hide' : 'Show'} mine development`;
+    }
+
+    // Hours a shift lasts (8), or has lasted so far if it is the one running now.
+    function ldShiftHours(date, shift) {
+      const start = new Date(date + 'T00:00:00');
+      start.setHours({ A: 6, B: 14, C: 22 }[shift] ?? 6, 0, 0, 0);
+      return Math.min(8, Math.max((Date.now() - start.getTime()) / 3600e3, 0.25));
+    }
+
+    // 7-day trend trips and Equipment health stop logs, fetched once per range.
+    async function ldEnsureExtras() {
+      const { start, end } = ovRange(), key = `${start}|${end}`;
+      if (_ld.extraKey === key || _ld.busy) return;
+      _ld.busy = true; _ld.extraKey = key;
+      const m = ovMiningDate(new Date());
+      try {
+        const logParams = new URLSearchParams({ start_date: ovShiftDate(start, -14), end_date: ovShiftDate(end, 1), limit: '500' });
+        const [trend, logs] = await Promise.all([
+          fetchAllTripsForRange(ovShiftDate(m, -6), ovLocalDate(new Date())).catch(() => []),
+          apiFetch(`${API}/equipment-status-logs?${logParams}`).then(r => r.ok ? r.json() : []).catch(() => [])
+        ]);
+        _ld.trend = trend; _ld.logs = Array.isArray(logs) ? logs : (logs.logs || []);
+      } catch (_) { }
+      _ld.busy = false;
+      ldRender();
+    }
+
+    // Equipment health stop periods per excavator (a stop closes at the next start).
+    function ldDowntimeByUnit(keyOf) {
+      const byEntity = {};
+      _ld.logs.forEach(l => {
+        const id = String(l.entity_id || '');
+        if (!id) return;
+        const e = byEntity[id] = byEntity[id] || { d: [], a: [], name: l.entity_name };
+        if (l.action === 'DEACTIVATED') e.d.push(l); else if (l.action === 'ACTIVATED') e.a.push(l);
+      });
+      const out = new Map();
+      Object.entries(byEntity).forEach(([id, e]) => {
+        const unit = [id, getMachineLabel(id), e.name].map(k => keyOf.get(String(k || '').toLowerCase())).find(Boolean);
+        if (!unit) return;
+        const acts = e.a.map(a => new Date(a.timestamp)).sort((x, y) => x - y), used = new Set();
+        e.d.sort((x, y) => new Date(x.timestamp) - new Date(y.timestamp)).forEach(d => {
+          const from = new Date(d.timestamp), i = acts.findIndex((a, j) => !used.has(j) && a > from);
+          if (i >= 0) used.add(i);
+          if (!out.has(unit)) out.set(unit, []);
+          out.get(unit).push({ from, to: i >= 0 ? acts[i] : null, reason: d.deactivation_reason || d.reason || '', notes: d.deactivation_notes || d.notes || '' });
+        });
+      });
+      return out;
+    }
+    const ldOverlapMs = (p, a, b) => Math.max(0, Math.min(p.to ? p.to.getTime() : Date.now(), b) - Math.max(p.from.getTime(), a));
+
+    function ldModel() {
+      const w = ovWindow(), now = Date.now(), winEnd = Math.min(w.to.getTime(), now);
+      const meta = new Map();
+      _ov.rows.filter(r => r.info && r.info.cls === 'loading').forEach(r => {
+        const m = meta.get(r.unit) || { unit: r.unit, code: r.code || r.unit, mineDev: true };
+        if (!r.mineDev) m.mineDev = false; // production wins, like the home page
+        meta.set(r.unit, m);
+      });
+      const keyOf = new Map();
+      meta.forEach(m => [m.unit, m.code].filter(Boolean).forEach(k => keyOf.set(String(k).toLowerCase(), m.unit)));
+      const unitOfTrip = t => {
+        for (const k of [String(t.machine_id || ''), String(getMachineLabel(t.machine_id) || '')]) { const u = keyOf.get(k.toLowerCase()); if (u) return u; }
+        return null;
+      };
+      const rows = ovScopedRows().filter(r => r.info && r.info.cls === 'loading');
+      const down = ldDowntimeByUnit(keyOf);
+      const machines = new Map();
+      meta.forEach(m => machines.set(m.unit, { ...m, hours: 0, hasHours: false, due: 0, done: 0, hByShift: {}, trips: [], groups: new Map(), byShift: {}, unit: m.unit }));
+      rows.forEach(r => {
+        const m = machines.get(r.unit);
+        const h = ovDelta(r, 'HMR');
+        if (h !== null) { m.hours += h; m.hasHours = true; m.hByShift[r.shift] = (m.hByShift[r.shift] || 0) + h; }
+        if (ovShiftEnded(r.date, r.shift)) { m.due++; if (ovStatus(r) === 'complete') m.done++; }
+      });
+      let unassigned = 0;
+      ovScopedTrips().forEach(t => {
+        const u = unitOfTrip(t);
+        if (!u) { unassigned++; return; }
+        const m = machines.get(u);
+        if (m.mineDev) return;
+        m.trips.push(t);
+        const ts = new Date(t.timestamp), shift = t.shift || ovShiftOfHour(ts.getHours()), date = ovMiningDate(ts);
+        const g = `${date}|${shift}`;
+        m.groups.set(g, (m.groups.get(g) || 0) + 1);
+      });
+      // trend: trips per mining day for the last 7 days, all shifts
+      const m0 = ovMiningDate(new Date()), days = Array.from({ length: 7 }, (_, i) => ovShiftDate(m0, i - 6));
+      const dayIdx = Object.fromEntries(days.map((d, i) => [d, i])), trend = {};
+      _ld.trend.forEach(t => {
+        const ts = new Date(t.timestamp), di = isNaN(ts) ? undefined : dayIdx[ovMiningDate(ts)], u = di === undefined ? null : unitOfTrip(t);
+        if (!u || machines.get(u).mineDev) return;
+        (trend[u] = trend[u] || Array(7).fill(0))[di]++;
+      });
+      const list = [...machines.values()];
+      list.forEach(m => {
+        m.tripsN = m.trips.length;
+        m.shiftHours = 0;
+        m.groups.forEach((n, g) => {
+          const [date, shift] = g.split('|'), sh = ldShiftHours(date, shift);
+          m.shiftHours += sh;
+          const b = m.byShift[shift] = m.byShift[shift] || { trips: 0, shiftHours: 0 };
+          b.trips += n; b.shiftHours += sh;
+        });
+        // trips per hour only counts trips from shifts that have closed hours (a running shift has none yet)
+        m.tphTrips = Object.entries(m.byShift).reduce((a, [k, b]) => a + (m.hByShift[k] > 0 ? b.trips : 0), 0);
+        m.tph = m.tphTrips && m.hours > 0 ? m.tphTrips / m.hours : null;
+        m.avgMin = m.tripsN ? m.shiftHours * 60 / m.tripsN : null; // shift hours ÷ trips, shown as minutes
+        m.series = ovSeries(m.trips);
+        m.trend = trend[m.unit] || Array(7).fill(0);
+        const prev = m.trend.slice(0, 3), last = m.trend.slice(3, 6); // three finished days vs the three before
+        const pa = prev.reduce((a, b) => a + b, 0) / 3, la = last.reduce((a, b) => a + b, 0) / 3;
+        m.trendPct = pa > 0 ? Math.round((la - pa) / pa * 100) : null;
+        m.trendTip = `Last 3 finished days average ${ldF1(la)} trips a day, the 3 before ${ldF1(pa)}`;
+        const periods = (down.get(m.unit) || []).filter(p => ldOverlapMs(p, w.from.getTime(), winEnd) > 0);
+        m.periods = periods;
+        m.downMin = periods.reduce((a, p) => a + ldOverlapMs(p, w.from.getTime(), winEnd), 0) / 60000;
+      });
+      const prod = list.filter(m => !m.mineDev), dev = list.filter(m => m.mineDev);
+      const key = _ld.sort.key, dir = _ld.sort.dir;
+      const val = m => key === 'code' ? m.code : key === 'hours' ? m.hours : key === 'trips' ? m.tripsN : key === 'avg' ? m.avgMin : key === 'trend' ? m.trendPct : m.tph;
+      prod.sort((a, b) => {
+        const x = val(a), y = val(b);
+        if (x === null || x === undefined) return 1;
+        if (y === null || y === undefined) return -1;
+        return typeof x === 'string' ? dir * ldNat(x, y) : dir * (x - y);
+      });
+      dev.sort((a, b) => ldNat(a.code, b.code));
+      const prodHours = prod.reduce((a, m) => a + (m.hasHours ? m.hours : 0), 0);
+      const prodTrips = prod.reduce((a, m) => a + m.tripsN, 0);
+      const tripsWithHours = prod.reduce((a, m) => a + m.tphTrips, 0);
+      const shiftMin = prod.reduce((a, m) => a + m.shiftHours * 60, 0);
+      return {
+        prod, dev, days, unassigned,
+        allHours: list.reduce((a, m) => a + (m.hasHours ? m.hours : 0), 0),
+        prodHours, prodTrips,
+        tph: prodHours > 0 && tripsWithHours ? tripsWithHours / prodHours : null,
+        avgMin: prodTrips ? shiftMin / prodTrips : null,
+        byShift: ['A', 'B', 'C'].map(k => {
+          const hrs = prod.reduce((a, m) => a + (m.hByShift[k] || 0), 0), trips = prod.reduce((a, m) => a + (m.byShift[k] ? m.byShift[k].trips : 0), 0);
+          return { k, hrs, trips, tph: hrs > 0 && trips ? trips / hrs : null };
+        }).filter(s => s.tph !== null)
+      };
+    }
+
+    function ldRender() {
+      if (!ldVisible()) return;
+      ldSyncControls();
+      ldEnsureExtras();
+      const M = ldModel(), now = new Date();
+      const segs = ['A', 'B', 'C'], mm = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440, cur = Math.floor(mm / 480), left = 480 - (mm - cur * 480);
+      document.getElementById('ld-eyebrow').textContent = `${new Date(ovMiningDate(now) + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${segs[cur]} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
+      const all = M.prod.length + M.dev.length;
+      document.getElementById('ld-h1').textContent = all
+        ? `${all} excavator${all === 1 ? '' : 's'} worked ${ldF1(M.allHours)} hours and loaded ${M.prodTrips.toLocaleString('en-IN')} trips`
+        : 'No excavators deployed in this period';
+      document.getElementById('ld-lede').textContent = M.tph !== null
+        ? `${cap(ovRangeWord())}. Production machines average ${ldF1(M.tph)} trips per hour${M.avgMin ? `, one trip every ${ldF1(M.avgMin)} min` : ''}.`
+        : `${cap(ovRangeWord())}.`;
+      const cell = (label, value, sub) => `<div class="ld-cell"><div class="ov-t-label">${label}</div><div class="ld-val">${value}</div><div class="ov-t-sub">${sub}</div></div>`;
+      const nul = '<span class="ov-none">—</span>';
+      const sum = `<div class="ld-sum">
+        ${cell('Machine hours', `${ovNum(M.allHours, 1)}<span class="ov-unit">h</span>`, `All ${all} excavators · ${M.prod.length} in production`)}
+        ${cell('Trips loaded', ovNum(M.prodTrips), 'Production excavators only')}
+        ${cell('Trips per hour', M.tph === null ? nul : ovNum(M.tph, 1), `Production hours only (${ldF1(M.prodHours)} h)`)}
+        ${cell('Avg time per trip', M.avgMin === null ? nul : ovNum(M.avgMin, 1) + '<span class="ov-unit">min</span>', 'Shift hours ÷ trips (8 h a shift)')}</div>`;
+
+      const th = (key, label, cls) => `<th class="${cls || ''}" onclick="ldSort('${key}')">${label}${_ld.sort.key === key ? `<span class="ld-arrow">${_ld.sort.dir === 1 ? ' ↑' : ' ↓'}</span>` : ''}</th>`;
+      const bestTph = Math.max(...M.prod.map(m => m.tph || 0), 0), avgTph = M.tph || 0;
+      const trendMax = Math.max(...M.prod.flatMap(m => m.trend), 1);
+      const trendCell = m => {
+        const bars = m.trend.map((v, i) => `<i class="${i === 6 ? 'now' : ''}" style="height:${Math.max(v / trendMax * 26, v ? 2 : 1).toFixed(1)}px" title="${M.days[i]}: ${v} trips"></i>`).join('');
+        const pct = m.trendPct === null ? '' : `<span class="ld-pct ${m.trendPct <= -15 ? 'ov-warn' : m.trendPct >= 15 ? 'ov-ok' : ''}" title="${ldEsc(m.trendTip)}">${m.trendPct > 0 ? '+' : m.trendPct < 0 ? '−' : ''}${Math.abs(m.trendPct)}%</span>`;
+        return `<span class="ld-trend">${bars}</span>${pct}`;
+      };
+      const downNote = m => {
+        if (!m.downMin) return '';
+        const still = m.periods.some(p => !p.to), why = [...new Set(m.periods.map(p => p.reason).filter(Boolean))];
+        const tip = m.periods.map(p => `${p.from.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false })} to ${p.to ? p.to.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'now'}: ${p.reason || 'No reason given'}${p.notes ? ' (' + p.notes + ')' : ''}`).join('\n');
+        return `<div class="ld-down" title="${ldEsc(tip)}">${still ? 'Down now · ' : ''}Down ${ldDur(m.downMin)}${why.length ? ' · ' + ldEsc(why.slice(0, 2).join(', ')) + (why.length > 2 ? ` +${why.length - 2}` : '') : ''}</div>`;
+      };
+      const readCell = m => m.due ? `<span class="${m.done === m.due ? 'ov-ok' : 'ov-warn'}">${m.done} of ${m.due}</span>` : '<span class="ov-none">Not due</span>';
+      const shiftRows = m => ['A', 'B', 'C'].filter(k => m.hByShift[k] !== undefined || m.byShift[k]).map(k => {
+        const h = m.hByShift[k], b = m.byShift[k], t = b ? b.trips : 0;
+        return `<tr class="ld-sub"><td>Shift ${k}</td><td class="num">${h === undefined ? '—' : ldF1(h)}</td><td class="num">${t}</td><td class="num">${h > 0 && t ? ldF1(t / h) : '—'}</td><td class="num">${b && t ? ldF1(b.shiftHours * 60 / t) + ' min' : '—'}</td><td></td><td></td></tr>`;
+      }).join('');
+      const prodRows = M.prod.map(m => {
+        const open = _ld.open.has(m.unit), cls = m.tph !== null && m.tph === bestTph ? 'ld-best' : m.tph !== null && avgTph && m.tph < avgTph * 0.85 ? 'ld-low' : '';
+        return `<tr class="ld-m" data-u="${ldEsc(m.unit)}" onclick="ldToggle(this.dataset.u)"><td><span class="ld-chev">${open ? '▾' : '▸'}</span>${ldEsc(m.code)}<span class="ld-tag">Production</span>${downNote(m)}</td>
+          <td class="num">${m.hasHours ? ldF1(m.hours) : '—'}</td><td class="num">${m.tripsN}</td><td class="num ${cls}">${m.tph === null ? '—' : ldF1(m.tph)}</td>
+          <td class="num">${m.avgMin === null ? '—' : ldF1(m.avgMin) + ' min'}</td><td class="l">${trendCell(m)}</td><td class="num rd">${readCell(m)}</td></tr>${open ? shiftRows(m) : ''}`;
+      }).join('');
+      const totalRow = M.prod.length ? `<tr class="ld-tot"><td>Production total</td><td class="num">${ldF1(M.prodHours)}</td><td class="num">${M.prodTrips}</td><td class="num">${M.tph === null ? '—' : ldF1(M.tph)}</td><td class="num">${M.avgMin === null ? '—' : ldF1(M.avgMin) + ' min'}</td><td></td><td></td></tr>` : '';
+      const devRows = _ld.showDev && M.dev.length ? `<tr class="ld-grp"><td colspan="7">Mine development · not in the averages</td></tr>` + M.dev.map(m =>
+        `<tr class="ld-m ld-dev"><td>${ldEsc(m.code)}<span class="ld-tag">Mine dev</span>${downNote(m)}</td><td class="num">${m.hasHours ? ldF1(m.hours) : '—'}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td></td><td class="num rd">${readCell(m)}</td></tr>`).join('') : '';
+      const table = all ? `<div class="ld-card ld-scroll"><table class="ld-table"><thead><tr>${th('code', 'Machine', 'l')}${th('hours', 'Hours')}${th('trips', 'Trips')}${th('tph', 'Trips per hour')}${th('avg', 'Avg time per trip')}${th('trend', '7-day trend', 'l')}<th>Readings</th></tr></thead><tbody>${prodRows}${totalRow}${devRows}</tbody></table></div>` :
+        '<div class="ld-card" style="padding:28px 22px;color:var(--text-secondary)">No excavators were deployed in this period. Try a wider range.</div>';
+
+      // Heat map: production machines against hours (or days), coloured by trips. Hatched = down.
+      const hourly = dateRange.type === 'today', slots = (M.prod[0] ? M.prod[0].series.slots : ovSeries([]).slots);
+      const w = ovWindow();
+      const start0 = hourly ? w.from.getTime() : new Date(ovRange().start + 'T06:00:00').getTime(), step = hourly ? 3600e3 : 86400e3;
+      const bounds = i => [start0 + i * step, start0 + (i + 1) * step];
+      const maxCell = Math.max(...M.prod.flatMap(m => m.series.slots.map(s => s.A + s.B + s.C)), 1);
+      const showNums = slots.length <= 24;
+      const heat = M.prod.length ? `<div class="ld-card ld-heatcard"><div class="ov-t-label" style="margin-bottom:12px">Trips by ${hourly ? 'hour' : 'day'}, by machine</div>
+        <div class="ld-heat" style="--cols:${slots.length}">
+          <div class="ld-hrow ld-hhead"><span></span>${slots.map(s => `<span class="ld-hlab">${s.label.slice(0, 2)}</span>`).join('')}</div>
+          ${M.prod.map(m => `<div class="ld-hrow"><span class="ld-hname">${ldEsc(m.code)}</span>${m.series.slots.map((s, i) => {
+            const v = s.A + s.B + s.C, pct = v ? Math.round(10 + v / maxCell * 80) : 0, [a, b] = bounds(i);
+            const dn = m.periods.find(p => ldOverlapMs(p, a, Math.min(b, Date.now())) >= (hourly ? 10 * 60e3 : 120 * 60e3));
+            const tip = `${ldEsc(m.code)} · ${s.label}: ${v} trips${dn ? ' · Down: ' + ldEsc(dn.reason || 'No reason given') : ''}`;
+            return `<span class="ld-hc${dn ? ' down' : ''}" style="${v ? `background:color-mix(in srgb, var(--brand-fill) ${pct}%, var(--surface));color:${pct > 50 ? '#fff' : 'var(--text-primary)'}` : ''}" title="${tip}">${showNums && v ? v : ''}</span>`;
+          }).join('')}</div>`).join('')}
+        </div>
+        <div class="ld-legend"><span>Fewer trips</span><i class="ld-ramp"></i><span>More trips</span><span class="ld-hc down ld-key"></span><span>Machine down (Equipment health)</span></div></div>` : '';
+
+      const shifts = M.byShift.length ? `<div class="ld-card" style="padding:18px 22px"><div class="ov-t-label">Trips per hour, by shift (production)</div>
+        <div class="ov-rate">${M.byShift.map(s => `<div class="ov-rate-col"><span class="ov-rate-val ov-num">${ldF1(s.tph)}</span><span class="ov-rate-shift">Shift ${s.k} · ${ldF1(s.hrs)} h · ${s.trips} trips</span></div>`).join('')}</div></div>` : '';
+      const note = `<div class="ld-note"><b>Trips per hour</b> = trips loaded ÷ machine hours from that machine's closed readings. <b>Avg time per trip</b> = the hours of the shift (8, or the hours so far for the shift running now) ÷ trips, shown in minutes. Mine development excavators show hours only and are not in any average. Click a machine to split it by shift. <b>7-day trend</b> = trips per mining day; the % compares the last 3 finished days with the 3 before.${M.unassigned ? ` ${M.unassigned.toLocaleString('en-IN')} trips have no matching excavator and are not listed.` : ''}</div>`;
+      document.getElementById('ld-body').innerHTML = sum + table + note + heat + shifts;
+    }
+
+    // ── Save as PDF for the Loading screen (same print approach as the Overview) ──
+    function ldSavePdf() {
+      const wasDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const oldTitle = document.title;
+      document.getElementById('ld-print-co').textContent = `${currentCompanyName || currentCompanyCode || ''} · Loading breakdown`;
+      document.title = `Tripman loading ${ovLocalDate(new Date())}${currentCompanyCode ? ' ' + currentCompanyCode : ''}`;
+      document.body.classList.add('ld-printing');
+      if (wasDark) document.documentElement.removeAttribute('data-theme');
+      const done = () => {
+        window.removeEventListener('afterprint', done);
+        document.body.classList.remove('ld-printing');
+        if (wasDark) document.documentElement.setAttribute('data-theme', 'dark');
+        document.title = oldTitle;
+      };
+      window.addEventListener('afterprint', done);
+      setTimeout(() => window.print(), 60);
+    }
+
     // ── collapsible left menu ──
     function navApplyCollapsed(collapsed) {
       const nav = document.getElementById('app-nav');
@@ -16184,6 +16589,7 @@
         label: b.textContent.trim(), icon: (b.querySelector('.fi') || {}).className || 'fi fi-rr-apps', run: () => navGo(b.dataset.nav)
       }));
       _cmdk.items = nav.concat([
+        { label: 'Loading: machine breakdown', icon: 'fi fi-rr-truck-loading', run: ldOpen },
         { label: 'Save overview as PDF', icon: 'fi fi-rr-file-pdf', run: ovSavePdf },
         { label: 'Refresh data', icon: 'fi fi-rr-refresh', run: refreshData },
         { label: 'Open full trips view', icon: 'fi fi-rr-truck-side', run: () => ovToggleTrips(true) },
