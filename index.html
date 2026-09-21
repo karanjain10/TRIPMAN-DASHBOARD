@@ -5966,8 +5966,11 @@
     .wp-n { text-align: right; font-family: var(--font-mono); }
     .wp-edit { padding: 4px 12px 16px; background: var(--surface); border-top: 1px solid var(--rule); }
     .wp-perm { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; cursor: pointer; }
-    .wp-perm.kid { padding-left: 26px; }
     .wp-perm.off { opacity: .45; cursor: not-allowed; }
+    .wp-kids { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); column-gap: 16px; padding-left: 26px; }
+    .wp-h { padding: 16px 0 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+    .wp-head:disabled { cursor: default; }
+    .wp-head:disabled:hover { background: transparent; }
     .wp-acts { display: flex; gap: 8px; margin-top: 12px; }
     .wp-acts button { height: 32px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--rule); background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; }
     .wp-acts button.primary { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
@@ -24205,29 +24208,43 @@
     /* ══════════════════════════ END LIVE MAP ══════════════════════════ */
 
     /* ══════════════════════ WORKER PERMISSIONS (admin only) ══════════════════════ */
-    // Same structure as the app: a switch per screen, and sub-switches under three of them.
-    // The backend checks admin on save; hiding the page is only a convenience.
+    // Mirrors the app's 44-key permission object. A group with a `key` is a real switch:
+    // turning it off clears its children. A group without a `key` is only a heading.
+    // `hidden` keys (legacy sub-flags, catch-all) are not shown but are kept and saved.
+    // Admins bypass every flag (is_admin = full access), so admin rows are not editable.
+    // The backend replaces the whole permissions object on save, so we always send all keys.
+    const WP_SITE_KINDS = [['dozer', 'Dozer', 'Operators'], ['grader', 'Grader', 'Operators'], ['drill_machine', 'Drill Machine', 'Operators'],
+      ['drill_compressor', 'Drill Compressor', 'Operators'], ['loader', 'Loader', 'Operators'], ['lmv', 'LMV', 'Drivers'],
+      ['water_tanker', 'Water Tanker', 'Drivers'], ['generator', 'Generator', 'Operators'], ['diesel_tanker', 'Diesel Tanker', 'Drivers']];
     const WP_GROUPS = [
       { key: 'home', label: 'Home' },
-      { key: 'deployment', label: 'Deployment', kids: [['deployment_trucks', 'Trucks'], ['deployment_excavators', 'Excavators']] },
+      { key: 'deployment', label: 'Deployment', hidden: ['deployment_trucks', 'deployment_excavators'],
+        kids: [['deploy_tipper', 'Tipper'], ['deploy_excavator', 'Excavator'], ['deploy_dozer', 'Dozer'], ['deploy_grader', 'Grader'],
+               ['deploy_drill_machine', 'Drill Machine'], ['deploy_drill_compressor', 'Drill Compressor'], ['deploy_loader', 'Loader'],
+               ['deploy_lmv', 'LMV'], ['deploy_water_tanker', 'Water Tanker'], ['deploy_diesel_tanker', 'Diesel Tanker']] },
       { key: 'tippers', label: 'Tippers', kids: [['tippers_drivers', 'Drivers'], ['tippers_vehicles', 'Vehicles']] },
+      { key: 'machines', label: 'Excavators', kids: [['machines_sessions', 'Sessions'], ['machines_machines', 'Machines'], ['machines_operators', 'Operators']] },
+      { key: 'fuel', label: 'Fuel Logs' },
       { key: 'reports', label: 'Reports' },
-      { key: 'machines', label: 'Machines', kids: [['machines_sessions', 'Sessions'], ['machines_machines', 'Machines'], ['machines_operators', 'Operators']] },
-      { key: 'fuel', label: 'Fuel' },
-      { key: 'others', label: 'Others' },
+      { label: 'Manage Site', kids: WP_SITE_KINDS.flatMap(([k, name, who]) => [[`${k}_people`, `${name}: ${who}`], [`${k}_equipment`, `${name}: Equipment`]]) },
+      { label: 'Survey', kids: [['survey_haul_distance', 'Haul Distance'], ['survey_drill_rl_section', 'Drill RL & Section']] },
     ];
-    const WP_KEYS = WP_GROUPS.flatMap(g => [g.key, ...(g.kids || []).map(k => k[0])]);
+    const WP_KEYS = WP_GROUPS.flatMap(g => [g.key, ...(g.kids || []).map(k => k[0])].filter(Boolean));   // shown
+    const WP_ALL = [...WP_KEYS, 'deployment_trucks', 'deployment_excavators', 'others'];                    // all 44
     let _wp = { workers: [], open: null, draft: null, state: 'loading', saving: false };
 
     const wpEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const wpCount = perms => WP_KEYS.filter(k => perms && perms[k]).length;
 
-    // Switching a parent off clears its children: they cannot be on without it.
+    // Switching a parent off clears its children (they cannot be on without it).
     function wpSet(perms, key, on) {
       const next = { ...perms, [key]: on };
-      if (!on) ((WP_GROUPS.find(g => g.key === key) || {}).kids || []).forEach(([k]) => { next[k] = false; });
+      const g = WP_GROUPS.find(x => x.key === key);
+      if (!on && g) [...(g.kids || []).map(k => k[0]), ...(g.hidden || [])].forEach(k => { next[k] = false; });
       return next;
     }
+    // Every key as a boolean (absent = false, as the backend reads it); unknown keys pass through.
+    const wpFull = perms => ({ ...perms, ...Object.fromEntries(WP_ALL.map(k => [k, !!(perms || {})[k]])) });
 
     async function wpLoad() {
       const res = await apiFetch(`${API}/workers`);
@@ -24277,11 +24294,11 @@
       list.innerHTML = rows.map(w => {
         const open = _wp.open === w._id;
         return `<div class="wp-row${open ? ' open' : ''}">
-          <button class="wp-head" onclick="wpToggleRow('${wpEsc(w._id)}')" aria-expanded="${open}">
+          <button class="wp-head" onclick="wpToggleRow('${wpEsc(w._id)}')" aria-expanded="${open}" ${w.is_admin ? 'disabled title="Admins have full access, so permissions do not apply"' : ''}>
             <span><span class="wp-name">${wpEsc(w.name || '—')}</span><span class="wp-id">${wpEsc(w.worker_id || '')}</span></span>
             <span class="wp-role">${wpEsc(w.is_admin ? 'admin' : (w.role || '—'))}</span>
-            <span class="wp-n">${wpCount(w.permissions)} of ${WP_KEYS.length}</span>
-            <span aria-hidden="true">${open ? '⌃' : '›'}</span>
+            <span class="wp-n">${w.is_admin ? 'full access' : `${wpCount(w.permissions)} of ${WP_KEYS.length}`}</span>
+            <span aria-hidden="true">${w.is_admin ? '' : open ? '⌃' : '›'}</span>
           </button>
           ${open ? wpEditorHtml() : ''}
         </div>`;
@@ -24290,10 +24307,11 @@
     }
 
     function wpEditorHtml() {
-      const box = (key, label, kid) => `<label class="wp-perm${kid ? ' kid' : ''}" id="wp-l-${key}">
+      const box = (key, label) => `<label class="wp-perm" id="wp-l-${key}">
         <input type="checkbox" id="wp-k-${key}" onchange="wpToggle('${key}', this.checked)" /> ${label}</label>`;
+      const kids = g => (g.kids || []).length ? `<div class="wp-kids">${g.kids.map(([k, l]) => box(k, l)).join('')}</div>` : '';
       return `<div class="wp-edit">
-        ${WP_GROUPS.map(g => box(g.key, g.label, false) + (g.kids || []).map(([k, l]) => box(k, l, true)).join('')).join('')}
+        ${WP_GROUPS.map(g => g.key ? box(g.key, g.label) + kids(g) : `<div class="wp-h">${g.label}</div>${kids(g)}`).join('')}
         <div class="wp-acts">
           <button class="primary" id="wp-save" onclick="wpSave()">Save permissions</button>
           <button onclick="wpToggleRow(null)">Cancel</button>
@@ -24306,23 +24324,24 @@
       const w = _wp.workers.find(x => x._id === _wp.open);
       if (!w || !_wp.draft) return;
       WP_GROUPS.forEach(g => {
-        [[g.key, false], ...(g.kids || []).map(([k]) => [k, true])].forEach(([k, kid]) => {
+        const off = !!g.key && !_wp.draft[g.key];
+        [g.key, ...(g.kids || []).map(k => k[0])].filter(Boolean).forEach(k => {
           const el = document.getElementById(`wp-k-${k}`);
           if (!el) return;
           el.checked = !!_wp.draft[k];
-          el.disabled = kid && !_wp.draft[g.key];
+          el.disabled = off && k !== g.key;
           document.getElementById(`wp-l-${k}`).classList.toggle('off', el.disabled);
         });
       });
       const save = document.getElementById('wp-save');
-      const changed = WP_KEYS.some(k => !!_wp.draft[k] !== !!(w.permissions || {})[k]);
+      const changed = WP_ALL.some(k => !!_wp.draft[k] !== !!(w.permissions || {})[k]);
       save.disabled = _wp.saving || !changed;
       save.textContent = _wp.saving ? 'Saving…' : 'Save permissions';
     }
 
     function wpToggleRow(id) {
       const w = _wp.workers.find(x => x._id === id);
-      _wp.open = w && _wp.open !== id ? id : null;
+      _wp.open = w && !w.is_admin && _wp.open !== id ? id : null;
       _wp.draft = _wp.open ? { ...(w.permissions || {}) } : null;
       wpRender();
     }
@@ -24337,20 +24356,21 @@
       if (!w || _wp.saving) return;
       _wp.saving = true; wpSync();
       try {
+        const sent = wpFull(_wp.draft);
         const res = await apiFetch(`${API}/workers/${encodeURIComponent(w._id)}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: _wp.draft })
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: sent })
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(typeof err.detail === 'string' ? err.detail : `HTTP ${res.status}`);
         }
-        const sent = _wp.draft, id = w._id;
+        const id = w._id;
         // Re-read from the server so the page shows what was actually stored.
         let kept = true;
         try {
           await wpLoad();
           const saved = (_wp.workers.find(x => x._id === id) || {}).permissions || {};
-          kept = WP_KEYS.every(k => !!saved[k] === !!sent[k]);
+          kept = WP_ALL.every(k => !!saved[k] === !!sent[k]);
         } catch (_) { w.permissions = sent; }
         _wp.open = null; _wp.draft = null;
         showToast(kept ? `Saved permissions for ${w.name}` : 'Saved, but the server kept different values. Please check.');
