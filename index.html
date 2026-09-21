@@ -5978,6 +5978,36 @@
     .wp-note { padding: 28px 12px; color: var(--text-muted); font-size: 13px; }
     .wp-skel { height: 15px; margin: 15px 12px; background: var(--rule); border-radius: 2px; }
 
+    /* Drilling */
+    .dr-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+    .dr-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+    .dr-bar input[type=date] { height: 34px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; }
+    .dr-shifts { display: inline-flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+    .dr-shifts button { height: 34px; padding: 0 14px; border: none; border-right: 1px solid var(--rule); background: var(--surface); color: var(--text-secondary); font: inherit; font-size: 13px; cursor: pointer; }
+    .dr-shifts button:last-child { border-right: none; }
+    .dr-shifts button.on { background: var(--brand-fill); color: #fff; }
+    .dr-strip { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+    .dr-stat { padding: 14px 12px; border-right: 1px solid var(--rule); }
+    .dr-stat:last-child { border-right: none; }
+    .dr-stat b { display: block; font-family: var(--font-mono); font-size: 24px; font-weight: 600; color: var(--text-primary); }
+    .dr-stat span { font-size: 11px; color: var(--text-muted); }
+    .dr-scroll { overflow-x: auto; }
+    .dr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .dr-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+    .dr-table td { padding: 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    .dr-table .num { text-align: right; font-family: var(--font-mono); }
+    .dr-row { cursor: pointer; }
+    .dr-row:hover, .dr-row.open { background: var(--surface); }
+    .dr-open { padding: 0; border: none; background: none; font: inherit; font-weight: 600; color: inherit; cursor: pointer; }
+    .dr-miss { font-size: 12px; color: var(--text-muted); }
+    .dr-detail td { padding: 12px 10px 18px 24px; background: var(--surface); }
+    .dr-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+    .dr-cols h4 { margin: 0 0 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+    .dr-kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 12px; margin: 0; font-size: 12.5px; }
+    .dr-kv dt { color: var(--text-muted); }
+    .dr-kv dd { margin: 0; font-family: var(--font-mono); }
+    @media (max-width: 700px) { .dr-strip { grid-template-columns: repeat(2, 1fr); } .dr-stat:nth-child(2) { border-right: none; } }
+
     @media (prefers-reduced-motion: reduce) { .ov-t.skel .ov-t-value { animation: none; } }
     @media (min-width: 1101px) and (max-width: 1400px) { .ov-small { padding: 12px; } .ov-small .ov-t-value { font-size: 21px; } .ov-small .ov-unit { margin-left: 4px; } }
     @media (max-width: 1100px) {
@@ -6175,6 +6205,7 @@
         <button class="nav-item" data-nav="deployments" onclick="navGo('deployments')"><i class="fi fi-rr-truck-loading" aria-hidden="true"></i><span>Deployments</span></button>
         <button class="nav-item" data-nav="eqhealth" onclick="navGo('eqhealth')"><i class="fi fi-rr-engine" aria-hidden="true"></i><span>Equipment health</span></button>
         <button class="nav-item" data-nav="livemap" onclick="navGo('livemap')"><i class="fi fi-rr-map-marker" aria-hidden="true"></i><span>Live map</span></button>
+        <button class="nav-item" data-nav="drilling" onclick="navGo('drilling')"><i class="fi fi-rr-hammer-crash" aria-hidden="true"></i><span>Drilling</span></button>
 
         <div class="nav-group" id="nav-group-shiftops">Shift operations</div>
         <button class="nav-item" id="compliance-btn" data-nav="compliance" onclick="navGo('compliance')"><i class="fi fi-rr-clipboard-check" aria-hidden="true"></i><span>Compliance</span></button>
@@ -8062,6 +8093,28 @@
     </div>
     <div id="fuel-alert-progress"
       style="height:3px;background:#c0392b;border-radius:2px;margin-top:14px;width:100%;transition:width linear;"></div>
+  </div>
+
+  <div id="drill-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeDrillPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Drilling</div>
+      <div class="topbar-user"><button class="action-btn" onclick="drLoad()" style="height:30px;font-size:12px;">↻ Refresh</button></div>
+    </div>
+    <div class="dr-wrap">
+      <div class="dr-bar">
+        <input type="date" id="dr-date" onchange="drLoad()" aria-label="Date" />
+        <div class="dr-shifts" role="group" aria-label="Shift">
+          <button data-s="all" class="on" onclick="drShift('all')">All shifts</button>
+          <button data-s="A" onclick="drShift('A')">A</button>
+          <button data-s="B" onclick="drShift('B')">B</button>
+          <button data-s="C" onclick="drShift('C')">C</button>
+        </div>
+      </div>
+      <div class="dr-strip" id="dr-strip"></div>
+      <div id="dr-list"></div>
+    </div>
   </div>
 
   <div id="workers-page" style="display:none;min-height:100vh;background:var(--bg);">
@@ -15714,7 +15767,7 @@
         reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
         deployments: openDeploymentsPage, eqhealth: openEqHealthPage, livemap: openLiveMapPage,
         compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
-        manual: openManualTripPage, workers: openWorkersPage
+        manual: openManualTripPage, workers: openWorkersPage, drilling: openDrillPage
       };
       if (targets[key]) targets[key]();
     }
@@ -24382,6 +24435,139 @@
     }
 
     /* ═══════════════════════ END WORKER PERMISSIONS ═══════════════════════ */
+
+    /* ══════════════════════ DRILLING (drill output + drill RL & section survey) ══════════════════════ */
+    // One row per drill-machine deployment from GET /equipment-assignments. The API needs both a
+    // date and a shift, so "All shifts" makes three calls. Output (hole_groups, total_holes,
+    // total_meterage) and survey values (rl, northing, easting, chainage_*, length) live on the same
+    // record and are absent until someone enters them. Read-only. ponytail: one day at a time.
+    let _dr = { rows: [], units: {}, shift: 'all', state: 'loading', open: null, token: 0 };
+    const drEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const drNum = (v, d = 1) => v == null ? null : Number(v).toLocaleString('en-IN', { maximumFractionDigits: d });
+    const drRaw = (v, d) => Number(v).toFixed(d);   // grid coordinates: no digit grouping
+    const drMiss = t => `<span class="dr-miss">${t}</span>`;
+    const drSurveyed = r => r.rl != null || !!r.surveyed_at;
+    const drPlate = r => { const u = _dr.units[r.unit_id]; return (u && (u.number_plate || u.vehicle_number || u.name)) || `…${String(r.unit_id || '').slice(-6)}`; };
+
+    function openDrillPage() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('drill-page').style.display = 'block';
+      const d = document.getElementById('dr-date');
+      if (!d.value) d.value = ovMiningDate(new Date());
+      drLoad();
+    }
+
+    function closeDrillPage() {
+      document.getElementById('drill-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    function drShift(s) {
+      _dr.shift = s;
+      document.querySelectorAll('#drill-page .dr-shifts button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+      drLoad();
+    }
+
+    async function drLoad() {
+      const date = document.getElementById('dr-date').value;
+      if (!date) return;
+      const token = ++_dr.token;
+      _dr.state = 'loading'; _dr.open = null;
+      drRender();
+      const shifts = _dr.shift === 'all' ? ['A', 'B', 'C'] : [_dr.shift];
+      try {
+        const [others, ...perShift] = await Promise.all([
+          apiFetch(`${API}/others`).then(r => r.ok ? r.json() : []).catch(() => []),
+          ...shifts.map(sh => apiFetch(`${API}/equipment-assignments?equipment_type=drill_machine&date=${encodeURIComponent(date)}&shift=${sh}`)
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })),
+        ]);
+        if (token !== _dr.token) return;   // a newer date/shift was picked meanwhile
+        _dr.units = Object.fromEntries((Array.isArray(others) ? others : []).map(o => [o._id, o]));
+        _dr.rows = perShift.flatMap(r => Array.isArray(r) ? r : []);
+        _dr.rows.sort((a, b) => String(a.shift).localeCompare(String(b.shift)) || drPlate(a).localeCompare(drPlate(b), undefined, { numeric: true }));
+        _dr.state = 'ready';
+      } catch (e) {
+        if (token !== _dr.token) return;
+        _dr.state = 'error';
+      }
+      drRender();
+    }
+
+    function drRender() {
+      const strip = document.getElementById('dr-strip');
+      const list = document.getElementById('dr-list');
+      if (_dr.state === 'loading') {
+        strip.innerHTML = '';
+        list.innerHTML = '<div class="wp-skel"></div>'.repeat(4);
+        return;
+      }
+      if (_dr.state === 'error') {
+        strip.innerHTML = '';
+        list.innerHTML = `<div class="wp-note">Could not load drilling data. Check your connection, then
+          <a href="#" onclick="drLoad();return false;">try again</a>.</div>`;
+        return;
+      }
+      const rows = _dr.rows;
+      if (!rows.length) {
+        strip.innerHTML = '';
+        const day = new Date(document.getElementById('dr-date').value + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        list.innerHTML = `<div class="wp-note">No drill deployments on ${day}${_dr.shift === 'all' ? '' : `, shift ${_dr.shift}`}.</div>`;
+        return;
+      }
+      const withOut = rows.filter(r => r.total_meterage != null);
+      const stat = (v, label) => `<div class="dr-stat"><b>${v}</b><span>${label}</span></div>`;
+      strip.innerHTML =
+        stat(new Set(rows.map(r => r.unit_id)).size, 'drill machines deployed') +
+        stat(drNum(withOut.reduce((n, r) => n + (r.total_holes || 0), 0), 0), `holes, entered on ${withOut.length} of ${rows.length}`) +
+        stat(drNum(withOut.reduce((n, r) => n + (r.total_meterage || 0), 0)), `metres drilled, entered on ${withOut.length} of ${rows.length}`) +
+        stat(rows.filter(drSurveyed).length, `surveyed, of ${rows.length} deployments`);
+      list.innerHTML = `<div class="dr-scroll"><table class="dr-table">
+        <thead><tr><th>Drill machine</th><th>Shift</th><th>Operator</th><th>Compressor</th><th>Location</th><th class="num">Holes</th><th class="num">Metres</th><th>Survey</th></tr></thead>
+        <tbody>${rows.map(drRowHtml).join('')}</tbody></table></div>`;
+    }
+
+    function drRowHtml(r) {
+      const open = _dr.open === r._id;
+      return `<tr class="dr-row${open ? ' open' : ''}" onclick="drToggle('${drEsc(r._id)}')">
+        <td><button class="dr-open" aria-expanded="${open}">${drEsc(drPlate(r))}</button></td>
+        <td>${drEsc(r.shift || '—')}</td>
+        <td>${drEsc(r.person_name || '—')}</td>
+        <td>${drEsc(r.compressor_number || '—')}</td>
+        <td>${drEsc(r.location || '—')}</td>
+        <td class="num">${r.total_holes != null ? drNum(r.total_holes, 0) : drMiss('not entered')}</td>
+        <td class="num">${r.total_meterage != null ? drNum(r.total_meterage) : drMiss('not entered')}</td>
+        <td>${drSurveyed(r) ? `RL ${drNum(r.rl, 2) ?? '—'}` : drMiss('not surveyed')}</td>
+      </tr>${open ? drDetailHtml(r) : ''}`;
+    }
+
+    function drDetailHtml(r) {
+      const kv = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
+      const groups = Array.isArray(r.hole_groups) ? r.hole_groups : [];
+      const output = groups.length
+        ? `<dl class="dr-kv">${groups.map(g => kv(`${drNum(g.holes, 0)} holes`, `× ${drNum(g.depth, 2)} m`)).join('')}
+             ${kv('Total', `${drNum(r.total_holes, 0)} holes, ${drNum(r.total_meterage)} m`)}</dl>
+           ${r.meterage_updated_at ? `<div class="dr-miss" style="margin-top:6px;">Entered ${lmFmtTime(r.meterage_updated_at)}${r.meterage_by ? ` by ${drEsc(r.meterage_by)}` : ''}</div>` : ''}`
+        : drMiss('Meterage not entered yet.');
+      const survey = drSurveyed(r)
+        ? `<dl class="dr-kv">
+            ${kv('RL', r.rl != null ? `${drNum(r.rl, 2)} m` : '—')}
+            ${kv('Northing', r.northing != null ? `${drRaw(r.northing, 2)} m` : '—')}
+            ${kv('Easting', r.easting != null ? `${drRaw(r.easting, 2)} m` : '—')}
+            ${kv('Chainage', r.chainage_from != null ? `${drNum(r.chainage_from, 1)} to ${drNum(r.chainage_to, 1)} m` : '—')}
+            ${kv('Length', r.length != null ? `${drNum(r.length, 1)} m` : '—')}
+            ${kv('Surveyed by', drEsc(r.surveyed_by_name || r.surveyed_by || '—'))}
+            ${kv('Surveyed at', lmFmtTime(r.surveyed_at))}</dl>`
+        : drMiss('Not surveyed yet.');
+      return `<tr class="dr-detail"><td colspan="8"><div class="dr-cols">
+        <div><h4>Drilling output</h4>${output}</div><div><h4>RL &amp; section survey</h4>${survey}</div></div></td></tr>`;
+    }
+
+    function drToggle(id) {
+      _dr.open = _dr.open === id ? null : id;
+      drRender();
+    }
+
+    /* ═══════════════════════ END DRILLING ═══════════════════════ */
 
   </script>
 </body>
