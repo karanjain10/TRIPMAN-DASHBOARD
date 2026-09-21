@@ -8644,9 +8644,6 @@
             <div class="dep-filter-label">Equipment Type</div>
             <select id="src-eq-filter" class="dep-select" style="min-width:130px;" onchange="srcApplyFilters()">
               <option value="">All Types</option>
-              <option value="__tipper">Tippers</option>
-              <option value="__excavator">Excavators</option>
-              <option value="__other">Others</option>
             </select>
           </div>
           <div class="dep-filter-field">
@@ -22784,14 +22781,19 @@
       }
     }
 
+    // A row's type as the API names it ("dozer", "drill_machine"). The Equipment Type filter
+    // lists whatever types are in the loaded data, tippers and excavators first.
+    const srcRowType = d => String(d.equipment_type || d.vehicle_type || '').toLowerCase().replace(/[\s-]+/g, '_');
     function srcPopulateEqFilter() {
       const sel = document.getElementById('src-eq-filter');
       const prev = sel.value;
+      const first = ['tipper', 'excavator'];
+      const rank = t => first.indexOf(t) + 1 || (t === '__none' ? 999 : 99);   // tippers, excavators, the rest A-Z, unspecified last
+      const types = [...new Set(_srcAllData.map(d => srcRowType(d) || '__none'))]
+        .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
       sel.innerHTML = '<option value="">All Types</option>' +
-        '<option value="__tipper">Tippers</option>' +
-        '<option value="__excavator">Excavators</option>' +
-        '<option value="__other">Others</option>';
-      if (prev) sel.value = prev;
+        types.map(t => `<option value="${t}">${t === '__none' ? 'Unspecified' : depFmtType(t)}</option>`).join('');
+      if (types.includes(prev)) sel.value = prev;
     }
 
     function srcPopulateDriverFilter() {
@@ -22826,11 +22828,6 @@
     function srcIsTipper(d) {
       const t = (d.equipment_type || d.vehicle_type || '').toLowerCase();
       return t.includes('tipper') || t.includes('truck') || t.includes('dumper');
-    }
-
-    function srcIsExcavator(d) {
-      const t = (d.equipment_type || d.vehicle_type || '').toLowerCase();
-      return t.includes('excavator') || t.includes('dozer') || t.includes('grader') || t.includes('drill');
     }
 
     function srcGetStatus(d) {
@@ -22988,9 +22985,7 @@
       const unitVal   = (document.getElementById('src-unit-filter')?.value  || '').trim().toLowerCase();
       _srcFiltered = _srcAllData.filter(d => {
         if (shift && shift !== 'all' && (d.shift || '').toUpperCase() !== shift) return false;
-        if (eqType === '__tipper'    && !srcIsTipper(d))    return false;
-        if (eqType === '__excavator' && !srcIsExcavator(d)) return false;
-        if (eqType === '__other'     && (srcIsTipper(d) || srcIsExcavator(d))) return false;
+        if (eqType && (srcRowType(d) || '__none') !== eqType) return false;
         // Driver filter: match by stored name substring
         if (driverVal) {
           const name = srcGetPersonName(d).toLowerCase();
