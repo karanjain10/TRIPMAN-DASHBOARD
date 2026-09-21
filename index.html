@@ -5951,6 +5951,30 @@
     .cmdk-item.sel .fi { color: #fff; }
     .cmdk-empty { padding: 22px; text-align: center; color: var(--text-muted); font-size: 14px; }
 
+    /* Worker permissions (admin) */
+    .wp-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+    .wp-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .wp-bar input { flex: 1; height: 34px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; }
+    .wp-count { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .wp-list { border-top: 1px solid var(--rule); }
+    .wp-row { border-bottom: 1px solid var(--rule); }
+    .wp-head { display: grid; grid-template-columns: minmax(0, 1fr) 90px 72px 14px; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: none; background: transparent; font: inherit; font-size: 13px; color: var(--text-primary); text-align: left; cursor: pointer; }
+    .wp-head:hover, .wp-row.open .wp-head { background: var(--surface); }
+    .wp-name { font-weight: 600; }
+    .wp-id { margin-left: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+    .wp-role, .wp-n { color: var(--text-secondary); font-size: 12px; }
+    .wp-n { text-align: right; font-family: var(--font-mono); }
+    .wp-edit { padding: 4px 12px 16px; background: var(--surface); border-top: 1px solid var(--rule); }
+    .wp-perm { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; cursor: pointer; }
+    .wp-perm.kid { padding-left: 26px; }
+    .wp-perm.off { opacity: .45; cursor: not-allowed; }
+    .wp-acts { display: flex; gap: 8px; margin-top: 12px; }
+    .wp-acts button { height: 32px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--rule); background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; }
+    .wp-acts button.primary { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+    .wp-acts button:disabled { opacity: .5; cursor: default; }
+    .wp-note { padding: 28px 12px; color: var(--text-muted); font-size: 13px; }
+    .wp-skel { height: 15px; margin: 15px 12px; background: var(--rule); border-radius: 2px; }
+
     @media (prefers-reduced-motion: reduce) { .ov-t.skel .ov-t-value { animation: none; } }
     @media (min-width: 1101px) and (max-width: 1400px) { .ov-small { padding: 12px; } .ov-small .ov-t-value { font-size: 21px; } .ov-small .ov-unit { margin-left: 4px; } }
     @media (max-width: 1100px) {
@@ -6156,6 +6180,7 @@
 
         <div class="nav-group" id="nav-group-admin" style="display:none;">Admin</div>
         <button class="nav-item" id="manual-trip-btn" data-nav="manual" onclick="navGo('manual')" style="display:none;"><i class="fi fi-rr-edit" aria-hidden="true"></i><span>Manual entry</span></button>
+        <button class="nav-item" id="workers-btn" data-nav="workers" onclick="navGo('workers')" style="display:none;"><i class="fi fi-rr-users" aria-hidden="true"></i><span>Worker permissions</span></button>
 
         <div class="nav-foot">
           <label for="home-view-select">Home layout</label>
@@ -8034,6 +8059,22 @@
     </div>
     <div id="fuel-alert-progress"
       style="height:3px;background:#c0392b;border-radius:2px;margin-top:14px;width:100%;transition:width linear;"></div>
+  </div>
+
+  <div id="workers-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeWorkersPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Worker permissions</div>
+      <div class="topbar-user"><span style="font-size:12px;color:var(--text-muted);">Admin only</span></div>
+    </div>
+    <div class="wp-wrap">
+      <div class="wp-bar">
+        <input id="wp-search" type="search" placeholder="Search by name or worker ID" oninput="wpRender()" aria-label="Search workers" />
+        <span class="wp-count" id="wp-count"></span>
+      </div>
+      <div class="wp-list" id="wp-list"></div>
+    </div>
   </div>
 
   <div id="manual-trip-page" style="display:none;min-height:100vh;background:var(--bg);">
@@ -15545,6 +15586,8 @@
       const isAdmin = !!(currentUser && currentUser.is_admin === true);
       const manual = document.getElementById('manual-trip-btn');
       if (manual) manual.style.display = isAdmin ? 'flex' : 'none';
+      const workersBtn = document.getElementById('workers-btn');
+      if (workersBtn) workersBtn.style.display = isAdmin ? 'flex' : 'none';
       const adminGroup = document.getElementById('nav-group-admin');
       if (adminGroup) adminGroup.style.display = isAdmin ? '' : 'none';
       const showOps = canSeeShiftOps();
@@ -15668,7 +15711,7 @@
         reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
         deployments: openDeploymentsPage, eqhealth: openEqHealthPage, livemap: openLiveMapPage,
         compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
-        manual: openManualTripPage
+        manual: openManualTripPage, workers: openWorkersPage
       };
       if (targets[key]) targets[key]();
     }
@@ -24160,6 +24203,165 @@
     }
 
     /* ══════════════════════════ END LIVE MAP ══════════════════════════ */
+
+    /* ══════════════════════ WORKER PERMISSIONS (admin only) ══════════════════════ */
+    // Same structure as the app: a switch per screen, and sub-switches under three of them.
+    // The backend checks admin on save; hiding the page is only a convenience.
+    const WP_GROUPS = [
+      { key: 'home', label: 'Home' },
+      { key: 'deployment', label: 'Deployment', kids: [['deployment_trucks', 'Trucks'], ['deployment_excavators', 'Excavators']] },
+      { key: 'tippers', label: 'Tippers', kids: [['tippers_drivers', 'Drivers'], ['tippers_vehicles', 'Vehicles']] },
+      { key: 'reports', label: 'Reports' },
+      { key: 'machines', label: 'Machines', kids: [['machines_sessions', 'Sessions'], ['machines_machines', 'Machines'], ['machines_operators', 'Operators']] },
+      { key: 'fuel', label: 'Fuel' },
+      { key: 'others', label: 'Others' },
+    ];
+    const WP_KEYS = WP_GROUPS.flatMap(g => [g.key, ...(g.kids || []).map(k => k[0])]);
+    let _wp = { workers: [], open: null, draft: null, state: 'loading', saving: false };
+
+    const wpEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const wpCount = perms => WP_KEYS.filter(k => perms && perms[k]).length;
+
+    // Switching a parent off clears its children: they cannot be on without it.
+    function wpSet(perms, key, on) {
+      const next = { ...perms, [key]: on };
+      if (!on) ((WP_GROUPS.find(g => g.key === key) || {}).kids || []).forEach(([k]) => { next[k] = false; });
+      return next;
+    }
+
+    async function wpLoad() {
+      const res = await apiFetch(`${API}/workers`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      _wp.workers = Array.isArray(data) ? data : [];
+    }
+
+    async function openWorkersPage() {
+      if (!currentUser || currentUser.is_admin !== true) { showToast('Admin access required'); return; }
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('workers-page').style.display = 'block';
+      _wp.open = null; _wp.draft = null; _wp.state = 'loading';
+      wpRender();
+      try { await wpLoad(); _wp.state = 'ready'; } catch (e) { _wp.state = 'error'; }
+      wpRender();
+    }
+
+    function closeWorkersPage() {
+      document.getElementById('workers-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    function wpRender() {
+      const list = document.getElementById('wp-list');
+      const count = document.getElementById('wp-count');
+      if (_wp.state === 'loading') {
+        count.textContent = '';
+        list.innerHTML = '<div class="wp-skel"></div>'.repeat(4);
+        return;
+      }
+      if (_wp.state === 'error') {
+        count.textContent = '';
+        list.innerHTML = `<div class="wp-note">Could not load workers. Check your connection, then
+          <a href="#" onclick="openWorkersPage();return false;">try again</a>.</div>`;
+        return;
+      }
+      const q = document.getElementById('wp-search').value.trim().toLowerCase();
+      const rows = _wp.workers
+        .filter(w => !q || `${w.name || ''} ${w.worker_id || ''}`.toLowerCase().includes(q))
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      count.textContent = `${rows.length} of ${_wp.workers.length} workers`;
+      if (!rows.length) {
+        list.innerHTML = `<div class="wp-note">${q ? `No worker matches "${wpEsc(q)}".` : 'No workers on this site yet.'}</div>`;
+        return;
+      }
+      list.innerHTML = rows.map(w => {
+        const open = _wp.open === w._id;
+        return `<div class="wp-row${open ? ' open' : ''}">
+          <button class="wp-head" onclick="wpToggleRow('${wpEsc(w._id)}')" aria-expanded="${open}">
+            <span><span class="wp-name">${wpEsc(w.name || '—')}</span><span class="wp-id">${wpEsc(w.worker_id || '')}</span></span>
+            <span class="wp-role">${wpEsc(w.is_admin ? 'admin' : (w.role || '—'))}</span>
+            <span class="wp-n">${wpCount(w.permissions)} of ${WP_KEYS.length}</span>
+            <span aria-hidden="true">${open ? '⌃' : '›'}</span>
+          </button>
+          ${open ? wpEditorHtml() : ''}
+        </div>`;
+      }).join('');
+      if (_wp.open) wpSync();
+    }
+
+    function wpEditorHtml() {
+      const box = (key, label, kid) => `<label class="wp-perm${kid ? ' kid' : ''}" id="wp-l-${key}">
+        <input type="checkbox" id="wp-k-${key}" onchange="wpToggle('${key}', this.checked)" /> ${label}</label>`;
+      return `<div class="wp-edit">
+        ${WP_GROUPS.map(g => box(g.key, g.label, false) + (g.kids || []).map(([k, l]) => box(k, l, true)).join('')).join('')}
+        <div class="wp-acts">
+          <button class="primary" id="wp-save" onclick="wpSave()">Save permissions</button>
+          <button onclick="wpToggleRow(null)">Cancel</button>
+        </div>
+      </div>`;
+    }
+
+    // Push the draft into the checkboxes without re-rendering, so keyboard focus stays put.
+    function wpSync() {
+      const w = _wp.workers.find(x => x._id === _wp.open);
+      if (!w || !_wp.draft) return;
+      WP_GROUPS.forEach(g => {
+        [[g.key, false], ...(g.kids || []).map(([k]) => [k, true])].forEach(([k, kid]) => {
+          const el = document.getElementById(`wp-k-${k}`);
+          if (!el) return;
+          el.checked = !!_wp.draft[k];
+          el.disabled = kid && !_wp.draft[g.key];
+          document.getElementById(`wp-l-${k}`).classList.toggle('off', el.disabled);
+        });
+      });
+      const save = document.getElementById('wp-save');
+      const changed = WP_KEYS.some(k => !!_wp.draft[k] !== !!(w.permissions || {})[k]);
+      save.disabled = _wp.saving || !changed;
+      save.textContent = _wp.saving ? 'Saving…' : 'Save permissions';
+    }
+
+    function wpToggleRow(id) {
+      const w = _wp.workers.find(x => x._id === id);
+      _wp.open = w && _wp.open !== id ? id : null;
+      _wp.draft = _wp.open ? { ...(w.permissions || {}) } : null;
+      wpRender();
+    }
+
+    function wpToggle(key, on) {
+      _wp.draft = wpSet(_wp.draft, key, on);
+      wpSync();
+    }
+
+    async function wpSave() {
+      const w = _wp.workers.find(x => x._id === _wp.open);
+      if (!w || _wp.saving) return;
+      _wp.saving = true; wpSync();
+      try {
+        const res = await apiFetch(`${API}/workers/${encodeURIComponent(w._id)}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: _wp.draft })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(typeof err.detail === 'string' ? err.detail : `HTTP ${res.status}`);
+        }
+        const sent = _wp.draft, id = w._id;
+        // Re-read from the server so the page shows what was actually stored.
+        let kept = true;
+        try {
+          await wpLoad();
+          const saved = (_wp.workers.find(x => x._id === id) || {}).permissions || {};
+          kept = WP_KEYS.every(k => !!saved[k] === !!sent[k]);
+        } catch (_) { w.permissions = sent; }
+        _wp.open = null; _wp.draft = null;
+        showToast(kept ? `Saved permissions for ${w.name}` : 'Saved, but the server kept different values. Please check.');
+      } catch (e) {
+        showToast(`Could not save: ${e.message}`);
+      }
+      _wp.saving = false;
+      wpRender();
+    }
+
+    /* ═══════════════════════ END WORKER PERMISSIONS ═══════════════════════ */
 
   </script>
 </body>
