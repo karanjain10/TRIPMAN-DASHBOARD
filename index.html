@@ -15693,7 +15693,7 @@
     };
     const OV_GAP_LIMIT_MIN = 45;
     const OV_CACHE_MS = 5 * 60 * 1000;
-    let _ov = { rows: [], flags: null, key: '', at: 0, loading: false, error: false, prev: null, updatedAt: 0, extraTrips: [], extra: {} };
+    let _ov = { drill: null, rows: [], flags: null, key: '', at: 0, loading: false, error: false, prev: null, updatedAt: 0, extraTrips: [], extra: {} };
     let _ovToken = 0;
 
     function ovStoredView() {
@@ -15836,6 +15836,37 @@
       } catch (_) { _ov.extraTrips = []; }
       ovRender();
     }
+    // Drill holes and metres for the Drilling tile. They live on the drill assignments, one call
+    // per day and shift. All three shifts are cached; the shift filter is applied when drawing.
+    // ponytail: up to 93 small calls for a 30-day range, cached 5 min; add a summary endpoint if slow.
+    let _ovDrillToken = 0;
+    async function ovLoadDrill(start, end) {
+      const key = `${start}|${end}`;
+      if (_ov.drill && _ov.drill.key === key && Date.now() - _ov.drill.at < OV_CACHE_MS) return;
+      const token = ++_ovDrillToken;
+      const dates = dashboardDateRange(start, end || start, 31);
+      try {
+        const got = await Promise.all(dates.flatMap(d => ['A', 'B', 'C'].map(sh =>
+          apiFetch(`${API}/equipment-assignments?equipment_type=drill_machine&date=${d}&shift=${sh}`)
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))));
+        if (token !== _ovDrillToken) return;   // a newer range superseded this one
+        _ov.drill = { key, at: Date.now(), rows: got.flatMap(r => Array.isArray(r) ? r : []) };
+      } catch (_) {
+        if (token !== _ovDrillToken) return;
+        _ov.drill = null;   // no totals is better than partial ones
+      }
+      ovRenderTiles();
+    }
+    function ovDrillSub(units) {
+      const base = plural(units, 'drill');
+      if (!_ov.drill) return base;
+      const mine = _ov.drill.rows.filter(r => !activeFilters.shifts.size || activeFilters.shifts.has(r.shift));
+      const done = mine.filter(r => r.total_meterage != null);
+      if (!done.length) return `${base} · no holes entered yet`;
+      const holes = done.reduce((n, r) => n + (r.total_holes || 0), 0);
+      const metres = done.reduce((n, r) => n + (r.total_meterage || 0), 0);
+      return `<span title="Meterage entered on ${done.length} of ${mine.length} drill deployments">${base} · ${holes.toLocaleString('en-IN')} holes · ${metres.toLocaleString('en-IN', { maximumFractionDigits: 1 })} m</span>`;
+    }
     const ovHas = v => v !== undefined && v !== null && v !== '';
 
     async function ovLoad() {
@@ -15845,6 +15876,7 @@
       _ov.updatedAt = Date.now(); // trips were just (re)loaded
       ovLoadPrev(start, end);
       ovLoadExtraTrips(start, end);
+      ovLoadDrill(start, end);
       if (_ov.key === key && Date.now() - _ov.at < OV_CACHE_MS && !_ov.error) { ovRender(); return; }
       const token = ++_ovToken;
       _ov.loading = true; _ov.error = false;
@@ -16160,7 +16192,7 @@
       const smallTiles = smalls.map(k => {
         const s = stats[k];
         const val = k === 'utility' ? s.km : s.hours;
-        const sub = k === 'drilling' ? `${plural(s.units, 'drill')} · hole data pending` : cap(s.names || plural(s.units, 'unit'));
+        const sub = k === 'drilling' ? ovDrillSub(s.units) : cap(s.names || plural(s.units, 'unit'));
         const drill = k === 'drilling';   // the Drilling tile opens the Drilling page, like Loading does
         return `<div class="ov-t ov-small${drill ? ' ov-click' : ''}${skel}"${drill ? ` onclick="openDrillPage()" onkeydown="if(event.key==='Enter')openDrillPage()" role="button" tabindex="0" aria-label="Open the Drilling page"` : ''}>
           <div class="ov-t-top"><span class="ov-t-label">${label(k)}</span>${drill ? '<span class="ov-linkbtn">Open →</span>' : ''}</div>
