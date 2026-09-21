@@ -22871,7 +22871,8 @@
       // operating the truck for that reading.
       if (!d.is_admin_override && !d.created_by_admin) {
         const by = d.hmr_closing_by || d.kmr_closing_by || d.hmr_opening_by || d.kmr_opening_by;
-        if (by) return by;
+        // Dozer, drill etc. store the submitter's id here, not a name: never show that as a person.
+        if (by && !/^[0-9a-f]{24}$/i.test(by)) return by;
       }
       if (d.driver_name)   return d.driver_name;
       if (d.operator_name) return d.operator_name;
