@@ -16161,8 +16161,9 @@
         const s = stats[k];
         const val = k === 'utility' ? s.km : s.hours;
         const sub = k === 'drilling' ? `${plural(s.units, 'drill')} · hole data pending` : cap(s.names || plural(s.units, 'unit'));
-        return `<div class="ov-t ov-small${skel}">
-          <div class="ov-t-top"><span class="ov-t-label">${label(k)}</span></div>
+        const drill = k === 'drilling';   // the Drilling tile opens the Drilling page, like Loading does
+        return `<div class="ov-t ov-small${drill ? ' ov-click' : ''}${skel}"${drill ? ` onclick="openDrillPage()" onkeydown="if(event.key==='Enter')openDrillPage()" role="button" tabindex="0" aria-label="Open the Drilling page"` : ''}>
+          <div class="ov-t-top"><span class="ov-t-label">${label(k)}</span>${drill ? '<span class="ov-linkbtn">Open →</span>' : ''}</div>
           <div class="ov-t-value">${val === null || val === undefined ? '<span class="ov-none">—</span>' : ovNum(val, 1) + `<span class="ov-unit">${k === 'utility' ? 'km' : 'h'}</span>`}</div>
           <div class="ov-t-sub">${pending ? '…' : sub}</div>${ovBar(s)}</div>`;
       }).join('');
