@@ -16302,14 +16302,28 @@
     }
 
     // ── header: date, shift, one factual line ──
+    // True once the selected range reaches today — "Today", 7/30 days always do; only a Custom
+    // range can end before today. Only then is "current shift" / "time left" / "counted to HH:MM"
+    // meaningful — a saved report for a finished past day must not carry today's clock on it.
+    function ovRangeEndsToday() {
+      const { end } = ovRange();
+      return end === ovMiningDate(new Date());
+    }
     function ovRenderHead() {
       const dateEl = document.getElementById('ov-greet');
       if (!dateEl) return;
       const now = new Date();
-      const segs = ['A', 'B', 'C'];
-      const m = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440;
-      const cur = Math.floor(m / 480), left = 480 - (m - cur * 480);
-      dateEl.textContent = `${new Date(ovMiningDate(now) + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${segs[cur]} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
+      const live = ovRangeEndsToday();
+      if (live) {
+        const segs = ['A', 'B', 'C'];
+        const m = (now.getHours() * 60 + now.getMinutes() - 360 + 1440) % 1440;
+        const cur = Math.floor(m / 480), left = 480 - (m - cur * 480);
+        dateEl.textContent = `${new Date(ovMiningDate(now) + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${segs[cur]} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
+      } else {
+        const { start, end } = ovRange();
+        const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+        dateEl.textContent = (end && end !== start) ? `${fmt(start)} – ${fmt(end)}` : fmt(start);
+      }
       const trips = ovScopedTrips().length;
       const shifts = activeFilters.shifts;
       const shiftWord = shifts.size === 1 ? `, Shift ${[...shifts][0]} only` : '';
@@ -16321,7 +16335,8 @@
       if (c.gaps) open.push(plural(c.gaps, 'changeover gap'));
       if (c.flags) open.push(plural(c.flags, 'unresolved flag'));
       const tail = !c.ready ? '' : open.length ? ` Open: <span class="ov-need">${open.join(', ')}.</span>` : ` <span class="ov-clear">No open items.</span>`;
-      document.getElementById('ov-summary').innerHTML = `<b>${trips.toLocaleString('en-IN')} trips</b> ${ovRangeWord()}${shiftWord}, counted to ${ovClock(now)}.${tail}`;
+      const countedTo = live ? `, counted to ${ovClock(now)}` : '';
+      document.getElementById('ov-summary').innerHTML = `<b>${trips.toLocaleString('en-IN')} trips</b> ${ovRangeWord()}${shiftWord}${countedTo}.${tail}`;
       ovTick();
     }
     function ovAgo(ms) {
