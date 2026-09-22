@@ -16020,14 +16020,21 @@
 
     // The mining day runs 06:00 to 06:00, so every chart starts at 06:00.
     const ovShiftOfHour = h => (h >= 6 && h < 14 ? 'A' : h >= 14 && h < 22 ? 'B' : 'C');
+    // True for "Today" and for any custom/7/30-day range that resolves to one mining day —
+    // that day gets hourly bars, like the live view, instead of one flat block.
+    function ovSingleDay() {
+      const { start, end } = ovRange();
+      return dashboardDateRange(start, end || start, 31).length === 1;
+    }
     function ovSeries(trips) {
-      const now = Date.now(), slots = [];
+      const slots = [];
       let nowIdx = -1;
-      if (dateRange.type === 'today') {
-        // Hourly slots from 06:00 up to the current hour. A new slot is added when the next
-        // hour starts; the day runs to 05:59 the next morning, so at most 24 slots.
-        const from = ovWindow().from.getTime();
-        nowIdx = Math.min(Math.max(Math.floor((now - from) / 3600e3), 0), 23);
+      if (ovSingleDay()) {
+        // Hourly slots from 06:00 up to the current hour, or all 24 for a day that has
+        // already finished. The day runs to 05:59 the next morning, so at most 24 slots.
+        const w = ovWindow(), from = w.from.getTime();
+        const cap = Math.min(Date.now(), w.to.getTime());
+        nowIdx = Math.min(Math.max(Math.floor((cap - from) / 3600e3), 0), 23);
         for (let i = 0; i <= nowIdx; i++) slots.push({ label: `${ovPad((6 + i) % 24)}:00`, A: 0, B: 0, C: 0 });
         trips.forEach(t => {
           const ts = new Date(t.timestamp).getTime();
@@ -16055,7 +16062,7 @@
       const { slots, nowIdx } = series;
       if (!slots.length) return '';
       const H = 60, max = Math.max(...slots.map(s => s.A + s.B + s.C), 1);
-      const hourly = dateRange.type === 'today';
+      const hourly = ovSingleDay();
       const cols = slots.map((s, i) => {
         const total = s.A + s.B + s.C;
         const h = Math.max(total ? total / max * H : 1, 1);
@@ -16362,13 +16369,25 @@
     const ldNat = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
     const ldDur = min => min >= 60 ? `${Math.floor(min / 60)}h ${ovPad(Math.round(min % 60))}m` : `${Math.round(min)} min`;
 
+    // The date range and shift filter are the same globals the Overview reads (by design —
+    // Machine breakdown opens showing whatever the Overview is currently looking at). Snapshot
+    // them on entry and restore on exit, so changes made only on this screen don't leak back.
+    let _ldSavedState = null;
     function ldOpen() {
+      _ldSavedState = { range: { ...dateRange }, shifts: new Set(activeFilters.shifts) };
       document.getElementById('app').style.display = 'none';
       document.getElementById('loading-page').style.display = 'block';
       window.scrollTo(0, 0);
       ldRender();
     }
     function ldClose() {
+      if (_ldSavedState) {
+        Object.assign(dateRange, _ldSavedState.range);
+        ovSetShiftFilters([..._ldSavedState.shifts]);
+        _ldSavedState = null;
+        applyFilters();
+        ovRender();
+      }
       document.getElementById('loading-page').style.display = 'none';
       document.getElementById('app').style.display = 'block';
     }
@@ -16601,7 +16620,7 @@
         '<div class="ld-card" style="padding:28px 22px;color:var(--text-secondary)">No excavators were deployed in this period. Try a wider range.</div>';
 
       // Heat map: production machines against hours (or days), coloured by trips. Hatched = down.
-      const hourly = dateRange.type === 'today', slots = (M.prod[0] ? M.prod[0].series.slots : ovSeries([]).slots);
+      const hourly = ovSingleDay(), slots = (M.prod[0] ? M.prod[0].series.slots : ovSeries([]).slots);
       const w = ovWindow();
       const start0 = hourly ? w.from.getTime() : new Date(ovRange().start + 'T06:00:00').getTime(), step = hourly ? 3600e3 : 86400e3;
       const bounds = i => [start0 + i * step, start0 + (i + 1) * step];
