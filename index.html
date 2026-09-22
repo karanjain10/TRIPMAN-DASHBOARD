@@ -15683,6 +15683,11 @@
       { name: 'diesel tanker', cls: 'utility',  readings: ['HMR', 'KMR'], match: ['diesel'] },
       { name: 'tipper',        cls: 'haulage',  readings: ['HMR', 'KMR'], match: ['tipper', 'dumper', 'truck'] },
       { name: 'excavator',     cls: 'loading',  readings: ['HMR'],        match: ['excavator'] },
+      // Drill compressor matches here, above the generic "drill" entry below, with cls: null so it
+      // is excluded from every Overview tile — it is a different machine on a different meter, and
+      // without this entry it would fall through to "drill" and inflate the Drilling tile's count
+      // and hours (see the drill/drill_compressor mix-up fixed here).
+      { name: 'drill compressor', cls: null,      readings: ['HMR'],        match: ['drill compressor'] },
       { name: 'drill',         cls: 'drilling', readings: ['HMR'],        match: ['drill'] },
       { name: 'dozer',         cls: 'support',  readings: ['HMR'],        match: ['dozer'] },
       { name: 'grader',        cls: 'support',  readings: ['HMR'],        match: ['grader'] },
