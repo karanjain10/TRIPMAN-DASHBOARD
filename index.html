@@ -6006,7 +6006,22 @@
     .dr-kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 12px; margin: 0; font-size: 12.5px; }
     .dr-kv dt { color: var(--text-muted); }
     .dr-kv dd { margin: 0; font-family: var(--font-mono); }
-    @media (max-width: 700px) { .dr-strip { grid-template-columns: repeat(2, 1fr); } .dr-stat:nth-child(2) { border-right: none; } }
+    .dr-edit-toggle { height: 34px; padding: 0 14px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; }
+    .dr-edit-toggle.on { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+    .dr-form h4 { margin: 0 0 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+    .dr-hole-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .dr-hole-row input { width: 90px; height: 30px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--bg); color: var(--text-primary); font: inherit; font-size: 12.5px; }
+    .dr-hole-row span { font-size: 12px; color: var(--text-muted); }
+    .dr-hole-row button { border: none; background: none; color: var(--text-muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 4px; }
+    .dr-add-hole { border: 1px dashed var(--rule); background: none; border-radius: 3px; padding: 5px 10px; font: inherit; font-size: 12px; color: var(--text-secondary); cursor: pointer; margin-bottom: 8px; }
+    .dr-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 8px; }
+    .dr-form-grid label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+    .dr-form-grid input { width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--bg); color: var(--text-primary); font: inherit; font-size: 12.5px; box-sizing: border-box; }
+    .dr-form-total { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+    .dr-form-save { height: 30px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--brand-fill); background: var(--brand-fill); color: #fff; font: inherit; font-size: 12.5px; cursor: pointer; }
+    .dr-form-save:disabled { opacity: .5; cursor: default; }
+    .dr-form-err { font-size: 12px; color: #dc2626; margin-top: 6px; }
+    @media (max-width: 700px) { .dr-strip { grid-template-columns: repeat(2, 1fr); } .dr-stat:nth-child(2) { border-right: none; } .dr-form-grid { grid-template-columns: 1fr; } }
 
     @media (prefers-reduced-motion: reduce) { .ov-t.skel .ov-t-value { animation: none; } }
     @media (min-width: 1101px) and (max-width: 1400px) { .ov-small { padding: 12px; } .ov-small .ov-t-value { font-size: 21px; } .ov-small .ov-unit { margin-left: 4px; } }
@@ -8111,6 +8126,7 @@
           <button data-s="B" onclick="drShift('B')">B</button>
           <button data-s="C" onclick="drShift('C')">C</button>
         </div>
+        <button id="dr-edit-toggle" class="dr-edit-toggle" style="display:none;" onclick="drEditToggle()">✏ Enter data</button>
       </div>
       <div class="dr-strip" id="dr-strip"></div>
       <div id="dr-list"></div>
@@ -24456,8 +24472,12 @@
     // One row per drill-machine deployment from GET /equipment-assignments. The API needs both a
     // date and a shift, so "All shifts" makes three calls. Output (hole_groups, total_holes,
     // total_meterage) and survey values (rl, northing, easting, chainage_*, length) live on the same
-    // record and are absent until someone enters them. Read-only. ponytail: one day at a time.
-    let _dr = { rows: [], units: {}, shift: 'all', state: 'loading', open: null, token: 0 };
+    // record and are absent until someone enters them. ponytail: one day at a time.
+    // Admins can also enter/edit both from here (PUT .../meterage, PUT .../survey-rl-section) — the
+    // app only shows the current mining day, so a shift that crosses midnight (shift C) can be
+    // missed by the time anyone can open it there. drafts[id] holds in-progress edits, keyed by the
+    // assignment's own _id, kept only while that row's edit form is open.
+    let _dr = { rows: [], units: {}, shift: 'all', state: 'loading', open: null, token: 0, editOn: false, drafts: {} };
     const drEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const drNum = (v, d = 1) => v == null ? null : Number(v).toLocaleString('en-IN', { maximumFractionDigits: d });
     const drRaw = (v, d) => Number(v).toFixed(d);   // grid coordinates: no digit grouping
@@ -24470,6 +24490,9 @@
       document.getElementById('drill-page').style.display = 'block';
       const d = document.getElementById('dr-date');
       if (!d.value) d.value = ovMiningDate(new Date());
+      _dr.editOn = false; _dr.drafts = {};
+      const editBtn = document.getElementById('dr-edit-toggle');
+      if (editBtn) { editBtn.style.display = currentUser && currentUser.is_admin ? '' : 'none'; editBtn.classList.remove('on'); editBtn.textContent = '✏ Enter data'; }
       drLoad();
     }
 
@@ -24484,11 +24507,23 @@
       drLoad();
     }
 
-    async function drLoad() {
+    function drEditToggle() {
+      if (!currentUser || !currentUser.is_admin) return;
+      _dr.editOn = !_dr.editOn;
+      _dr.drafts = {};
+      const btn = document.getElementById('dr-edit-toggle');
+      if (btn) { btn.classList.toggle('on', _dr.editOn); btn.textContent = _dr.editOn ? '✓ Done editing' : '✏ Enter data'; }
+      drRender();
+    }
+
+    // keepOpen: true for a reload right after a save, so the row being edited and edit mode both
+    // survive the refresh. A date/shift change (keepOpen omitted) always closes any open edit.
+    async function drLoad(keepOpen) {
       const date = document.getElementById('dr-date').value;
       if (!date) return;
       const token = ++_dr.token;
-      _dr.state = 'loading'; _dr.open = null;
+      if (!keepOpen) { _dr.open = null; _dr.drafts = {}; }
+      _dr.state = 'loading';
       drRender();
       const shifts = _dr.shift === 'all' ? ['A', 'B', 'C'] : [_dr.shift];
       try {
@@ -24501,6 +24536,7 @@
         _dr.units = Object.fromEntries((Array.isArray(others) ? others : []).map(o => [o._id, o]));
         _dr.rows = perShift.flatMap(r => Array.isArray(r) ? r : []);
         _dr.rows.sort((a, b) => String(a.shift).localeCompare(String(b.shift)) || drPlate(a).localeCompare(drPlate(b), undefined, { numeric: true }));
+        if (_dr.open && !_dr.rows.some(r => r._id === _dr.open)) _dr.open = null;
         _dr.state = 'ready';
       } catch (e) {
         if (token !== _dr.token) return;
@@ -24557,6 +24593,7 @@
     }
 
     function drDetailHtml(r) {
+      if (_dr.editOn) return drEditFormHtml(r);
       const kv = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`;
       const groups = Array.isArray(r.hole_groups) ? r.hole_groups : [];
       const output = groups.length
@@ -24581,6 +24618,133 @@
     function drToggle(id) {
       _dr.open = _dr.open === id ? null : id;
       drRender();
+    }
+
+    // ── Admin edit forms (drilling output + RL & section survey) ──────────────────
+    const DR_SURVEY_FIELDS = [['rl', 'RL', '0.01'], ['northing', 'Northing', '0.01'], ['easting', 'Easting', '0.01'],
+      ['length', 'Length', '0.1'], ['chainage_from', 'Chainage from', '0.1'], ['chainage_to', 'Chainage to', '0.1']];
+
+    function drDraft(r) {
+      if (_dr.drafts[r._id]) return _dr.drafts[r._id];
+      const holes = Array.isArray(r.hole_groups) && r.hole_groups.length
+        ? r.hole_groups.map(g => ({ holes: g.holes ?? '', depth: g.depth ?? '' })) : [{ holes: '', depth: '' }];
+      const survey = Object.fromEntries(DR_SURVEY_FIELDS.map(([k]) => [k, r[k] ?? '']));
+      return _dr.drafts[r._id] = { holes, survey, savingM: false, savingS: false, errM: '', errS: '' };
+    }
+
+    function drValidHoles(d) { return d.holes.filter(h => Number(h.holes) > 0 && Number(h.depth) > 0); }
+    function drValidSurvey(d) {
+      const s = d.survey;
+      return DR_SURVEY_FIELDS.every(([k]) => s[k] !== '' && s[k] != null && Number.isFinite(Number(s[k])))
+        && Number(s.chainage_to) > Number(s.chainage_from) && Number(s.length) > 0;
+    }
+
+    function drEditFormHtml(r) {
+      const d = drDraft(r);
+      const holeRows = d.holes.map((h, i) => `<div class="dr-hole-row">
+        <input type="number" min="1" step="1" placeholder="Holes" value="${drEsc(h.holes)}" oninput="drHoleChange('${r._id}',${i},'holes',this.value)" />
+        <span>×</span>
+        <input type="number" min="0" step="0.1" placeholder="Depth (m)" value="${drEsc(h.depth)}" oninput="drHoleChange('${r._id}',${i},'depth',this.value)" />
+        <span>m</span>
+        ${d.holes.length > 1 ? `<button type="button" onclick="drHoleRemove('${r._id}',${i})" aria-label="Remove hole group">✕</button>` : ''}
+      </div>`).join('');
+      const validHoles = drValidHoles(d);
+      const meterageTotal = validHoles.length
+        ? `${validHoles.reduce((n, h) => n + Number(h.holes), 0)} holes, ${drNum(validHoles.reduce((n, h) => n + Number(h.holes) * Number(h.depth), 0))} m total`
+        : 'Enter at least one hole group';
+      const meterageForm = `<div class="dr-form">
+        <h4>Drilling output</h4>
+        ${holeRows}
+        <button type="button" class="dr-add-hole" onclick="drHoleAdd('${r._id}')">+ Add hole group</button>
+        <div class="dr-form-total" id="dr-mtotal-${r._id}">${meterageTotal}</div>
+        <button type="button" class="dr-form-save" id="dr-msave-${r._id}" ${validHoles.length && !d.savingM ? '' : 'disabled'} onclick="drSaveMeterage('${r._id}')">${d.savingM ? 'Saving…' : 'Save drilling output'}</button>
+        ${d.errM ? `<div class="dr-form-err">${drEsc(d.errM)}</div>` : ''}
+      </div>`;
+      const surveyFields = DR_SURVEY_FIELDS.map(([k, label, step]) => `<div><label for="dr-s-${k}-${r._id}">${label} (m)</label>
+        <input type="number" step="${step}" id="dr-s-${k}-${r._id}" value="${drEsc(d.survey[k])}" oninput="drSurveyChange('${r._id}','${k}',this.value)" /></div>`).join('');
+      const surveyForm = `<div class="dr-form">
+        <h4>RL &amp; section survey</h4>
+        <div class="dr-form-grid">${surveyFields}</div>
+        <button type="button" class="dr-form-save" id="dr-ssave-${r._id}" ${drValidSurvey(d) && !d.savingS ? '' : 'disabled'} onclick="drSaveSurvey('${r._id}')">${d.savingS ? 'Saving…' : 'Save survey'}</button>
+        ${d.errS ? `<div class="dr-form-err">${drEsc(d.errS)}</div>` : ''}
+      </div>`;
+      return `<tr class="dr-detail"><td colspan="8"><div class="dr-cols">${meterageForm}${surveyForm}</div></td></tr>`;
+    }
+
+    // Typing updates the draft and just the derived total / Save-button state, never the whole
+    // table — re-rendering the table on every keystroke would rebuild the inputs and drop focus.
+    function drHoleChange(id, idx, field, val) {
+      const d = _dr.drafts[id]; if (!d) return;
+      d.holes[idx][field] = val; d.errM = '';
+      const valid = drValidHoles(d);
+      const totalEl = document.getElementById(`dr-mtotal-${id}`);
+      if (totalEl) totalEl.textContent = valid.length
+        ? `${valid.reduce((n, h) => n + Number(h.holes), 0)} holes, ${drNum(valid.reduce((n, h) => n + Number(h.holes) * Number(h.depth), 0))} m total`
+        : 'Enter at least one hole group';
+      const btn = document.getElementById(`dr-msave-${id}`);
+      if (btn) btn.disabled = !valid.length || d.savingM;
+    }
+
+    function drHoleAdd(id) {
+      const d = _dr.drafts[id]; if (!d) return;
+      d.holes.push({ holes: '', depth: '' });
+      drRender();
+    }
+
+    function drHoleRemove(id, idx) {
+      const d = _dr.drafts[id]; if (!d || d.holes.length <= 1) return;
+      d.holes.splice(idx, 1);
+      drRender();
+    }
+
+    function drSurveyChange(id, key, val) {
+      const d = _dr.drafts[id]; if (!d) return;
+      d.survey[key] = val; d.errS = '';
+      const btn = document.getElementById(`dr-ssave-${id}`);
+      if (btn) btn.disabled = !drValidSurvey(d) || d.savingS;
+    }
+
+    async function drSaveMeterage(id) {
+      const d = _dr.drafts[id]; if (!d || d.savingM) return;
+      const holeGroups = drValidHoles(d).map(h => ({ holes: Math.round(Number(h.holes)), depth: Number(h.depth) }));
+      if (!holeGroups.length) return;
+      d.savingM = true; d.errM = ''; drRender();
+      try {
+        const res = await apiFetch(`${API}/equipment-assignments/${encodeURIComponent(id)}/meterage`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hole_groups: holeGroups })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(typeof err.detail === 'string' ? err.detail : `HTTP ${res.status}`);
+        }
+        showToast('Saved drilling output');
+        delete _dr.drafts[id];
+        await drLoad(true);
+      } catch (e) {
+        d.savingM = false; d.errM = e.message;
+        drRender();
+      }
+    }
+
+    async function drSaveSurvey(id) {
+      const d = _dr.drafts[id]; if (!d || d.savingS || !drValidSurvey(d)) return;
+      const body = Object.fromEntries(DR_SURVEY_FIELDS.map(([k]) => [k, Number(d.survey[k])]));
+      d.savingS = true; d.errS = ''; drRender();
+      try {
+        const res = await apiFetch(`${API}/equipment-assignments/${encodeURIComponent(id)}/survey-rl-section`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(typeof err.detail === 'string' ? err.detail : `HTTP ${res.status}`);
+        }
+        showToast('Saved survey values');
+        delete _dr.drafts[id];
+        await drLoad(true);
+      } catch (e) {
+        d.savingS = false; d.errS = e.message;
+        drRender();
+      }
     }
 
     /* ═══════════════════════ END DRILLING ═══════════════════════ */
