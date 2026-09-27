@@ -5898,6 +5898,7 @@
     .ov-bar i.ok { background: #22a06b; } .ov-bar i.warn { background: #d99a06; } .ov-bar i.bad { background: #e5484d; }
     .ov-bar-cap { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
     .ov-bar-cap span { font-family: var(--font-mono); font-weight: 500; }
+    .ov-sk { display: block; max-width: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--track) 25%, var(--hover) 50%, var(--track) 75%); background-size: 200% 100%; animation: ovShimmer 1.2s infinite; }
     .ov-t.skel .ov-t-value { color: transparent; width: 55%; background: linear-gradient(90deg, var(--track) 25%, var(--hover) 50%, var(--track) 75%); background-size: 200% 100%; animation: ovShimmer 1.2s infinite; }
     @keyframes ovShimmer { to { background-position: -200% 0; } }
     .ov-linkbtn { background: none; border: none; font: inherit; font-size: 12.5px; color: var(--text-secondary); cursor: pointer; padding: 0; text-transform: none; letter-spacing: 0; }
@@ -6023,7 +6024,7 @@
     .dr-form-err { font-size: 12px; color: #dc2626; margin-top: 6px; }
     @media (max-width: 700px) { .dr-strip { grid-template-columns: repeat(2, 1fr); } .dr-stat:nth-child(2) { border-right: none; } .dr-form-grid { grid-template-columns: 1fr; } }
 
-    @media (prefers-reduced-motion: reduce) { .ov-t.skel .ov-t-value { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .ov-t.skel .ov-t-value, .ov-sk { animation: none; } }
     @media (min-width: 1101px) and (max-width: 1400px) { .ov-small { padding: 12px; } .ov-small .ov-t-value { font-size: 21px; } .ov-small .ov-unit { margin-left: 4px; } }
     @media (max-width: 1100px) {
       .ov-tiles { display: block; }
@@ -9681,10 +9682,11 @@
     }
 
     async function initApp() {
-      showLoading(true);
+      ovSkeleton();
       await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
-      await loadTrips();
-      showLoading(false);
+      await loadTrips(true);
+      _ovBooting = false;
+      ovRender(); // clears the skeleton even when trips failed to load
       checkFuelBalanceAlert();
       _arInitTripReports(); // start auto-refresh for Trip Reports (2 min)
       if (location.hash) navFromHash();
@@ -9804,8 +9806,8 @@
       return all;
     }
 
-    async function loadTrips() {
-      showLoading(true);
+    async function loadTrips(quiet) {
+      if (!quiet) showLoading(true);
       try {
         const params = buildDateParams();
         const p = new URLSearchParams(params);
@@ -9835,7 +9837,7 @@
       } catch (e) {
         showToast('Failed to load trips. Check connection.');
       }
-      showLoading(false);
+      if (!quiet) showLoading(false);
     }
 
     function buildDateParams() {
@@ -16059,6 +16061,24 @@
       const shifts = activeFilters.shifts;
       return ovMiningTrips().filter(t => !shifts.size || shifts.has(t.shift));
     }
+    // First load after sign-in: grey blocks in the Overview's shape instead of the full-screen
+    // overlay. ovRender() replaces them as the data comes in.
+    let _ovBooting = false;
+    function ovSkeleton() {
+      _ovBooting = true;
+      const sk = (w, h = 14, m = 10) => `<span class="ov-sk" style="width:${w};height:${h}px;margin-top:${m}px"></span>`;
+      const tile = (cls, body, style = '') => `<div class="ov-t ${cls}"${style}>${sk('30%', 12, 0)}${body}</div>`;
+      document.getElementById('ov-tiles').innerHTML =
+        tile('ov-hero', sk('45%', 34, 16) + sk('60%') + sk('100%', 60, 18) + sk('100%', 8, 14), ' style="--col:1 / 7;"') +
+        `<div class="ov-right">${tile('ov-loadingt', sk('40%', 34, 16) + sk('70%') + sk('100%', 3, 24))}` +
+        `<div class="ov-smalls" style="--n:3">${[1, 2, 3].map(() => tile('ov-small', sk('50%', 28, 14) + sk('80%'))).join('')}</div></div>`;
+      document.getElementById('ov-attention').innerHTML = [1, 2, 3].map(() =>
+        `<div class="ov-row">${sk('28px', 28, 0)}<span class="ov-row-text">${sk('45%', 14, 0)}${sk('65%', 11, 6)}</span></div>`).join('');
+      document.getElementById('ov-greet').innerHTML = sk('260px', 14, 0);
+      document.getElementById('ov-summary').innerHTML = sk('420px', 20, 8);
+      ['ov-quiet', 'ov-note', 'ov-shiftbar'].forEach(id => { document.getElementById(id).innerHTML = ''; });
+    }
+
     function ovRender() {
       ovRenderHead();
       ovRenderTiles();
@@ -16835,7 +16855,7 @@
         const el = document.querySelector('.cmdk-item.sel'); if (el) el.scrollIntoView({ block: 'nearest' });
       } else if (e.key === 'Enter') { e.preventDefault(); ovCmdkRun(_cmdk.sel); }
     });
-    setInterval(() => { if (document.getElementById('app').style.display === 'block') { ovRenderAttention(); ovRenderHead(); } }, 15000); // minutes count up between fetches
+    setInterval(() => { if (!_ovBooting && document.getElementById('app').style.display === 'block') { ovRenderAttention(); ovRenderHead(); } }, 15000); // minutes count up between fetches
 
     // ─── MANUAL TRIP ENTRY ────────────────────────────────────────────────────────
 
