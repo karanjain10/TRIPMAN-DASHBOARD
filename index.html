@@ -6054,10 +6054,14 @@
       .app-nav.collapsed .nav-collapse .fi { transform: rotate(180deg); }
       .app-nav.collapsed .nav-item { justify-content: center; padding: 10px 0; }
       .app-nav.collapsed .nav-item span, .app-nav.collapsed .nav-foot { display: none; }
-      .app-nav.collapsed .nav-item .fi { font-size: 18px; }
+      .app-nav.collapsed .nav-item .fi { font-size: 18px; transition: transform .15s ease; }
+      .app-nav.collapsed .nav-item:hover .fi, .app-nav.collapsed .nav-item:focus-visible .fi { transform: scale(1.3); }
       .app-nav.collapsed .nav-group { font-size: 0; height: 1px; padding: 0; margin: 12px 8px; background: var(--rule); }
     }
-    @media (prefers-reduced-motion: reduce) { .app-nav { transition: none; } }
+    /* collapsed menu: the hovered icon's name, floated beside the rail (the rail scrolls, so it can't hold it) */
+    .nav-tip { position: fixed; z-index: 300; pointer-events: none; padding: 5px 10px; border-radius: 3px; background: var(--text-primary); color: var(--bg); font-size: 13px; font-weight: 500; white-space: nowrap; transform: translateY(-50%); opacity: 0; transition: opacity .12s ease; }
+    .nav-tip.show { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { .app-nav, .app-nav .fi, .nav-tip { transition: none; } }
     /* print layout for "Save as PDF": header + summary + cards only */
     .ov-print-title { display: none; }
     @media print { @page { size: A4 landscape; margin: 12mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -16773,8 +16777,22 @@
       const btn = document.getElementById('nav-collapse');
       btn.title = collapsed ? 'Expand menu' : 'Collapse menu';
       btn.setAttribute('aria-label', btn.title);
-      nav.querySelectorAll('.nav-item').forEach(b => { b.title = collapsed ? b.textContent.trim() : ''; }); // labels become tooltips
+      nav.querySelectorAll('.nav-item').forEach(b => { b.title = ''; b.setAttribute('aria-label', b.textContent.trim()); });
+      if (!collapsed) navTip.classList.remove('show');
     }
+    const navTip = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'nav-tip', ariaHidden: 'true' }));
+    function navTipShow(e) {
+      const b = e.target.closest && e.target.closest('.nav-item');
+      if (!b || !document.getElementById('app-nav').classList.contains('collapsed')) return navTipHide();
+      const r = b.getBoundingClientRect();
+      navTip.textContent = b.textContent.trim();
+      navTip.style.left = (r.right + 10) + 'px';
+      navTip.style.top = (r.top + r.height / 2) + 'px';
+      navTip.classList.add('show');
+    }
+    const navTipHide = () => navTip.classList.remove('show');
+    ['mouseover', 'focusin'].forEach(t => document.getElementById('app-nav').addEventListener(t, navTipShow));
+    ['mouseleave', 'focusout', 'scroll', 'click'].forEach(t => document.getElementById('app-nav').addEventListener(t, navTipHide));
     function navToggleCollapse() {
       const collapsed = !document.getElementById('app-nav').classList.contains('collapsed');
       navApplyCollapsed(collapsed);
