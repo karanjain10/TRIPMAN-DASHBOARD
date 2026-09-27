@@ -9687,6 +9687,8 @@
       showLoading(false);
       checkFuelBalanceAlert();
       _arInitTripReports(); // start auto-refresh for Trip Reports (2 min)
+      if (location.hash) navFromHash();
+      _navReady = true;
     }
 
     async function loadAssignmentsForLookup() {
@@ -15789,10 +15791,56 @@
       };
       if (targets[key]) targets[key]();
     }
+
+    // ── page links ──
+    // The open page lives in the URL hash (#compliance?from=…&to=…), so refresh, Back/Forward
+    // and shared links land on the same page and dates.
+    const _navPages = {
+      'reports-hub-page': 'reports', 'lf-page': 'loadfactor', 'haul-page': 'haul', 'deployments-page': 'deployments',
+      'eq-health-page': 'eqhealth', 'livemap-page': 'livemap', 'drill-page': 'drilling', 'compliance-page': 'compliance',
+      'changeover-page': 'changeover', 'handover-page': 'handover', 'manual-trip-page': 'manual', 'workers-page': 'workers'
+    };
+    const _navDates = { compliance: ['src-date-from', 'src-date-to'], changeover: ['co-date-from', 'co-date-to'] };
+    let _navReady = false;
+    function navHash(key) {
+      const ids = _navDates[key];
+      const from = ids && document.getElementById(ids[0]).value;
+      return '#' + key + (from ? `?from=${from}&to=${document.getElementById(ids[1]).value || from}` : '');
+    }
+    function navFromHash() {
+      const [key, qs] = location.hash.slice(1).split('?');
+      const q = new URLSearchParams(qs), ids = _navDates[key];
+      if (ids && /^\d{4}-\d{2}-\d{2}$/.test(q.get('from'))) {
+        document.getElementById(ids[0]).value = q.get('from');
+        document.getElementById(ids[1]).value = /^\d{4}-\d{2}-\d{2}$/.test(q.get('to')) ? q.get('to') : q.get('from');
+      }
+      document.querySelectorAll('div[id$="-page"]').forEach(p => { p.style.display = 'none'; });
+      closeCutoffChooser();
+      document.getElementById('app').style.display = 'block';
+      if (key) navGo(key);
+      if (key && document.getElementById('app').style.display !== 'none') history.replaceState(null, '', location.pathname + location.search);
+    }
+    window.addEventListener('hashchange', () => { if (currentUser) navFromHash(); });
+    // Watch the dashboard: hidden means a page opened (from anywhere), so give it a URL;
+    // shown again means the page's own Back button, so step the URL back too.
+    new MutationObserver(() => {
+      if (!_navReady) return;
+      if (document.getElementById('app').style.display === 'none') {
+        const open = Object.keys(_navPages).find(id => document.getElementById(id).style.display === 'block');
+        if (open && location.hash.slice(1).split('?')[0] !== _navPages[open]) history.pushState({ tm: 1 }, '', navHash(_navPages[open]));
+      } else if (location.hash) {
+        if (history.state && history.state.tm) history.back();
+        else history.replaceState(null, '', location.pathname + location.search);
+      }
+    }).observe(document.getElementById('app'), { attributes: true, attributeFilter: ['style'] });
+    Object.entries(_navDates).forEach(([key, ids]) => ids.forEach(id => document.getElementById(id).addEventListener('change', () => {
+      if (location.hash.startsWith('#' + key)) history.replaceState(history.state, '', navHash(key));
+    })));
+
     // From an attention row: carry the Overview date range into the target page.
     function ovGo(key) {
       const { start, end } = ovRange();
-      const ids = { compliance: ['src-date-from', 'src-date-to'], changeover: ['co-date-from', 'co-date-to'] }[key];
+      const ids = _navDates[key];
       if (ids && start) {
         document.getElementById(ids[0]).value = start;
         document.getElementById(ids[1]).value = end || start;
