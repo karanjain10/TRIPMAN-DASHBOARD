@@ -7264,6 +7264,9 @@
           <!-- EARLY STOPPAGE ALERTS -->
           <div id="ho-stoppage" style="display:none;padding:0 24px 0;"></div>
 
+          <!-- TIPPER SILENCE (per driver) -->
+          <div id="ho-silence" style="display:none;padding:16px 24px 0;"></div>
+
           <!-- EXCAVATOR SUMMARY -->
           <div id="ho-ex-summary" style="display:none;padding:0 24px 20px;"></div>
 
@@ -11551,6 +11554,110 @@
       document.getElementById('handover-cutoff-modal').style.display = 'none';
     }
 
+    // ── Tipper silence by driver ──────────────────────────────────────────────────
+    // A tipper is silent when its driver logs no trip for more than HO_SILENT_MIN (same limit as the
+    // Overview's Needs attention). Follows the driver, so a tipper swap after a breakdown stays on one
+    // timeline. Time to next trip = last trip on the old tipper to the first trip on the new one.
+    const HO_SILENT_MIN = 45;
+    function hoSilenceHtml(shiftTrips, shiftEnd) {
+      if (!shiftEnd) return '';
+      const startMs = shiftEnd.getTime() - 8 * 3600000, endMs = Math.min(shiftEnd.getTime(), Date.now());
+      const running = Date.now() < shiftEnd.getTime();
+      const clock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const dur = min => min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + String(min % 60).padStart(2, '0') + ' min' : ''}`;
+      const pct = ms => ((ms - startMs) / (8 * 3600000) * 100).toFixed(2);
+      const byDriver = {};
+      shiftTrips.forEach(t => {
+        const ts = new Date(t.timestamp).getTime();
+        if (t.driver_id && !isNaN(ts)) (byDriver[t.driver_id] = byDriver[t.driver_id] || []).push({ ts, veh: getVehicleNum(t.vehicle_id) });
+      });
+      const drivers = [];
+      Object.entries(byDriver).forEach(([id, trips]) => {
+        trips.sort((a, b) => a.ts - b.ts);
+        const tippers = [...new Set(trips.map(t => t.veh))], gaps = [], lines = [];
+        const limit = HO_SILENT_MIN * 60000;
+        for (let i = 1; i < trips.length; i++) {
+          const a = trips[i - 1], b = trips[i], min = Math.round((b.ts - a.ts) / 60000);
+          if (b.ts - a.ts <= limit) continue;
+          const swap = a.veh !== b.veh;
+          gaps.push({ from: a.ts, to: b.ts, min, swap });
+          lines.push(swap
+            ? `<div class="ev"><b>${clock(a.ts)}</b> Tipper ${a.veh} went silent for <b>${dur(min)}</b>, did not return. Moved to Tipper ${b.veh}</div>
+               <div class="ev"><b>${clock(b.ts)}</b> first trip on Tipper ${b.veh}, <span class="hot">${dur(min)}</span> after the last trip on Tipper ${a.veh}</div>`
+            : `<div class="ev"><b>${clock(a.ts)}</b> Tipper ${a.veh} went silent for <b>${dur(min)}</b>, then returned at ${clock(b.ts)}</div>`);
+        }
+        const last = trips[trips.length - 1], tail = Math.round((endMs - last.ts) / 60000);
+        if (endMs - last.ts > limit) {
+          gaps.push({ from: last.ts, to: endMs, min: tail, open: true });
+          lines.push(`<div class="ev"><b>${clock(last.ts)}</b> Tipper ${last.veh} went silent and <b>${running ? `has not returned (${dur(tail)} so far)` : `did not return</b> by shift end (${dur(tail)})<b>`}</b></div>`);
+        }
+        if (gaps.length) drivers.push({ id, trips, tippers, gaps, lines, total: gaps.reduce((a, g) => a + g.min, 0) });
+      });
+      if (!drivers.length) return '';
+      drivers.sort((a, b) => b.total - a.total);
+
+      const swaps = drivers.reduce((a, d) => a + d.gaps.filter(g => g.swap).length, 0);
+      const silences = drivers.reduce((a, d) => a + d.gaps.length, 0);
+      const longestSwap = Math.max(0, ...drivers.flatMap(d => d.gaps.filter(g => g.swap).map(g => g.min)));
+      const totalMin = drivers.reduce((a, d) => a + d.total, 0);
+      const summary = `<b>${drivers.length}</b> ${drivers.length === 1 ? 'driver' : 'drivers'} · <b>${silences}</b> ${silences === 1 ? 'silence' : 'silences'} · <b>${dur(totalMin)}</b> silent`
+        + (swaps ? ` · <b>${swaps}</b> tipper ${swaps === 1 ? 'swap' : 'swaps'} · longest breakdown to next trip <span class="hot">${dur(longestSwap)}</span>` : '');
+
+      const axis = [0, 2, 4, 6, 8].map(h => `<span>${new Date(startMs + h * 3600000).toLocaleTimeString('en-IN', { hour: 'numeric', hour12: true })}</span>`).join('');
+      const grid = [25, 50, 75].map(l => `<i class="grid" style="left:${l}%"></i>`).join('');
+      const rows = drivers.map(d => {
+        const chain = d.tippers.map((t, i) => `<b class="${i ? 't2' : 't1'}">T${t}</b>`).join(' → ');
+        const bad = d.gaps.some(g => g.swap || g.open);
+        const what = d.gaps.some(g => g.swap) ? `${d.gaps.filter(g => g.swap).length} breakdown` : `${d.gaps.length} ${d.gaps.length === 1 ? 'silence' : 'silences'}`;
+        const sm = d.gaps.length === 1 && d.gaps[0].open ? (running ? 'silent since last trip' : 'silent until shift end') : `${what} · ${dur(d.total)}`;
+        let cur = d.trips[0].veh, k = 0;
+        const ticks = d.trips.map(t => { if (t.veh !== cur) { cur = t.veh; k = 1; } return `<i class="tk${k ? ' b' : ''}" style="left:${pct(t.ts)}%"></i>`; }).join('');
+        const bands = d.gaps.map(g => `<i class="gap${g.open ? ' open' : g.swap ? ' r' : ''}" style="left:${pct(g.from)}%;width:${(pct(g.to) - pct(g.from)).toFixed(2)}%"></i>`).join('');
+        return `<div class="row"><div class="who"><span class="name">${getDriverName(d.id)}</span><span class="tp">${chain}</span><span class="sm ${bad ? 'bad' : 'warn'}">${sm}</span></div>
+          <div><div class="bar">${grid}${bands}${ticks}</div>${d.lines.join('')}</div></div>`;
+      }).join('');
+
+      return `<style>
+        .hosil{border:1px solid var(--border);border-radius:10px;padding:0 16px;margin-bottom:16px}
+        .hosil>summary{cursor:pointer;padding:12px 0;list-style:none;display:flex;flex-direction:column;gap:4px}
+        .hosil>summary::-webkit-details-marker{display:none}
+        .hosil-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary)}
+        .hosil-t::before{content:'▸ ';display:inline-block;transition:transform .15s}
+        .hosil[open] .hosil-t::before{transform:rotate(90deg)}
+        .hosil-s{font-size:13px;color:var(--text-secondary)}.hosil-s b{font-family:var(--font-mono);color:var(--text-primary);font-weight:600}
+        .hosil .hot{color:#a32d2d;font-weight:700;font-family:var(--font-mono)}
+        .hosil-body{padding-bottom:12px}
+        .hosil-lg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary);margin:0 0 10px}
+        .hosil-lg i{display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:2px}
+        .hosil .head,.hosil .row{display:grid;grid-template-columns:190px 1fr;gap:14px}
+        .hosil .ax{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+        .hosil .row{padding:9px 0;border-top:1px solid var(--border);break-inside:avoid;page-break-inside:avoid}
+        .hosil .who{display:flex;flex-direction:column;gap:2px;min-width:0}
+        .hosil .name{font-weight:700;font-size:13px}
+        .hosil .tp{font-family:var(--font-mono);font-size:11px}
+        .hosil .t1{color:#2f6fb0}.hosil .t2{color:#1d8f6e}
+        .hosil .sm{font-size:11px;font-weight:600}.hosil .sm.warn{color:#8a5a00}.hosil .sm.bad{color:#a32d2d}
+        .hosil .bar{position:relative;height:16px;background:var(--bg);border-radius:3px;overflow:hidden}
+        .hosil .grid{position:absolute;top:0;bottom:0;width:1px;background:var(--border)}
+        .hosil .tk{position:absolute;top:3px;width:2px;height:10px;border-radius:1px;background:#2f6fb0}
+        .hosil .tk.b{background:#1d8f6e}
+        .hosil .gap{position:absolute;top:1px;bottom:1px;background:#fdf3dc;border:1px solid #f0c040;border-radius:2px;box-sizing:border-box}
+        .hosil .gap.r{background:#fdecea;border-color:#f5c6c6}
+        .hosil .gap.open{background:repeating-linear-gradient(135deg,#fdecea 0 5px,#fff 5px 10px);border:1px dashed #f5c6c6}
+        .hosil .ev{font-size:12px;line-height:1.45;color:var(--text-secondary);margin-top:4px}
+        .hosil .ev b{color:var(--text-primary)}
+        .hosil .ev b:first-child{font-family:var(--font-mono);font-size:11px;margin-right:4px}
+        @media(max-width:640px){.hosil .head,.hosil .row{grid-template-columns:1fr;gap:6px}.hosil .head .sp{display:none}}
+      </style>
+      <details class="hosil"><summary><span class="hosil-t">Tipper silence by driver</span><span class="hosil-s">${summary}</span></summary>
+        <div class="hosil-body">
+          <div class="hosil-lg"><span>Silent = no trip for more than ${HO_SILENT_MIN} min</span><span><i style="background:#2f6fb0"></i>Trip, first tipper</span><span><i style="background:#1d8f6e"></i>Trip, new tipper</span><span><i style="background:#fdf3dc;border:1px solid #f0c040"></i>Silent, returned</span><span><i style="background:#fdecea;border:1px solid #f5c6c6"></i>Breakdown or no return</span></div>
+          <div class="head"><div class="sp"></div><div class="ax">${axis}</div></div>
+          ${rows}
+        </div>
+      </details>`;
+    }
+
     function generateHandoverReport() {
       closeHandoverCutoffModal();
 
@@ -11776,6 +11883,12 @@
         stoppageEl.innerHTML = '';
       }
 
+      // ── Tipper silence by driver ───────────────────────────────────────────────
+      const silenceEl = document.getElementById('ho-silence');
+      const silenceHtml = hoSilenceHtml(shiftTrips, shiftEnd);
+      silenceEl.style.display = silenceHtml ? 'block' : 'none';
+      silenceEl.innerHTML = silenceHtml;
+
       // ── Excavator Summary Block ────────────────────────────────────────────────
       const exMap = {};
       rows.forEach(r => {
@@ -11984,7 +12097,7 @@
     </div>
     <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.12em;color:#9b9890;text-transform:uppercase;">${currentCompanyName || ''} &nbsp;·&nbsp; Shift Handover Report</span>
   </div>
-  ${report.outerHTML}
+  ${report.outerHTML.replace(/<details\b(?![^>]*\bopen\b)/g, '<details open')}
   <div style="margin-top:12px;font-size:10px;color:#9b9890;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:8px;">
     Generated ${new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true})}
     &nbsp;·&nbsp;
