@@ -11555,66 +11555,151 @@
     }
 
     // ── Tipper silence by driver ──────────────────────────────────────────────────
-    // A tipper is silent when its driver logs no trip for more than HO_SILENT_MIN (same limit as the
-    // Overview's Needs attention). Follows the driver, so a tipper swap after a breakdown stays on one
-    // timeline. Time to next trip = last trip on the old tipper to the first trip on the new one.
-    const HO_SILENT_MIN = 45;
-    function hoSilenceHtml(shiftTrips, shiftEnd) {
+    // A driver is silent when they log no trip for more than HO_SILENT_MIN (same limit as the
+    // Overview's Needs attention). Each silence is put down to the whole shift (most tippers silent
+    // together), an excavator (2+ tippers it loaded silent while it loaded nothing), or the tipper.
+    // Follows the driver, so a tipper swap after a breakdown stays on one timeline. Time to next trip =
+    // last trip on the old tipper to the first trip on the new one.
+    const HO_SILENT_MIN = 45, HO_WIDE_SHARE = 0.6, HO_WIDE_MIN_DRIVERS = 4, HO_EXC_MIN_TIPPERS = 2;
+    function hoSilenceHtml(shiftTrips, shiftEnd, shift) {
       if (!shiftEnd) return '';
-      const startMs = shiftEnd.getTime() - 8 * 3600000, endMs = Math.min(shiftEnd.getTime(), Date.now());
+      const HR = 3600000, limit = HO_SILENT_MIN * 60000;
+      const startMs = shiftEnd.getTime() - 8 * HR, endMs = Math.min(shiftEnd.getTime(), Date.now());
       const running = Date.now() < shiftEnd.getTime();
       const clock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
       const dur = min => min < 60 ? `${min} min` : `${Math.floor(min / 60)} h${min % 60 ? ' ' + String(min % 60).padStart(2, '0') + ' min' : ''}`;
-      const pct = ms => ((ms - startMs) / (8 * 3600000) * 100).toFixed(2);
-      const byDriver = {};
+      const pct = ms => ((ms - startMs) / (8 * HR) * 100).toFixed(2);
+      const band = (a, b, cls) => `<i class="gap${cls ? ' ' + cls : ''}" style="left:${pct(a)}%;width:${(pct(b) - pct(a)).toFixed(2)}%"></i>`;
+      const mins = (a, b) => Math.round((b - a) / 60000);
+      const byDriver = {}, byMach = {};
       shiftTrips.forEach(t => {
         const ts = new Date(t.timestamp).getTime();
-        if (t.driver_id && !isNaN(ts)) (byDriver[t.driver_id] = byDriver[t.driver_id] || []).push({ ts, veh: getVehicleNum(t.vehicle_id) });
+        if (isNaN(ts)) return;
+        if (t.machine_id) (byMach[t.machine_id] = byMach[t.machine_id] || []).push(ts);
+        if (t.driver_id) (byDriver[t.driver_id] = byDriver[t.driver_id] || []).push({ ts, veh: getVehicleNum(t.vehicle_id), mach: t.machine_id });
       });
-      const drivers = [];
-      Object.entries(byDriver).forEach(([id, trips]) => {
+
+      // 1. every silence, per driver
+      const drivers = Object.entries(byDriver).map(([id, trips]) => {
         trips.sort((a, b) => a.ts - b.ts);
-        const tippers = [...new Set(trips.map(t => t.veh))], gaps = [], lines = [];
-        const limit = HO_SILENT_MIN * 60000;
+        const gaps = [];
         for (let i = 1; i < trips.length; i++) {
-          const a = trips[i - 1], b = trips[i], min = Math.round((b.ts - a.ts) / 60000);
-          if (b.ts - a.ts <= limit) continue;
-          const swap = a.veh !== b.veh;
-          gaps.push({ from: a.ts, to: b.ts, min, swap });
-          lines.push(swap
-            ? `<div class="ev"><b>${clock(a.ts)}</b> Tipper ${a.veh} went silent for <b>${dur(min)}</b>, did not return. Moved to Tipper ${b.veh}</div>
-               <div class="ev"><b>${clock(b.ts)}</b> first trip on Tipper ${b.veh}, <span class="hot">${dur(min)}</span> after the last trip on Tipper ${a.veh}</div>`
-            : `<div class="ev"><b>${clock(a.ts)}</b> Tipper ${a.veh} went silent for <b>${dur(min)}</b>, then returned at ${clock(b.ts)}</div>`);
+          const a = trips[i - 1], b = trips[i];
+          if (b.ts - a.ts > limit) gaps.push({ id, from: a.ts, to: b.ts, min: mins(a.ts, b.ts), veh: a.veh, nextVeh: b.veh, swap: a.veh !== b.veh, mach: a.mach });
         }
-        const last = trips[trips.length - 1], tail = Math.round((endMs - last.ts) / 60000);
-        if (endMs - last.ts > limit) {
-          gaps.push({ from: last.ts, to: endMs, min: tail, open: true });
-          lines.push(`<div class="ev"><b>${clock(last.ts)}</b> Tipper ${last.veh} went silent and <b>${running ? `has not returned (${dur(tail)} so far)` : `did not return</b> by shift end (${dur(tail)})<b>`}</b></div>`);
-        }
-        if (gaps.length) drivers.push({ id, trips, tippers, gaps, lines, total: gaps.reduce((a, g) => a + g.min, 0) });
+        const last = trips[trips.length - 1];
+        if (endMs - last.ts > limit) gaps.push({ id, from: last.ts, to: endMs, min: mins(last.ts, endMs), veh: last.veh, open: true, mach: last.mach });
+        return { id, trips, gaps, first: trips[0].ts, last: last.ts, open: gaps.some(g => g.open) };
       });
-      if (!drivers.length) return '';
-      drivers.sort((a, b) => b.total - a.total);
+      const allGaps = drivers.flatMap(d => d.gaps);
+      if (!allGaps.length) return '';
+      const taken = new Set();
 
-      const swaps = drivers.reduce((a, d) => a + d.gaps.filter(g => g.swap).length, 0);
-      const silences = drivers.reduce((a, d) => a + d.gaps.length, 0);
-      const longestSwap = Math.max(0, ...drivers.flatMap(d => d.gaps.filter(g => g.swap).map(g => g.min)));
-      const totalMin = drivers.reduce((a, d) => a + d.total, 0);
-      const summary = `<b>${drivers.length}</b> ${drivers.length === 1 ? 'driver' : 'drivers'} · <b>${silences}</b> ${silences === 1 ? 'silence' : 'silences'} · <b>${dur(totalMin)}</b> silent`
-        + (swaps ? ` · <b>${swaps}</b> tipper ${swaps === 1 ? 'swap' : 'swaps'} · longest breakdown to next trip <span class="hot">${dur(longestSwap)}</span>` : '');
+      // 2. whole-shift stops: most active tippers silent at the same time
+      const wide = [], pts = [...new Set(allGaps.flatMap(g => [g.from, g.to]))].sort((a, b) => a - b);
+      let cur = null;
+      const closeWide = () => { if (cur && cur.to - cur.from >= limit) wide.push(cur); cur = null; };
+      for (let i = 0; i < pts.length - 1; i++) {
+        const mid = (pts[i] + pts[i + 1]) / 2;
+        const act = drivers.filter(d => d.first <= mid && mid <= (d.open ? endMs : d.last)).length;
+        const sil = allGaps.filter(g => g.from < mid && mid < g.to).length;
+        if (act >= HO_WIDE_MIN_DRIVERS && sil / act >= HO_WIDE_SHARE) {
+          if (!cur) cur = { from: pts[i], to: pts[i + 1], sil, act };
+          else { cur.to = pts[i + 1]; if (sil > cur.sil) { cur.sil = sil; cur.act = act; } }
+        } else closeWide();
+      }
+      closeWide();
+      wide.forEach(w => {
+        w.gaps = allGaps.filter(g => Math.min(g.to, w.to) - Math.max(g.from, w.from) >= 0.5 * (g.to - g.from));
+        const ms = new Set(w.gaps.map(g => g.mach));
+        if (ms.size === 1 && [...ms][0]) w.gaps = []; // all from one excavator: that is an excavator stop, handled below
+        w.gaps.forEach(g => taken.add(g));
+      });
+      wide.splice(0, wide.length, ...wide.filter(w => w.gaps.length));
 
-      const axis = [0, 2, 4, 6, 8].map(h => `<span>${new Date(startMs + h * 3600000).toLocaleTimeString('en-IN', { hour: 'numeric', hour12: true })}</span>`).join('');
+      // 3. excavator stops: 2+ tippers it loaded went silent together and it loaded nothing itself
+      const exc = [], byM = {};
+      allGaps.filter(g => !taken.has(g) && g.mach).forEach(g => (byM[g.mach] = byM[g.mach] || []).push(g));
+      Object.entries(byM).forEach(([mach, gs]) => {
+        gs.sort((a, b) => a.from - b.from);
+        const loads = (byMach[mach] || []).slice().sort((a, b) => a - b);
+        let cl = null;
+        const flush = () => {
+          if (cl && new Set(cl.gs.map(g => g.id)).size >= HO_EXC_MIN_TIPPERS && !loads.some(t => t > cl.lo && t < cl.hi)) {
+            const prev = loads.filter(t => t <= cl.lo).pop(), next = loads.find(t => t >= cl.hi);
+            const from = prev === undefined ? cl.lo : prev, to = next === undefined ? endMs : next;
+            if (to - from >= limit) { exc.push({ mach, from, to, min: mins(from, to), open: next === undefined, gs: cl.gs, loads }); cl.gs.forEach(g => taken.add(g)); }
+          }
+          cl = null;
+        };
+        gs.forEach(g => {
+          if (cl) {
+            const lo = Math.max(cl.lo, g.from), hi = Math.min(cl.hi, g.to);
+            if (hi - lo >= 0.5 * (g.to - g.from) && hi - lo >= 0.5 * (cl.hi - cl.lo)) { cl.lo = lo; cl.hi = hi; cl.gs.push(g); return; }
+            flush();
+          }
+          cl = { lo: g.from, hi: g.to, gs: [g] };
+        });
+        flush();
+      });
+
+      // 4. whatever is left is the tipper
+      const tipDrivers = drivers.map(d => ({ ...d, gaps: d.gaps.filter(g => !taken.has(g)) })).filter(d => d.gaps.length)
+        .map(d => ({ ...d, total: d.gaps.reduce((a, g) => a + g.min, 0) })).sort((a, b) => b.total - a.total);
+      const stops = [...wide.map(w => ({ ...w, wide: true, min: mins(w.from, w.to) })), ...exc].sort((a, b) => b.min - a.min);
+      if (!stops.length && !tipDrivers.length) return '';
+
+      const tipGaps = tipDrivers.flatMap(d => d.gaps), swaps = tipGaps.filter(g => g.swap);
+      const stopMin = stops.reduce((a, s) => a + s.min, 0), tipMin = tipGaps.reduce((a, g) => a + g.min, 0);
+      const longestSwap = Math.max(0, ...swaps.map(g => g.min));
+      const n = stops.length + tipGaps.length;
+      const summary = `<b>${n}</b> ${n === 1 ? 'stop' : 'stops'}`
+        + (stops.length ? ` · <b>${dur(stopMin)}</b> lost to <span class="sl">excavator and shift-wide stops</span>` : '')
+        + (tipGaps.length ? ` · <b>${dur(tipMin)}</b> lost to <span class="bd">tipper faults</span>` : '')
+        + (swaps.length ? ` · <b>${swaps.length}</b> tipper ${swaps.length === 1 ? 'swap' : 'swaps'} · longest breakdown to next trip <span class="hot">${dur(longestSwap)}</span>` : '');
+
+      const axis = [0, 2, 4, 6, 8].map(h => `<span>${new Date(startMs + h * HR).toLocaleTimeString('en-IN', { hour: 'numeric', hour12: true })}</span>`).join('');
       const grid = [25, 50, 75].map(l => `<i class="grid" style="left:${l}%"></i>`).join('');
-      const rows = drivers.map(d => {
-        const chain = d.tippers.map((t, i) => `<b class="${i ? 't2' : 't1'}">T${t}</b>`).join(' → ');
+      const tick = (ms, cls) => `<i class="tk${cls ? ' ' + cls : ''}" style="left:${pct(ms)}%"></i>`;
+      const row = (who, bar, lines) => `<div class="row"><div class="who">${who}</div><div><div class="bar">${grid}${bar}</div>${lines.map(l => `<div class="ev">${l}</div>`).join('')}</div></div>`;
+      const label = m => getMachineLabel(m);
+
+      const stopRows = stops.map(s => {
+        if (s.wide) {
+          const inWin = new Set(drivers.filter(d => d.trips.some(t => t.ts > s.from && t.ts < s.to)).map(d => 'T' + d.trips[0].veh));
+          const kept = inWin.size === 0 ? 'No tipper logged a trip.' : inWin.size <= 3 ? `Only ${[...inWin].join(' and ')} kept hauling.` : `${inWin.size} tippers kept hauling.`;
+          const nEx = new Set(s.gaps.map(g => g.mach).filter(Boolean)).size;
+          return row(`<span class="name">Whole shift</span><span class="tp">${s.sil} of ${s.act} tippers</span><span class="sm slate">stopped ${dur(s.min)}</span>`,
+            band(s.from, s.to, 'x'),
+            [`<b>${clock(s.from)}</b> ${s.sil} of ${s.act} active tippers went silent for <b>${dur(s.min)}</b>${nEx > 1 ? `, across ${nEx} excavators` : ''}`,
+             `${kept} Likely a shared cause: ${shift === 'B' ? 'blast or weather' : 'weather'}`]);
+        }
+        const who = [...new Map(s.gs.map(g => [g.id, g])).values()].sort((a, b) => String(a.veh).localeCompare(String(b.veh), undefined, { numeric: true }));
+        return row(`<span class="name">Excavator ${label(s.mach)}</span><span class="tp">${who.length} tippers waiting</span><span class="sm slate">${s.open ? (running ? 'not loading' : 'no loading to shift end') : 'stopped ' + dur(s.min)}</span>`,
+          band(s.from, s.to, 'x') + s.loads.map(t => tick(t, 's')).join(''),
+          [`<b>${clock(s.from)}</b> ${label(s.mach)} stopped loading for <b>${dur(s.min)}</b>${s.open ? (running ? ' and has not loaded since' : ' and did not load again this shift') : `, loading again at ${clock(s.to)}`}`,
+           `Tippers that waited on ${label(s.mach)}: ${who.map(g => `<b>T${g.veh}</b> ${getDriverName(g.id)}`).join(' · ')} <span class="mute">(not counted against the drivers)</span>`]);
+      }).join('');
+
+      const tipRows = tipDrivers.map(d => {
+        const tippers = [...new Set(d.trips.map(t => t.veh))];
+        const chain = tippers.map((t, i) => `<b class="${i ? 't2' : 't1'}">T${t}</b>`).join(' → ');
         const bad = d.gaps.some(g => g.swap || g.open);
-        const what = d.gaps.some(g => g.swap) ? `${d.gaps.filter(g => g.swap).length} breakdown` : `${d.gaps.length} ${d.gaps.length === 1 ? 'silence' : 'silences'}`;
+        const nSwap = d.gaps.filter(g => g.swap).length;
+        const what = nSwap ? `${nSwap} breakdown` : `${d.gaps.length} ${d.gaps.length === 1 ? 'silence' : 'silences'}`;
         const sm = d.gaps.length === 1 && d.gaps[0].open ? (running ? 'silent since last trip' : 'silent until shift end') : `${what} · ${dur(d.total)}`;
-        let cur = d.trips[0].veh, k = 0;
-        const ticks = d.trips.map(t => { if (t.veh !== cur) { cur = t.veh; k = 1; } return `<i class="tk${k ? ' b' : ''}" style="left:${pct(t.ts)}%"></i>`; }).join('');
-        const bands = d.gaps.map(g => `<i class="gap${g.open ? ' open' : g.swap ? ' r' : ''}" style="left:${pct(g.from)}%;width:${(pct(g.to) - pct(g.from)).toFixed(2)}%"></i>`).join('');
-        return `<div class="row"><div class="who"><span class="name">${getDriverName(d.id)}</span><span class="tp">${chain}</span><span class="sm ${bad ? 'bad' : 'warn'}">${sm}</span></div>
-          <div><div class="bar">${grid}${bands}${ticks}</div>${d.lines.join('')}</div></div>`;
+        let curVeh = d.trips[0].veh, later = false;
+        const ticks = d.trips.map(t => { if (t.veh !== curVeh) { curVeh = t.veh; later = true; } return tick(t.ts, later ? 'b' : ''); }).join('');
+        const lines = d.gaps.flatMap(g => {
+          const others = (g.swap || g.open) && g.mach && (byMach[g.mach] || []).some(t => t > g.from && t < g.to);
+          const note = others ? [`<span class="mute">${label(g.mach)} kept loading other tippers during this time, so the fault is the tipper</span>`] : [];
+          if (g.swap) return [`<b>${clock(g.from)}</b> Tipper ${g.veh} went silent for <b>${dur(g.min)}</b>, did not return. Moved to Tipper ${g.nextVeh}`,
+            `<b>${clock(g.to)}</b> first trip on Tipper ${g.nextVeh}, <span class="hot">${dur(g.min)}</span> after the last trip on Tipper ${g.veh}`, ...note];
+          if (g.open) return [`<b>${clock(g.from)}</b> Tipper ${g.veh} went silent and ${running ? `<b>has not returned</b> (${dur(g.min)} so far)` : `<b>did not return</b> by shift end (${dur(g.min)})`}`, ...note];
+          return [`<b>${clock(g.from)}</b> Tipper ${g.veh} went silent for <b>${dur(g.min)}</b>, then returned at ${clock(g.to)}`];
+        });
+        return row(`<span class="name">${getDriverName(d.id)}</span><span class="tp">${chain}</span><span class="sm ${bad ? 'bad' : 'warn'}">${sm}</span>`,
+          d.gaps.map(g => band(g.from, g.to, g.open ? 'open' : g.swap ? 'r' : '')).join('') + ticks, lines);
       }).join('');
 
       return `<style>
@@ -11626,9 +11711,11 @@
         .hosil[open] .hosil-t::before{transform:rotate(90deg)}
         .hosil-s{font-size:13px;color:var(--text-secondary)}.hosil-s b{font-family:var(--font-mono);color:var(--text-primary);font-weight:600}
         .hosil .hot{color:#a32d2d;font-weight:700;font-family:var(--font-mono)}
+        .hosil .sl{color:#4a5a6b;font-weight:600}.hosil .bd{color:#a32d2d;font-weight:600}
         .hosil-body{padding-bottom:12px}
         .hosil-lg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary);margin:0 0 10px}
         .hosil-lg i{display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:2px}
+        .hosil .grp{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary);margin:14px 0 2px}
         .hosil .head,.hosil .row{display:grid;grid-template-columns:190px 1fr;gap:14px}
         .hosil .ax{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
         .hosil .row{padding:9px 0;border-top:1px solid var(--border);break-inside:avoid;page-break-inside:avoid}
@@ -11636,24 +11723,29 @@
         .hosil .name{font-weight:700;font-size:13px}
         .hosil .tp{font-family:var(--font-mono);font-size:11px}
         .hosil .t1{color:#2f6fb0}.hosil .t2{color:#1d8f6e}
-        .hosil .sm{font-size:11px;font-weight:600}.hosil .sm.warn{color:#8a5a00}.hosil .sm.bad{color:#a32d2d}
+        .hosil .sm{font-size:11px;font-weight:600}.hosil .sm.warn{color:#8a5a00}.hosil .sm.bad{color:#a32d2d}.hosil .sm.slate{color:#4a5a6b}
         .hosil .bar{position:relative;height:16px;background:var(--bg);border-radius:3px;overflow:hidden}
         .hosil .grid{position:absolute;top:0;bottom:0;width:1px;background:var(--border)}
         .hosil .tk{position:absolute;top:3px;width:2px;height:10px;border-radius:1px;background:#2f6fb0}
-        .hosil .tk.b{background:#1d8f6e}
+        .hosil .tk.b{background:#1d8f6e}.hosil .tk.s{background:#6b7c8f}
         .hosil .gap{position:absolute;top:1px;bottom:1px;background:#fdf3dc;border:1px solid #f0c040;border-radius:2px;box-sizing:border-box}
         .hosil .gap.r{background:#fdecea;border-color:#f5c6c6}
+        .hosil .gap.x{background:#e3e8ee;border-color:#b9c4d0}
         .hosil .gap.open{background:repeating-linear-gradient(135deg,#fdecea 0 5px,#fff 5px 10px);border:1px dashed #f5c6c6}
         .hosil .ev{font-size:12px;line-height:1.45;color:var(--text-secondary);margin-top:4px}
         .hosil .ev b{color:var(--text-primary)}
         .hosil .ev b:first-child{font-family:var(--font-mono);font-size:11px;margin-right:4px}
+        .hosil .mute{color:var(--text-muted)}
+        .hosil .foot{font-size:11px;color:var(--text-muted);margin-top:10px}
         @media(max-width:640px){.hosil .head,.hosil .row{grid-template-columns:1fr;gap:6px}.hosil .head .sp{display:none}}
       </style>
-      <details class="hosil"><summary><span class="hosil-t">Tipper silence by driver</span><span class="hosil-s">${summary}</span></summary>
+      <details class="hosil"><summary><span class="hosil-t">Stops and silences</span><span class="hosil-s">${summary}</span></summary>
         <div class="hosil-body">
-          <div class="hosil-lg"><span>Silent = no trip for more than ${HO_SILENT_MIN} min</span><span><i style="background:#2f6fb0"></i>Trip, first tipper</span><span><i style="background:#1d8f6e"></i>Trip, new tipper</span><span><i style="background:#fdf3dc;border:1px solid #f0c040"></i>Silent, returned</span><span><i style="background:#fdecea;border:1px solid #f5c6c6"></i>Breakdown or no return</span></div>
+          <div class="hosil-lg"><span>Silent = no trip for more than ${HO_SILENT_MIN} min</span><span><i style="background:#2f6fb0"></i>Trip, first tipper</span><span><i style="background:#1d8f6e"></i>Trip, new tipper</span><span><i style="background:#fdf3dc;border:1px solid #f0c040"></i>Tipper silent, returned</span><span><i style="background:#fdecea;border:1px solid #f5c6c6"></i>Tipper breakdown</span>${stops.length ? '<span><i style="background:#e3e8ee;border:1px solid #b9c4d0"></i>Excavator or whole-shift stop</span>' : ''}</div>
           <div class="head"><div class="sp"></div><div class="ax">${axis}</div></div>
-          ${rows}
+          ${stops.length ? `<div class="grp">Not the tippers' fault</div>${stopRows}` : ''}
+          ${stops.length && tipDrivers.length ? '<div class="grp">Tipper faults</div>' : ''}${tipRows}
+          ${stops.length ? `<div class="foot">A stop is put down to an excavator when ${HO_EXC_MIN_TIPPERS} or more tippers it loaded go silent together and it loaded nothing itself. It is put down to the whole shift when ${HO_WIDE_SHARE * 100}% or more of active tippers go silent together. Anything else is a tipper fault.</div>` : ''}
         </div>
       </details>`;
     }
@@ -11885,7 +11977,7 @@
 
       // ── Tipper silence by driver ───────────────────────────────────────────────
       const silenceEl = document.getElementById('ho-silence');
-      const silenceHtml = hoSilenceHtml(shiftTrips, shiftEnd);
+      const silenceHtml = hoSilenceHtml(shiftTrips, shiftEnd, shift);
       silenceEl.style.display = silenceHtml ? 'block' : 'none';
       silenceEl.innerHTML = silenceHtml;
 
