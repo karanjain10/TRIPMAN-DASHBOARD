@@ -16237,11 +16237,15 @@
         const loaderTrips = ovLoaderTrips(ovMiningTrips());
         const rate = shownShifts.map(k => {
           const tripsK = loaderTrips.filter(t => (t.shift || ovShiftOfHour(new Date(t.timestamp).getHours())) === k).length;
-          const hoursK = _ov.rows.filter(r => r.info && r.info.cls === 'loading' && !r.mineDev && r.shift === k)
-            .map(r => ovDelta(r, 'HMR')).filter(x => x !== null).reduce((a, b) => a + b, 0);
-          return { k, trips: tripsK, hours: hoursK, perHour: hoursK > 0 ? tripsK / hoursK : null };
+          const rowsK = _ov.rows.filter(r => r.info && r.info.cls === 'loading' && !r.mineDev && r.shift === k);
+          const deltas = rowsK.map(r => ovDelta(r, 'HMR'));
+          const hoursK = deltas.reduce((a, b) => a + (b || 0), 0);
+          // Only show a shift's rate once every production excavator's reading is in; a missing one
+          // would leave trips with no hours and inflate the figure.
+          const complete = deltas.length > 0 && deltas.every(x => x !== null);
+          return { k, trips: tripsK, hours: hoursK, perHour: complete && hoursK > 0 ? tripsK / hoursK : null };
         });
-        const withData = rate.filter(r => r.perHour !== null); // shifts with no hours are left out silently
+        const withData = rate.filter(r => r.perHour !== null); // incomplete shifts are left out silently
         loadingTile = `<div class="ov-t ov-loadingt ov-click${skel}" onclick="ldOpen()" onkeydown="if(event.key==='Enter')ldOpen()" role="button" tabindex="0" aria-label="Open the Loading machine breakdown">
           <div class="ov-t-top"><span class="ov-t-label">Loading</span><span class="ov-linkbtn">Machine breakdown →</span></div>
           <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
@@ -16598,9 +16602,11 @@
       const down = ldDowntimeByUnit(keyOf);
       const machines = new Map();
       meta.forEach(m => machines.set(m.unit, { ...m, hours: 0, hasHours: false, due: 0, done: 0, hByShift: {}, trips: [], groups: new Map(), byShift: {}, unit: m.unit }));
+      const noReading = {}; // production rows still without a closed reading, per shift (mine development doesn't count)
       rows.forEach(r => {
         const m = machines.get(r.unit);
         const h = ovDelta(r, 'HMR');
+        if (h === null && !r.mineDev) noReading[r.shift] = true;
         if (h !== null) { m.hours += h; m.hasHours = true; m.hByShift[r.shift] = (m.hByShift[r.shift] || 0) + h; }
         if (ovShiftEnded(r.date, r.shift)) { m.due++; if (ovStatus(r) === 'complete') m.done++; }
       });
@@ -16670,7 +16676,7 @@
         byShift: ['A', 'B', 'C'].map(k => {
           const hrs = prod.reduce((a, m) => a + (m.hByShift[k] || 0), 0), trips = prod.reduce((a, m) => a + (m.byShift[k] ? m.byShift[k].trips : 0), 0);
           return { k, hrs, trips, tph: hrs > 0 && trips ? trips / hrs : null };
-        }).filter(s => s.tph !== null)
+        }).filter(s => s.tph !== null && !noReading[s.k]) // a shift's rate waits until all its production readings are in
       };
     }
 
