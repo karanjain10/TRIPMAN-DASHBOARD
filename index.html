@@ -9068,7 +9068,7 @@
           </div>
           <div class="src-form-field">
             <label class="src-form-label">Date</label>
-            <input type="date" id="src-create-date" class="src-form-input" />
+            <input type="date" id="src-create-date" class="src-form-input" onchange="srcCreateOnTruckInput()" />
           </div>
         </div>
         <div class="src-form-field" style="margin-bottom:14px;">
@@ -23809,9 +23809,11 @@
       const truck = document.getElementById('src-create-truck').value.trim();
       if (!truck) return null;
       const shift = _srcCreateShift;
+      const date  = document.getElementById('src-create-date').value;
       return _srcAllData.find(d =>
         srcGetEquipmentCode(d) === truck &&
-        (!shift || (d.shift || '').toUpperCase() === shift)
+        (!shift || (d.shift || '').toUpperCase() === shift) &&
+        (!date || dashboardDate(d.date) === date)
       ) || null;
     }
 
