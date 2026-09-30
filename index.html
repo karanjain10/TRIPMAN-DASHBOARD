@@ -12002,17 +12002,14 @@
       // Find operator name for each excavator from allSessions for this date+shift
       function getExOperator(machineId) {
         if (!machineId || !allSessions.length) return '—';
-        const s = allSessions.find(s => {
-          const mid = s.machine_id;
-          if (mid !== machineId) return false;
-          // Match by shift field or by date
+        // date rules match the Excavator page (mining_date first, date may be a full ISO string)
+        const names = [...new Set(allSessions.filter(s => {
+          if (s.machine_id !== machineId) return false;
           if (s.shift && s.shift !== shift) return false;
-          const sDate = s.date || (s.start_time ? s.start_time.split('T')[0] : null);
-          if (sDate && sDate !== date) return false;
-          return true;
-        });
-        if (!s) return '—';
-        return s.operator_name || getOperatorName(s.operator_id) || '—';
+          const sDate = s.mining_date || (s.date ? s.date.split('T')[0] : null) || (s.start_time ? s.start_time.split('T')[0] : null);
+          return !sDate || sDate === date;
+        }).map(s => s.operator_name || (s.operator_id ? getOperatorName(s.operator_id) : null)).filter(n => n && n !== '—'))];
+        return names.join(', ') || '—';
       }
       const exRows = Object.entries(exMap).sort((a, b) => b[1].trips - a[1].trips);
 
@@ -18518,7 +18515,6 @@
     async function fcFetch() {
       const start = document.getElementById('fc-start').value;
       const end = document.getElementById('fc-end').value;
-      const vtype = document.getElementById('fc-vtype').value;
 
       fuelShowError('fc-error', '');
       document.getElementById('fc-tbody').innerHTML = '<tr><td colspan="10" class="fuel-loading">Loading…</td></tr>';
@@ -18530,8 +18526,7 @@
 
       const baseUrl = `${API}/fuel-logs?`
         + (start ? `start_date=${start}&` : '')
-        + (end ? `end_date=${end}&` : '')
-        + (vtype ? `vehicle_type=${vtype}&` : '');
+        + (end ? `end_date=${end}&` : '');
 
       try {
         while (true) {
@@ -18584,12 +18579,17 @@
         const KNOWN_TYPES = new Set([
           'excavator', 'tipper', 'dozer', 'grader', 'lmv',
           'diesel_tanker', 'water_tanker', 'drill', 'crane',
-          'roller', 'loader'
+          'roller', 'loader', 'drill_machine', 'drill_compressor', 'generator'
         ]);
         _fcRaw.forEach(r => {
           const vt = (r.vehicle_type || '').toLowerCase().trim();
-          if (!KNOWN_TYPES.has(vt)) {
-            r.vehicle_type = 'others';
+          // Drill machine and compressor get their own types (the API may send them as
+          // 'drill', 'others' or untyped); anything else unrecognised is miscellaneous.
+          const nm = `${r.vehicle_name || ''} ${r.remarks || ''}`.toLowerCase();
+          if (vt === 'drill' || vt === 'others' || vt === 'other' || !KNOWN_TYPES.has(vt)) {
+            r.vehicle_type = /compressor/.test(nm) ? 'drill_compressor'
+              : /drill/.test(nm) ? 'drill_machine'
+              : KNOWN_TYPES.has(vt) ? vt : 'others';
           }
           if (r.litres_filled == null && r.diesel_issued != null) {
             r.litres_filled = r.diesel_issued;
@@ -18618,7 +18618,7 @@
       // Group by vehicle (use vehicle_id as primary key, fall back to vehicle_name)
       const byVehicle = {};
       records.forEach(r => {
-        const key = r.vehicle_id || r.vehicle_name || '__unknown__';
+        const key = r.vehicle_id || r.vehicle_name || r.remarks || '__unknown__';
         if (!byVehicle[key]) byVehicle[key] = [];
         byVehicle[key].push(r);
       });
@@ -18829,7 +18829,8 @@
       emptyEl.style.display = 'none';
 
       // Gather distinct vehicles
-      const vehicles = [...new Set(_fcFiltered.map(r => r.vehicle_name || r.vehicle_id))].sort();
+      const fcLabel = r => r.vehicle_name || r.vehicle_id || r.remarks || 'Other';
+      const vehicles = [...new Set(_fcFiltered.map(fcLabel))].sort();
       const useAggregate = vehicles.length > 5;
 
       // Group by date
@@ -18838,7 +18839,7 @@
         const d = (r.created_at || r.refill_date || '').slice(0, 10);
         if (!d) return;
         if (!dateMap[d]) dateMap[d] = {};
-        const key = useAggregate ? 'All Vehicles' : (r.vehicle_name || r.vehicle_id);
+        const key = useAggregate ? 'All Vehicles' : fcLabel(r);
         dateMap[d][key] = (dateMap[d][key] || 0) + (r.litres_filled || 0);
       });
 
@@ -18984,9 +18985,9 @@
             <td title="${(r.remarks || '').replace(/"/g, '&quot;')}">${remarksText}</td>
             <td>Others</td>
             <td style="font-family:var(--font-mono);">${r.litres_filled ?? '—'}</td>
-            <td style="font-family:var(--font-mono);">—</td>
-            <td style="font-family:var(--font-mono);">—</td>
-            <td style="font-family:var(--font-mono);">—</td>
+            <td style="font-family:var(--font-mono);">${r.hmr_reading ?? '—'}</td>
+            <td style="font-family:var(--font-mono);">${r.hmr_diff ?? '—'}</td>
+            <td style="font-family:var(--font-mono);">${r.kmr_reading ?? '—'}</td>
             <td style="font-family:var(--font-mono);">—</td>
             <td style="font-family:var(--font-mono);">—</td>
             <td>${r.logged_by || '—'}</td>
@@ -18996,7 +18997,7 @@
         const effUnit = isExc ? 'L/hr' : (isTip ? 'L/hr' : '');
         const effVal = r.efficiency != null ? `${r.efficiency} ${effUnit}` : '—';
         const kmrVal = isExc ? '—' : (r.kmr_reading ?? '—');
-        const vtypeDisplay = vtype ? (vtype.charAt(0).toUpperCase() + vtype.slice(1)) : '—';
+        const vtypeDisplay = vtype ? vtype.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—';
 
         const isAnomaly = r.efficiency == null;
         const isRedFlag = (r.work_done === 0 || r.work_done === '0') && (r.litres_filled || 0) > ANOMALY_THRESHOLD;
