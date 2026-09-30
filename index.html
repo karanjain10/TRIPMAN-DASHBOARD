@@ -11999,16 +11999,26 @@
         const lbl = getMachineLabel(t.machine_id);
         if (lbl && exMap[lbl] && !exMap[lbl].machineId) exMap[lbl].machineId = t.machine_id;
       });
-      // Find operator name for each excavator from allSessions for this date+shift
-      function getExOperator(machineId) {
-        if (!machineId || !allSessions.length) return '—';
-        // date rules match the Excavator page (mining_date first, date may be a full ISO string)
-        const names = [...new Set(allSessions.filter(s => {
-          if (s.machine_id !== machineId) return false;
+      // Operator(s) per excavator: sessions on this date+shift, else sessions overlapping its trips.
+      function getExOperator(machineId, sessions) {
+        if (!machineId) return '—';
+        const mine = sessions.filter(s => s.machine_id === machineId);
+        const onShift = mine.filter(s => {
           if (s.shift && s.shift !== shift) return false;
           const sDate = s.mining_date || (s.date ? s.date.split('T')[0] : null) || (s.start_time ? s.start_time.split('T')[0] : null);
           return !sDate || sDate === date;
-        }).map(s => s.operator_name || (s.operator_id ? getOperatorName(s.operator_id) : null)).filter(n => n && n !== '—'))];
+        });
+        let found = onShift;
+        if (!found.length) {
+          const ts = shiftTrips.filter(t => t.machine_id === machineId).map(t => new Date(t.timestamp).getTime()).filter(n => !isNaN(n));
+          const lo = Math.min(...ts), hi = Math.max(...ts);
+          found = mine.filter(s => {
+            const st = s.start_time ? new Date(s.start_time).getTime() : NaN;
+            const en = s.end_time ? new Date(s.end_time).getTime() : Date.now();
+            return !isNaN(st) && st <= hi && en >= lo;
+          });
+        }
+        const names = [...new Set(found.map(s => s.operator_name || getOperatorName(s.operator_id || s.driver_id || s.worker_id)).filter(n => n && n !== '—'))];
         return names.join(', ') || '—';
       }
       const exRows = Object.entries(exMap).sort((a, b) => b[1].trips - a[1].trips);
@@ -12030,10 +12040,10 @@
             </thead>
             <tbody>
               ${exRows.map(([ex, d], i) => {
-        const opName = getExOperator(d.machineId);
+        const opName = getExOperator(d.machineId, allSessions);
         return `<tr style="${i % 2 === 0 ? '' : 'background:var(--bg);'}border-bottom:1px solid var(--border);">
                 <td style="padding:8px 12px;font-weight:600;font-family:var(--font-mono);color:var(--accent);">${ex}</td>
-                <td style="padding:8px 12px;font-size:12px;color:var(--text-secondary);">${opName}</td>
+                <td class="ho-ex-op" data-mid="${d.machineId || ''}" data-ex="${ex}" style="padding:8px 12px;font-size:12px;color:var(--text-secondary);">${opName}</td>
                 <td style="padding:8px 12px;text-align:center;">${d.drivers}</td>
                 <td style="padding:8px 12px;text-align:center;font-weight:700;font-family:var(--font-mono);">${d.trips}</td>
                 <td style="padding:8px 12px;text-align:center;font-family:var(--font-mono);">${(d.trips / d.drivers).toFixed(1)}</td>
@@ -12042,6 +12052,26 @@
             </tbody>
           </table>
         </div>`;
+
+      // Excavator operators are recorded on the day's deployments (driver_name), and sessions on the
+      // Trips page may not cover this date: fetch both for this day and refill the cells.
+      const depOps = fetch => fetch.then(r => r.ok ? r.json() : {}).catch(() => ({})).then(d => [...(d.live || []), ...(d.history || [])]);
+      Promise.all([
+        fetchMachineSessions(date, date),
+        depOps(apiFetch(`${API}/deployments/summary?${new URLSearchParams({ date, shift })}`))
+      ]).then(([day, deps]) => {
+        const excDeps = deps.filter(r => String(r.equipment_type || '').toLowerCase() === 'excavator'
+          && (!r.shift || String(r.shift).toUpperCase() === shift));
+        const sessions = [...allSessions, ...day];
+        exEl.querySelectorAll('.ho-ex-op').forEach(td => {
+          const ex = td.dataset.ex.toLowerCase();
+          const fromDep = excDeps.filter(r => String(r.truck_number || '').toLowerCase() === ex
+            || (td.dataset.mid && [r.vehicle_id, r.machine_id, r.equipment_id].some(v => v && String(v) === td.dataset.mid)))
+            .map(r => r.driver_name || r.operator_name).filter(Boolean);
+          const names = [...new Set(fromDep)];
+          td.textContent = names.length ? names.join(', ') : getExOperator(td.dataset.mid, sessions);
+        });
+      });
 
       // ── Material chips ────────────────────────────────────────────────────────
       const matTotals = {};
@@ -18579,16 +18609,15 @@
         const KNOWN_TYPES = new Set([
           'excavator', 'tipper', 'dozer', 'grader', 'lmv',
           'diesel_tanker', 'water_tanker', 'drill', 'crane',
-          'roller', 'loader', 'drill_machine', 'drill_compressor', 'generator'
+          'roller', 'loader', 'drill_equipment', 'generator'
         ]);
         _fcRaw.forEach(r => {
           const vt = (r.vehicle_type || '').toLowerCase().trim();
-          // Drill machine and compressor get their own types (the API may send them as
-          // 'drill', 'others' or untyped); anything else unrecognised is miscellaneous.
+          // Drill machine and compressor share one 'drill_equipment' type (the API may send
+          // them as 'drill', 'drill_machine', 'others' or untyped); other unrecognised = 'others'.
           const nm = `${r.vehicle_name || ''} ${r.remarks || ''}`.toLowerCase();
-          if (vt === 'drill' || vt === 'others' || vt === 'other' || !KNOWN_TYPES.has(vt)) {
-            r.vehicle_type = /compressor/.test(nm) ? 'drill_compressor'
-              : /drill/.test(nm) ? 'drill_machine'
+          if (vt === 'drill' || vt.startsWith('drill_') || vt === 'others' || vt === 'other' || !KNOWN_TYPES.has(vt)) {
+            r.vehicle_type = (vt === 'drill' || vt.startsWith('drill_') || /drill|compressor/.test(nm)) ? 'drill_equipment'
               : KNOWN_TYPES.has(vt) ? vt : 'others';
           }
           if (r.litres_filled == null && r.diesel_issued != null) {
@@ -18670,7 +18699,7 @@
       const LABEL_MAP = {
         excavator: 'Excavator', tipper: 'Tipper', dozer: 'Dozer',
         grader: 'Grader', lmv: 'LMV', diesel_tanker: 'Diesel Tanker',
-        water_tanker: 'Water Tanker', drill: 'Drill', crane: 'Crane',
+        water_tanker: 'Water Tanker', drill_equipment: 'Drill Equipment', crane: 'Crane',
         roller: 'Roller', loader: 'Loader', others: 'Others', other: 'Others'
       };
 
