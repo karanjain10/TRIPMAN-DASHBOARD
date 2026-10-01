@@ -6155,6 +6155,73 @@
     body.ld-printing .ld-scroll { overflow: visible; }
     body.ld-printing .ld-table { min-width: 0; }
     body.ld-printing tr.ld-m { cursor: default; }
+
+    /* ── CONTROL ROOM ───────────────────────────────────────────────────── */
+    #control-page { --c-ok-bg:#e6f4ec; --c-warn-bg:#fdf1d6; --c-warn-line:#e8a020; --c-bad-bg:#fbe7e5; --c-bad-line:#c0392b; --c-idle-bg:#eeede8; }
+    :root[data-theme="dark"] #control-page { --c-ok-bg:#12301f; --c-warn-bg:#3a2d0c; --c-warn-line:#f59e0b; --c-bad-bg:#431a18; --c-bad-line:#ef4444; --c-idle-bg:#1d2129; }
+    .ctl-body { max-width:1280px; margin:0 auto; padding:16px 24px 40px; }
+    .ctl-when { color:var(--text-secondary); margin-bottom:12px; }
+    .ctl-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+    .ctl-eyebrow { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--text-secondary); }
+    .ctl-live { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary); }
+    .ctl-live i { width:8px; height:8px; border-radius:50%; background:var(--ok); } .ctl-live.off i { background:var(--bad); }
+    .ctl-sound { display:inline-flex; align-items:center; gap:8px; height:30px; font-size:12px; }
+    .ctl-sound i { font-size:16px; line-height:1; display:inline-flex; }
+    .ctl-sound.off { border-color:var(--c-warn-line); background:var(--c-warn-bg); color:var(--warn); }
+    .ctl-sound.on { border-color:var(--ok); color:var(--ok); }
+    .ctl-pace { display:grid; grid-template-columns:minmax(260px,340px) 1fr; margin-bottom:16px; }
+    .ctl-pace-l { padding:18px 20px; border-right:1px solid var(--border); }
+    .ctl-pace-big { font-family:var(--font-mono); font-size:38px; font-weight:500; line-height:1; margin:10px 0 6px; letter-spacing:-.04em; }
+    .ctl-pace-big small { font-family:var(--font-main); font-size:14px; color:var(--text-secondary); letter-spacing:0; margin-left:6px; }
+    .ctl-delta { display:inline-block; font-weight:500; padding:2px 8px; border-radius:5px; font-size:13px; }
+    .ctl-delta.bad { background:var(--c-bad-bg); color:var(--bad); } .ctl-delta.warn { background:var(--c-warn-bg); color:var(--warn); } .ctl-delta.ok { background:var(--c-ok-bg); color:var(--ok); } .ctl-delta.idle { background:var(--c-idle-bg); color:var(--text-secondary); }
+    .ctl-pace-l p { color:var(--text-secondary); margin-top:10px; font-size:13px; } .ctl-pace-l p b { color:var(--text-primary); font-weight:500; font-family:var(--font-mono); }
+    .ctl-pace-r { padding:14px 18px 8px; }
+    .ctl-legend { display:flex; gap:16px; font-size:12px; color:var(--text-secondary); margin-bottom:4px; flex-wrap:wrap; }
+    .ctl-legend span::before { content:''; display:inline-block; width:18px; height:0; border-top:2px solid; vertical-align:middle; margin-right:6px; }
+    .ctl-legend .u::before { border-color:var(--text-muted); } .ctl-legend .a::before { border-color:var(--accent); } .ctl-legend .p::before { border-color:var(--accent); border-top-style:dashed; }
+    #ctl-chart text { font-family:var(--font-mono); font-size:11px; fill:var(--text-secondary); }
+    .ctl-grid { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:16px; align-items:start; }
+    .ctl-sec-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 2px 8px; flex-wrap:wrap; }
+    .ctl-keyrow { display:flex; gap:12px; font-size:12px; color:var(--text-secondary); flex-wrap:wrap; }
+    .ctl-keyrow i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+    .ctl-exgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:12px; }
+    .ctl-ex { background:var(--surface); border:1px solid var(--border); border-left-width:4px; border-radius:10px; padding:12px 14px 14px; cursor:pointer; transition:border-color .12s; }
+    .ctl-ex:hover { border-color:var(--border-strong); } .ctl-ex.hot, .ctl-ex.hot:hover { border-color:var(--c-bad-line); }
+    .ctl-ex:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    .ctl-ex-h { display:flex; align-items:baseline; gap:8px; } .ctl-ex-h b { font-size:15px; font-weight:600; } .ctl-ex-h .sp { flex:1; }
+    .ctl-mat { font-size:12px; color:var(--text-secondary); display:inline-flex; align-items:center; gap:5px; } .ctl-mat i { width:8px; height:8px; border-radius:50%; }
+    .ctl-hint { font-size:11px; color:var(--text-muted); white-space:nowrap; } .ctl-ex:hover .ctl-hint { color:var(--text-secondary); }
+    .ctl-ex-s { font-size:12px; color:var(--text-secondary); margin:3px 0 10px; } .ctl-ex-s b { color:var(--text-primary); font-weight:500; font-family:var(--font-mono); }
+    .ctl-dots { display:flex; flex-wrap:wrap; gap:6px; }
+    .ctl-tp { position:relative; width:70px; padding:5px 7px 6px; border-radius:6px; border:1px solid transparent; border-left:4px solid var(--ok); line-height:1.2; font-family:var(--font-mono); }
+    .ctl-tp .l1 { display:flex; justify-content:space-between; align-items:baseline; }
+    .ctl-tp .n { font-size:14px; font-weight:500; } .ctl-tp .m { font-size:12px; color:var(--text-secondary); }
+    .ctl-tp .tb { display:block; font-size:11px; color:var(--ok); margin-top:1px; white-space:nowrap; } .ctl-tp .tb.z { color:var(--text-muted); }
+    .ctl-tp.warn { background:var(--c-warn-bg); border-color:var(--c-warn-line); border-left-color:var(--c-warn-line); }
+    .ctl-tp.warn .m, .ctl-tp.warn .tb { color:var(--warn); } .ctl-tp.warn .m { font-weight:600; }
+    .ctl-tp.bad { background:var(--c-bad-bg); border:2px solid var(--c-bad-line); border-left-width:4px; padding:4px 6px 5px; }
+    .ctl-tp.bad .m, .ctl-tp.bad .tb { color:var(--bad); font-weight:600; } .ctl-tp.bad .m { font-weight:700; }
+    .ctl-tp.idle { border-style:dashed; border-color:var(--border-strong); border-left-color:var(--border-strong); }
+    .ctl-multi { position:absolute; bottom:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#d97706; }
+    .ctl-alerts { overflow:hidden; }
+    .ctl-alerts-h { padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
+    .ctl-count { font-family:var(--font-mono); font-size:12px; padding:1px 7px; border-radius:10px; background:var(--c-bad-bg); color:var(--bad); } .ctl-count.z { background:var(--c-ok-bg); color:var(--ok); }
+    .ctl-al { padding:12px 16px; border-bottom:1px solid var(--border); border-left:4px solid transparent; display:grid; grid-template-columns:1fr auto; gap:2px 12px; }
+    .ctl-al.alert { border-left-color:var(--c-bad-line); background:var(--c-bad-bg); } .ctl-al.warn { border-left-color:var(--c-warn-line); }
+    .ctl-al .lvl { font-size:11px; font-weight:700; letter-spacing:.06em; } .ctl-al.alert .lvl { color:var(--bad); } .ctl-al.warn .lvl { color:var(--warn); }
+    .ctl-al .t { font-weight:500; } .ctl-al .d { font-size:12px; color:var(--text-secondary); }
+    .ctl-al button { grid-row:1 / span 3; grid-column:2; align-self:center; font-size:12px; }
+    .ctl-al.acked { opacity:.7; background:transparent; border-left-color:var(--border-strong); }
+    .ctl-none { padding:22px 16px; color:var(--text-secondary); }
+    .ctl-alerts details summary { padding:10px 16px; cursor:pointer; font-size:12px; color:var(--text-secondary); }
+    .ctl-foot { padding:10px 16px; font-size:12px; color:var(--text-secondary); background:var(--bg); border-top:1px solid var(--border); } .ctl-foot b { color:var(--text-primary); font-weight:500; }
+    .ctl-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9100; align-items:flex-start; justify-content:center; padding:48px 16px; overflow:auto; }
+    .ctl-ov.show { display:flex; }
+    .ctl-dlg { position:relative; width:min(440px,100%); box-shadow:0 20px 60px rgba(0,0,0,.35); outline:none; }
+    .ctl-dlg .dep-live-card { cursor:default; transform:none; } .ctl-dlg .dep-live-card:hover { transform:none; box-shadow:none; }
+    .ctl-x { position:absolute; top:10px; right:10px; width:30px; padding:0; justify-content:center; font-size:18px; }
+    @media (max-width:980px) { .ctl-grid, .ctl-pace { grid-template-columns:1fr; } .ctl-pace-l { border-right:0; border-bottom:1px solid var(--border); } .ctl-body { padding:12px 16px 32px; } }
   </style>
 </head>
 
@@ -6214,6 +6281,7 @@
       <nav class="app-nav" id="app-nav" aria-label="Main navigation">
         <button class="nav-collapse" id="nav-collapse" onclick="navToggleCollapse()" aria-label="Collapse menu" title="Collapse menu"><i class="fi fi-rr-angle-double-small-left" aria-hidden="true"></i></button>
         <button class="nav-item active" data-nav="overview" onclick="navGo('overview')"><i class="fi fi-rr-apps" aria-hidden="true"></i><span>Overview</span></button>
+        <button class="nav-item" data-nav="control" onclick="navGo('control')"><i class="fi fi-rr-siren" aria-hidden="true"></i><span>Control room</span></button>
 
         <div class="nav-group">Production</div>
         <button class="nav-item" data-nav="reports" onclick="navGo('reports')"><i class="fi fi-rr-chart-line-up" aria-hidden="true"></i><span>Trips and reports</span></button>
@@ -7188,6 +7256,54 @@
           </thead>
           <tbody id="cutoffdist-tbody"></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROL ROOM PAGE -->
+  <div id="control-page" style="display:none; min-height:100vh; background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeControlPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Control room</div>
+      <div class="topbar-user">
+        <span class="ctl-live" id="ctl-live"><i></i><span id="ctl-live-t">Waiting for data</span></span>
+        <button class="action-btn ctl-sound off" id="ctl-sound" onclick="ctlToggleSound()" aria-pressed="false"><i id="ctl-sound-ic" class="fi fi-rr-volume-mute" aria-hidden="true"></i><span id="ctl-sound-t">Sound off, click to enable</span></button>
+      </div>
+    </div>
+    <div class="ctl-body">
+      <div class="ctl-when" id="ctl-when"></div>
+      <div class="ctl-card ctl-pace" aria-label="Pace this shift">
+        <div class="ctl-pace-l">
+          <div class="ctl-eyebrow">Pace · this shift</div>
+          <div class="ctl-pace-big" id="ctl-pace-n"></div>
+          <span class="ctl-delta" id="ctl-pace-d"></span>
+          <p id="ctl-pace-p"></p>
+        </div>
+        <div class="ctl-pace-r">
+          <div class="ctl-legend"><span class="u" id="ctl-lg-u"></span><span class="a">This shift</span><span class="p">If pace holds</span></div>
+          <svg id="ctl-chart" viewBox="0 0 640 170" width="100%" role="img" aria-label="Cumulative trips this shift against the average"></svg>
+        </div>
+      </div>
+      <div class="ctl-grid">
+        <section>
+          <div class="ctl-sec-head">
+            <span class="ctl-eyebrow">Deployments · tippers by excavator</span>
+            <span class="ctl-keyrow"><span><i style="background:var(--ok)"></i>trip in last 30 min</span><span><i style="background:var(--c-warn-bg);border:1px solid var(--c-warn-line)"></i>30–45 min</span><span><i style="background:var(--c-bad-bg);border:2px solid var(--c-bad-line)"></i>over 45 min</span><span><i style="background:var(--c-idle-bg);border:1px dashed var(--border-strong)"></i>no trip yet</span></span>
+          </div>
+          <div class="ctl-exgrid" id="ctl-exgrid"></div>
+        </section>
+        <aside class="ctl-card ctl-alerts">
+          <div class="ctl-alerts-h"><span class="ctl-eyebrow">Alerts</span><span class="ctl-count" id="ctl-cnt"></span></div>
+          <div id="ctl-al"></div>
+          <div class="ctl-foot"><b>30 min</b> amber, soft chime. <b>45 min</b> red, siren. Acknowledging quiets that alert only. If it escalates, it sounds again.</div>
+        </aside>
+      </div>
+    </div>
+    <div class="ctl-ov" id="ctl-ov" aria-hidden="true">
+      <div class="ctl-dlg" role="dialog" aria-modal="true" aria-labelledby="ctl-dlg-t" tabindex="-1">
+        <div id="ctl-card"></div>
+        <button class="action-btn ctl-x" id="ctl-x" aria-label="Close"><i class="fi fi-rr-cross-small" aria-hidden="true"></i></button>
       </div>
     </div>
   </div>
@@ -9786,7 +9902,7 @@
 
     // Fetch ALL trips for a date range, auto-paginating past the 10,000-row API limit.
     // Uses limit/skip if API supports it; falls back gracefully if not paginated.
-    async function fetchAllTripsForRange(startDate, endDate, onProgress) {
+    async function fetchAllTripsForRange(startDate, endDate, onProgress, shift) {
       const PAGE = 10000;
       let skip = 0;
       let all = [];
@@ -9796,6 +9912,7 @@
         p.set('end_date', endDate);
         p.set('limit', PAGE);
         p.set('skip', skip);
+        if (shift) p.set('shift', shift);
         const res = await apiFetch(`${API}/trips?${p}`);
         const data = await res.json();
         const page = Array.isArray(data) ? data : (data.trips || []);
@@ -16025,7 +16142,7 @@
         reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
         deployments: openDeploymentsPage, eqhealth: openEqHealthPage, livemap: openLiveMapPage,
         compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
-        manual: openManualTripPage, workers: openWorkersPage, drilling: openDrillPage
+        manual: openManualTripPage, workers: openWorkersPage, drilling: openDrillPage, control: openControlPage
       };
       if (targets[key]) targets[key]();
     }
@@ -16036,7 +16153,7 @@
     const _navPages = {
       'reports-hub-page': 'reports', 'lf-page': 'loadfactor', 'haul-page': 'haul', 'deployments-page': 'deployments',
       'eq-health-page': 'eqhealth', 'livemap-page': 'livemap', 'drill-page': 'drilling', 'compliance-page': 'compliance',
-      'changeover-page': 'changeover', 'handover-page': 'handover', 'manual-trip-page': 'manual', 'workers-page': 'workers'
+      'changeover-page': 'changeover', 'handover-page': 'handover', 'manual-trip-page': 'manual', 'workers-page': 'workers', 'control-page': 'control'
     };
     const _navDates = { compliance: ['src-date-from', 'src-date-to'], changeover: ['co-date-from', 'co-date-to'] };
     let _navReady = false;
@@ -16519,9 +16636,58 @@
     }
 
     // ── silent machines ──
-    // Deployed haulage units and production excavators that have logged no trip for more than
-    // OV_SILENT_MIN in the shift now running. The first OV_SILENT_MIN after deployment is grace.
-    const OV_SILENT_MIN = 45;
+    // Deployed haulage units and production excavators that have logged no trip for SILENT_WARN_MIN
+    // or more in the shift now running (level 'alert' from SILENT_ALERT_MIN). The first
+    // SILENT_WARN_MIN after deployment is grace.
+
+    // ctl:pure:start
+    // Silence limits shared by the Overview "Needs attention" row and the Control room page.
+    const SILENT_WARN_MIN = 30, SILENT_ALERT_MIN = 45;
+    const silentLevel = min => min >= SILENT_ALERT_MIN ? 'alert' : min >= SILENT_WARN_MIN ? 'warn' : 'ok';
+
+    // Alerts for one shift. groups = [{ id: 'EX-04', tippers: [{ n: '15', min: 52 }] }].
+    // An excavator "may have stopped" when 3+ of its tippers, and 60%+ of them, are silent;
+    // otherwise every silent tipper is its own alert.
+    function ctlAlerts(groups) {
+      const out = [];
+      groups.forEach(g => {
+        const silent = g.tippers.filter(t => t.min >= SILENT_WARN_MIN);
+        if (silent.length >= 3 && silent.length / g.tippers.length >= 0.6) {
+          const level = silent.some(t => t.min >= SILENT_ALERT_MIN) ? 'alert' : 'warn';
+          out.push({ key: `${g.id}:${level}`, level, min: Math.max(...silent.map(t => t.min)), excavator: g.id, tippers: silent.map(t => t.n), total: g.tippers.length });
+        } else silent.forEach(t => {
+          const level = silentLevel(t.min);
+          out.push({ key: `T${t.n}:${level}`, level, min: t.min, excavator: g.id, tipper: t.n });
+        });
+      });
+      return out.sort((a, b) => (b.level === 'alert') - (a.level === 'alert') || b.min - a.min);
+    }
+
+    // Pace. Backtested on 186 past shifts (see the Control room plan): K softens the pace ratio
+    // early in a shift, CTL_DAYS recent normal shifts of the same letter make the "usual" curve.
+    const CTL_K = 60, CTL_DAYS = 8, CTL_NORMAL = 0.6;
+    const ctlMedian = a => { const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+    // days = { 'YYYY-MM-DD': [minutes since shift start, one per trip] } for past shifts of one letter.
+    // Returns the average and lowest cumulative trips every 30 min (17 points) over the last CTL_DAYS
+    // normal days (a normal day has at least CTL_NORMAL x the median total), or null with under 3.
+    function ctlCurves(days) {
+      const dates = Object.keys(days).sort(), med = ctlMedian(dates.map(d => days[d].length));
+      const keep = dates.filter(d => days[d].length >= CTL_NORMAL * med).slice(-CTL_DAYS);
+      if (keep.length < 3) return null;
+      const pts = Array.from({ length: 17 }, (_, i) => keep.map(d => days[d].filter(m => m <= i * 30).length));
+      return { usual: pts.map(p => p.reduce((a, b) => a + b, 0) / p.length), lo: pts.map(p => Math.min(...p)), days: keep.length };
+    }
+    // Curve value `min` minutes into the shift (straight line between 30-min points).
+    const ctlAt = (curve, min) => {
+      const h = Math.min(Math.max(min, 0) / 30, 16), i = Math.floor(h), j = Math.min(i + 1, 16);
+      return curve[i] + (curve[j] - curve[i]) * (h - i);
+    };
+    // Projected shift total: trips so far + the usual remaining trips, scaled by how this shift is running.
+    const ctlFinish = (actual, usualNow, usualTotal) => Math.round(actual + (usualTotal - usualNow) * (actual + CTL_K) / (usualNow + CTL_K));
+    // Red only below the lowest of the recent normal days at this point; amber below the average.
+    const ctlPaceState = (actual, usualNow, loNow) => actual < loNow ? 'bad' : actual < usualNow ? 'warn' : 'ok';
+    // ctl:pure:end
+
     function ovSilentUnits() {
       if (!_ov.key || _ov.error || ovRange().end < ovMiningDate(new Date())) return []; // range must include today
       const now = Date.now(), shift = ovShiftOfHour(new Date().getHours());
@@ -16545,7 +16711,7 @@
         const deployed = r.deployedAt ? new Date(r.deployedAt).getTime() : 0;
         const ref = last || Math.max(deployed, shiftStart.getTime());
         const min = Math.round((now - ref) / 60000);
-        if (min > OV_SILENT_MIN) out.push({ type: cap(r.info.name), code: String(r.code || r.unit), min, none: !last });
+        if (min >= SILENT_WARN_MIN) out.push({ type: cap(r.info.name), code: String(r.code || r.unit), min, none: !last, level: silentLevel(min) });
       });
       return out.sort((a, b) => b.min - a.min);
     }
@@ -16598,10 +16764,10 @@
       }
       const c = ovAttentionCounts();
       const out = [];
-      if (c.silent.length) {
-        out.push(row(c.silent.some(u => u.min > 90) ? 'bad' : 'warn', c.silent.length, c.silent.length === 1 ? `Machine silent for over ${OV_SILENT_MIN} min` : `Machines silent for over ${OV_SILENT_MIN} min`,
-          ovSilentText(c.silent), 'deployments', 'Deployments'));
-      }
+      [['alert', 'bad', SILENT_ALERT_MIN], ['warn', 'warn', SILENT_WARN_MIN]].forEach(([lvl, tone, mins]) => {
+        const list = c.silent.filter(u => u.level === lvl);
+        if (list.length) out.push(row(tone, list.length, list.length === 1 ? `Machine silent for over ${mins} min` : `Machines silent for over ${mins} min`, ovSilentText(list), 'deployments', 'Deployments'));
+      });
       if (c.missing) out.push(row('bad', c.missing, c.missing === 1 ? 'Shift reading missing' : 'Shift readings missing', 'Shift ended and no reading was submitted', 'compliance', 'Compliance'));
       if (c.partial) out.push(row('bad', c.partial, c.partial === 1 ? 'Shift reading incomplete' : 'Shift readings incomplete', 'Opening or closing reading not entered', 'compliance', 'Compliance'));
       if (c.gaps) out.push(row('warn', c.gaps, c.gaps === 1 ? `Changeover gap over ${OV_GAP_LIMIT_MIN} min` : `Changeover gaps over ${OV_GAP_LIMIT_MIN} min`, 'Deployed, then more than 45 min to the opening reading', 'changeover', 'Changeover'));
@@ -20695,6 +20861,55 @@
       return d.location || d.working_location || d.area || d.pit || d.source_location || '';
     }
 
+    // ── Tipper helpers (shared with the Control room page) ────────────────────────
+    // Tipper records for the date + shift on screen:
+    // - viewing today with all shifts → _depLiveData (active deployments)
+    // - anything else → _depHistoryData for that same date+shift, so we show who was
+    //   ACTUALLY assigned then, not today's actives
+    function depTipperSource() {
+      const dateVal  = document.getElementById('dep-filter-date').value;
+      const shiftVal = _depCurrentShift;
+      const today    = new Date().toISOString().split('T')[0];
+      const isLiveView = (!dateVal || dateVal === today) && shiftVal === 'all';
+      return isLiveView
+        ? _depLiveData.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator')
+        : depGetLatestPerTruck(_depHistoryData.filter(d => {
+            const dType = (d.equipment_type || '').toLowerCase();
+            if (dType === 'excavator') return false;
+            if (dateVal && d.date && d.date !== dateVal) return false;
+            if (shiftVal && shiftVal !== 'all' && d.shift !== shiftVal) return false;
+            return true;
+          }));
+    }
+    function depTipperLookup(tipperSource) {
+      const byTruckNum = {}, byId = {};
+      tipperSource.forEach(t => {
+        if (t.truck_number != null) byTruckNum[String(t.truck_number)] = t;
+        if (t._id          != null) byId[String(t._id)]                = t;
+        if (t.id           != null) byId[String(t.id)]                 = t;
+        if (t.vehicle_id   != null) byId[String(t.vehicle_id)]         = t;
+      });
+      return { byTruckNum, byId };
+    }
+    // Tippers for an excavator record. Tries (in order):
+    //   1. exc.tippers  – fully-embedded tipper objects from the API
+    //   2. exc.truck_ids – vehicle ObjectIDs resolved via _depVehicleIdMap → truck_number → deployment record
+    //   3. exc.truck_ids – direct truck_number or deployment _id lookup (fallback)
+    function depTippersOf(exc, byTruckNum, byId) {
+      if (Array.isArray(exc.tippers) && exc.tippers.length) return exc.tippers;
+      if (Array.isArray(exc.truck_ids) && exc.truck_ids.length) {
+        return exc.truck_ids
+          .map(tid => {
+            const tidStr = String(tid);
+            const truckNum = _depVehicleIdMap[tidStr];
+            if (truckNum) return byTruckNum[String(truckNum)];
+            return byTruckNum[tidStr] || byId[tidStr];
+          })
+          .filter(Boolean);
+      }
+      return [];
+    }
+
     // ── Live cards ────────────────────────────────────────────────────────────────
     function depRenderLiveCards(items) {
       // Update section heading
@@ -20729,60 +20944,10 @@
         return;
       }
 
-      // Build tipper lookup from the correct source:
-      // - If viewing today live → use _depLiveData (active deployments)
-      // - If viewing a past date/shift → use _depHistoryData for that same date+shift
-      //   so we show who was ACTUALLY assigned on that date/shift, not today's actives
-      const byTruckNum = {};
-      const byId       = {};
-      const dateVal  = document.getElementById('dep-filter-date').value;
       const shiftVal = _depCurrentShift;
-      const today    = new Date().toISOString().split('T')[0];
-      const isLiveView = (!dateVal || dateVal === today) && shiftVal === 'all';
-
-      const tipperSource = isLiveView
-        ? _depLiveData.filter(d => (d.equipment_type || '').toLowerCase() !== 'excavator')
-        : depGetLatestPerTruck(_depHistoryData.filter(d => {
-            const dType = (d.equipment_type || '').toLowerCase();
-            if (dType === 'excavator') return false;
-            if (dateVal && d.date && d.date !== dateVal) return false;
-            if (shiftVal && shiftVal !== 'all' && d.shift !== shiftVal) return false;
-            return true;
-          }));
-
-      tipperSource.forEach(t => {
-        if (t.truck_number != null) byTruckNum[String(t.truck_number)] = t;
-        if (t._id          != null) byId[String(t._id)]                = t;
-        if (t.id           != null) byId[String(t.id)]                 = t;
-        if (t.vehicle_id   != null) byId[String(t.vehicle_id)]         = t;
-      });
-
-      // Resolve tippers for an excavator record.
-      // Tries (in order):
-      //   1. exc.tippers  – fully-embedded tipper objects from the API
-      //   2. exc.truck_ids – vehicle ObjectIDs resolved via _depVehicleIdMap → truck_number → deployment record
-      //   3. exc.truck_ids – direct truck_number or deployment _id lookup (fallback)
-      function resolveAssignedTippers(exc) {
-        // 1. Embedded tippers array
-        if (Array.isArray(exc.tippers) && exc.tippers.length) {
-          return exc.tippers;
-        }
-        // 2. truck_ids: resolve vehicle ObjectID → truck_number → tipper deployment record
-        if (Array.isArray(exc.truck_ids) && exc.truck_ids.length) {
-          return exc.truck_ids
-            .map(tid => {
-              const tidStr = String(tid);
-              // First: use vehicle map to convert ObjectID → truck_number → deployment
-              const truckNum = _depVehicleIdMap[tidStr];
-              if (truckNum) return byTruckNum[String(truckNum)];
-              // Fallback: maybe truck_ids already contains truck_number strings or deployment IDs
-              return byTruckNum[tidStr] || byId[tidStr];
-            })
-            .filter(Boolean);
-        }
-        return [];
-      }
-
+      const tipperSource = depTipperSource();
+      const { byTruckNum, byId } = depTipperLookup(tipperSource);
+      const resolveAssignedTippers = exc => depTippersOf(exc, byTruckNum, byId);
 
       // Track tippers nested inside an excavator so we don't double-render
       const assignedTipper = new Set();
@@ -25097,6 +25262,266 @@
     }
 
     /* ═══════════════════════ END DRILLING ═══════════════════════ */
+
+    /* ═══════════════════════ CONTROL ROOM ═══════════════════════ */
+    // The page the mines manager leaves open all day. Data comes from the Deployments page's own pipeline:
+    // depSilentRefresh fills _depLiveData / _depRawTrips / _depDriverTripCounts and renders the real excavator
+    // cards into the hidden #dep-live-grid, which the popup clones. The pure rules sit in the ctl:pure block.
+    const CTL_FETCH_MS = 60000, CTL_TICK_MS = 15000, CTL_HISTORY_DAYS = 21;
+    const CTL_ACK_KEY = 'tripman_ctl_ack', CTL_SOUND_KEY = 'tripman_ctl_sound';
+    const CTL_START_H = { A: 6, B: 14, C: 22 };
+    const CTL_DEP_INPUTS = ['dep-filter-date', 'dep-filter-type', 'dep-filter-search']; // Deployments filters we borrow
+    let _ctl = { fetchTimer: 0, tickTimer: 0, saved: null, scope: '', curves: undefined, seen: null, acked: new Set(), lastOk: 0, error: false, open: '', ctx: null, master: null, sound: false };
+    const ctlEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const ctlShiftStart = (date, shift) => new Date(`${date}T${ovPad(CTL_START_H[shift])}:00:00`);
+
+    function openControlPage() {
+      if (!_ctl.saved) _ctl.saved = { shift: _depCurrentShift, vals: CTL_DEP_INPUTS.map(id => document.getElementById(id).value) };
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('control-page').style.display = 'block';
+      ctlSoundInit(); // runs inside the click that opened the page, so the browser lets audio start
+      _ctl.scope = '';
+      clearInterval(_ctl.fetchTimer); clearInterval(_ctl.tickTimer);
+      _ctl.fetchTimer = setInterval(ctlRefresh, CTL_FETCH_MS);
+      _ctl.tickTimer = setInterval(ctlRender, CTL_TICK_MS);
+      document.addEventListener('keydown', ctlKey);
+      depFetchVehicleMap().then(ctlRefresh);
+    }
+    function ctlStop() {
+      clearInterval(_ctl.fetchTimer); clearInterval(_ctl.tickTimer);
+      document.removeEventListener('keydown', ctlKey);
+      ctlClosePopup(); ctlStopSound();
+      if (_ctl.saved) { // hand the Deployments page its own filters back
+        CTL_DEP_INPUTS.forEach((id, i) => { document.getElementById(id).value = _ctl.saved.vals[i]; });
+        _depCurrentShift = _ctl.saved.shift; _ctl.saved = null;
+      }
+    }
+    function closeControlPage() {
+      ctlStop();
+      document.getElementById('control-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    async function ctlRefresh() {
+      if (document.getElementById('control-page').style.display !== 'block') return ctlStop(); // left by another route
+      const now = new Date(), date = ovMiningDate(now), shift = ovShiftOfHour(now.getHours()), scope = `${date}|${shift}`;
+      document.getElementById('dep-filter-date').value = date;
+      document.getElementById('dep-filter-type').value = '';
+      document.getElementById('dep-filter-search').value = '';
+      _depCurrentShift = shift;
+      if (scope !== _ctl.scope) { // new page open or the shift changed
+        _ctl.scope = scope; _ctl.seen = null; _ctl.curves = undefined; _ctl.lastOk = 0;
+        try { const o = JSON.parse(localStorage.getItem(CTL_ACK_KEY) || '{}'); _ctl.acked = new Set(o.scope === scope ? o.keys : []); } catch (_) { _ctl.acked = new Set(); }
+        ctlLoadHistory(date, shift, scope);
+      }
+      const before = _depLiveData;
+      await depSilentRefresh();
+      _ctl.error = _depLiveData === before; // depSilentRefresh swallows errors; the same array means it failed
+      if (!_ctl.error) _ctl.lastOk = Date.now();
+      ctlRender();
+    }
+    async function ctlLoadHistory(date, shift, scope) {
+      let curves;
+      try {
+        const trips = await fetchAllTripsForRange(ovShiftDate(date, -CTL_HISTORY_DAYS), ovShiftDate(date, -1), null, shift);
+        const days = {};
+        trips.forEach(t => {
+          if (!t.mining_date) return;
+          const min = (new Date(t.timestamp) - ctlShiftStart(t.mining_date, shift)) / 60000;
+          if (min >= 0 && min <= 480) (days[t.mining_date] = days[t.mining_date] || []).push(min);
+        });
+        curves = ctlCurves(days); // null = fewer than 3 normal past shifts
+      } catch (_) { curves = false; }
+      if (_ctl.scope !== scope) return; // the shift changed while this loaded
+      _ctl.curves = curves;
+      ctlRender();
+    }
+
+    // What the screen shows, from the Deployments data: production excavators with their tippers.
+    function ctlModel(start) {
+      const nowMs = Date.now(), last = {}, drvTrucks = {};
+      _depRawTrips.forEach(t => {
+        const num = _depVehicleIdMap[String(t.vehicle_id)], ts = new Date(t.timestamp).getTime();
+        if (!num || isNaN(ts)) return;
+        if (!(last[num] >= ts)) last[num] = ts;
+        const d = (getDriverName(t.driver_id) || '').trim();
+        if (d && d !== '—') (drvTrucks[d] = drvTrucks[d] || new Set()).add(num);
+      });
+      const { byTruckNum, byId } = depTipperLookup(depTipperSource());
+      const isProd = d => { // same rule as the Deployments card
+        if (d.entry_type) return d.entry_type === 'production';
+        return !!((d.material || '').trim() || (d.material_type || '').trim() || (Array.isArray(d.truck_ids) && d.truck_ids.length));
+      };
+      return depGetLatestPerTruck([..._depLiveData, ..._depHistoryData])
+        .filter(d => (d.equipment_type || '').toLowerCase() === 'excavator' && isProd(d) && (!d.shift || d.shift === _depCurrentShift))
+        .map(exc => ({
+          id: String(exc.truck_number), material: exc.material || exc.material_type || '',
+          tippers: depTippersOf(exc, byTruckNum, byId).map(t => {
+            const num = String(t.truck_number), lastTs = last[num], drv = (t.driver_name || '').trim();
+            const dep = t.deployed_since ? new Date(t.deployed_since).getTime() : 0;
+            const ref = lastTs || Math.max(dep, start.getTime()); // never tripped: grace runs from deployment
+            return { n: num, none: !lastTs, min: Math.max(0, Math.round((nowMs - ref) / 60000)), last: lastTs || 0,
+              trips: drv && drv !== '—' ? (_depDriverTripCounts[drv] ?? 0) : 0, truckTrips: _depTripCounts[num] || 0,
+              multi: !!(drv && drvTrucks[drv] && drvTrucks[drv].size > 1) };
+          })
+        })).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    }
+
+    function ctlRender() {
+      if (document.getElementById('control-page').style.display !== 'block') return;
+      const now = new Date(), date = ovMiningDate(now), shift = ovShiftOfHour(now.getHours());
+      if (_ctl.scope && _ctl.scope !== `${date}|${shift}`) { ctlRefresh(); return; } // shift rolled over
+      const start = ctlShiftStart(date, shift), elapsed = Math.min(480, Math.max(0, (now - start) / 60000)), left = Math.round(480 - elapsed);
+      document.getElementById('ctl-when').textContent = `${new Date(date + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${shift} · ${ovClock(now)} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
+      document.getElementById('ctl-live').classList.toggle('off', _ctl.error);
+      document.getElementById('ctl-live-t').textContent = _ctl.error ? 'Not updating' : _ctl.lastOk ? `Updated ${ovAgo(Date.now() - _ctl.lastOk)}` : 'Waiting for data';
+      if (!_ctl.lastOk) return;
+
+      const tiles = ctlModel(start), alerts = ctlAlerts(tiles.map(t => ({ id: t.id, tippers: t.tippers })));
+      const open = alerts.filter(a => !_ctl.acked.has(a.key)), done = alerts.filter(a => _ctl.acked.has(a.key));
+
+      // sound: once per newly crossed alert; the first look at a shift only shows what is already there
+      if (_ctl.seen === null) _ctl.seen = new Set(alerts.map(a => a.key));
+      else {
+        const fresh = alerts.filter(a => !_ctl.seen.has(a.key));
+        fresh.forEach(a => _ctl.seen.add(a.key));
+        if (fresh.length) ctlPlay(fresh.some(a => a.level === 'alert') ? 'alert' : 'warn');
+      }
+
+      // tiles
+      document.getElementById('ctl-exgrid').innerHTML = tiles.length ? tiles.map(t => {
+        const silent = t.tippers.filter(x => x.min >= SILENT_WARN_MIN), hot = silent.length >= 3 && silent.length / t.tippers.length >= 0.6;
+        const trips = t.tippers.reduce((a, x) => a + x.truckTrips, 0), mat = OV_MATERIALS.find(([n]) => n === t.material);
+        return `<div class="ctl-ex${hot ? ' hot' : ''}" data-ex="${ctlEsc(t.id)}" role="button" tabindex="0" aria-label="Open ${ctlEsc(t.id)} deployment card">
+          <div class="ctl-ex-h"><b>${ctlEsc(t.id)}</b>${t.material ? `<span class="ctl-mat"><i style="background:${mat ? mat[1] : 'var(--text-muted)'}"></i>${ctlEsc(t.material)}</span>` : ''}<span class="sp"></span><span class="ctl-hint">details ↗</span></div>
+          <div class="ctl-ex-s"><b>${trips}</b> trips${elapsed >= 30 ? ` · <b>${(trips / (elapsed / 60)).toFixed(1)}</b>/h` : ''} · ${plural(t.tippers.length, 'tipper')}</div>
+          <div class="ctl-dots">${t.tippers.map(x => {
+            const idle = x.none && x.min < SILENT_WARN_MIN, cls = idle ? 'idle' : ({ alert: 'bad', warn: 'warn', ok: 'ok' })[silentLevel(x.min)];
+            return `<div class="ctl-tp ${cls}" title="Tipper ${ctlEsc(x.n)}: driver has ${x.trips} trips this shift (all trucks). ${x.none ? 'No trip yet' : x.min + ' min since last trip'}">${x.multi ? '<span class="ctl-multi" title="Driver also drove another truck this shift. Trips counted across both."></span>' : ''}<span class="l1"><span class="n">${ctlEsc(x.n)}</span><span class="m">${idle ? 'none' : x.min + 'm'}</span></span><span class="tb${x.trips ? '' : ' z'}">${plural(x.trips, 'trip')}</span></div>`;
+          }).join('')}</div></div>`;
+      }).join('') : `<div class="ctl-none">No production excavators deployed in Shift ${shift} yet.</div>`;
+
+      // alerts
+      const row = (a, ack) => {
+        const tp = tiles.flatMap(t => t.tippers.map(x => ({ ...x, ex: t.id }))).find(x => x.ex === a.excavator && x.n === a.tipper);
+        const title = a.tipper ? `Tipper ${ctlEsc(a.tipper)} silent ${a.min} min` : `${ctlEsc(a.excavator)} may have stopped`;
+        const desc = a.tipper
+          ? `${ctlEsc(a.excavator)} · ` + (tp && tp.none ? `no trip yet this shift, deployed ${a.min} min ago` : `driver ${tp ? tp.trips : 0} trips · last trip ${ovClock(new Date(tp ? tp.last : Date.now()))}`)
+          : `${a.tippers.length} of ${a.total} tippers silent (${a.tippers.map(ctlEsc).join(', ')}). Longest ${a.min} min. Check the excavator first.`;
+        return `<div class="ctl-al ${a.level}${ack ? ' acked' : ''}"><span class="lvl">${a.level === 'alert' ? `ALERT · ${SILENT_ALERT_MIN} MIN` : `WARNING · ${SILENT_WARN_MIN} MIN`}</span><span class="t">${title}</span><span class="d">${desc}</span>${ack ? '' : `<button class="action-btn" data-k="${ctlEsc(a.key)}">Acknowledge</button>`}</div>`;
+      };
+      document.getElementById('ctl-al').innerHTML = (open.length ? open.map(a => row(a)).join('') : `<div class="ctl-none">Nothing open. Every tipper has tripped in the last ${SILENT_WARN_MIN} min.</div>`)
+        + (done.length ? `<details><summary>Acknowledged (${done.length})</summary>${done.map(a => row(a, true)).join('')}</details>` : '');
+      const cnt = document.getElementById('ctl-cnt'); cnt.textContent = open.length; cnt.className = 'ctl-count' + (open.length ? '' : ' z');
+
+      ctlRenderPace(start, elapsed, shift);
+      if (_ctl.open) ctlFillPopup();
+    }
+
+    function ctlRenderPace(start, elapsed, shift) {
+      const trips = _depRawTrips.length, cur = _ctl.curves, n = document.getElementById('ctl-pace-n'), d = document.getElementById('ctl-pace-d'), p = document.getElementById('ctl-pace-p'), chart = document.getElementById('ctl-chart');
+      const note = (chip, text) => { d.textContent = chip; d.className = 'ctl-delta idle'; p.textContent = text; chart.innerHTML = ''; document.getElementById('ctl-lg-u').textContent = ''; };
+      if (!cur) {
+        n.innerHTML = String(trips) + '<small>trips</small>';
+        return note(cur === undefined ? 'Loading shift history' : 'No comparison yet', cur === undefined ? 'Comparing with recent shifts.' : cur === false ? 'Shift history did not load.' : `Not enough past Shift ${shift} data to compare yet.`);
+      }
+      const usualNow = ctlAt(cur.usual, elapsed), loNow = ctlAt(cur.lo, elapsed), total = cur.usual[16];
+      const final = ctlFinish(trips, usualNow, total), state = ctlPaceState(trips, Math.round(usualNow), Math.round(loNow)), diff = trips - Math.round(usualNow);
+      n.innerHTML = `${trips}<small>trips · average by now ${Math.round(usualNow)}</small>`;
+      d.textContent = state === 'bad' ? `Behind · ${Math.abs(diff)} under the average` : state === 'warn' ? `${Math.abs(diff)} under the average` : `On pace · ${diff >= 0 ? '+' : '−'}${Math.abs(diff)} vs the average`;
+      d.className = 'ctl-delta ' + state;
+      p.innerHTML = `On this pace Shift ${shift} finishes near <b>${final}</b>. The average finish is <b>${Math.round(total)}</b>.`;
+      document.getElementById('ctl-lg-u').textContent = `Average of last ${cur.days} normal Shift ${shift}`;
+
+      const W = 640, H = 170, L = 34, R = 10, T = 10, B = 24, ymax = Math.max(80, Math.ceil(Math.max(total, final, trips) / 80) * 80);
+      const X = m => L + m / 480 * (W - L - R), Y = v => H - B - v / ymax * (H - T - B), pt = (m, v) => `${X(m).toFixed(1)},${Y(v).toFixed(1)}`;
+      const mins = _depRawTrips.map(t => (new Date(t.timestamp) - start) / 60000).filter(m => !isNaN(m));
+      const act = [];
+      for (let m = 0; m <= elapsed; m += 30) act.push(pt(m, mins.filter(x => x <= m).length));
+      act.push(pt(elapsed, trips));
+      let c = [0, 1, 2, 3, 4].map(i => { const v = ymax / 4 * i; return `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--border)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`; }).join('');
+      c += [0, 120, 240, 360, 480].map(m => `<text x="${X(m)}" y="${H - 6}" text-anchor="${m === 480 ? 'end' : 'middle'}">${ovClock(new Date(start.getTime() + m * 60000))}</text>`).join('');
+      c += `<polyline fill="none" stroke="var(--text-muted)" stroke-width="2" points="${cur.usual.map((v, i) => pt(i * 30, v)).join(' ')}"/>`;
+      c += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${act.join(' ')}"/>`;
+      c += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4" points="${pt(elapsed, trips)} ${pt(480, final)}"/><text x="${W - R}" y="${Y(final) - 7}" text-anchor="end" style="fill:var(--accent)">${final}</text>`;
+      c += `<line x1="${X(elapsed)}" x2="${X(elapsed)}" y1="${T}" y2="${H - B}" stroke="var(--text-secondary)" stroke-dasharray="2 3"/><circle cx="${X(elapsed)}" cy="${Y(trips)}" r="4.5" fill="var(--accent)"/>`;
+      chart.innerHTML = c;
+    }
+
+    // Acknowledge (this browser only)
+    function ctlAck(key) {
+      _ctl.acked.add(key);
+      try { localStorage.setItem(CTL_ACK_KEY, JSON.stringify({ scope: _ctl.scope, keys: [..._ctl.acked] })); } catch (_) { }
+      ctlRender();
+    }
+
+    // Popup = a copy of the Deployments excavator card, so it can never drift from that page
+    function ctlOpenPopup(id) { _ctl.open = id; ctlFillPopup(); const o = document.getElementById('ctl-ov'); o.classList.add('show'); o.setAttribute('aria-hidden', 'false'); document.getElementById('ctl-x').focus(); }
+    function ctlFillPopup() {
+      const card = [...document.querySelectorAll('#dep-live-grid .dep-exc-card')].find(c => (c.querySelector('.dep-truck-number') || {}).textContent === _ctl.open);
+      if (!card) return ctlClosePopup(); // no longer deployed
+      const clone = card.cloneNode(true);
+      [clone, ...clone.querySelectorAll('[onclick]')].forEach(e => e.removeAttribute('onclick'));
+      clone.querySelectorAll('.entity-link').forEach(e => e.classList.remove('entity-link')); // no longer clickable here
+      const hint = clone.querySelector('.dep-card-hist-hint'); if (hint) hint.remove();
+      clone.querySelector('.dep-truck-number').id = 'ctl-dlg-t';
+      document.getElementById('ctl-card').replaceChildren(clone);
+    }
+    function ctlClosePopup() {
+      const id = _ctl.open; if (!id) return;
+      _ctl.open = ''; const o = document.getElementById('ctl-ov'); o.classList.remove('show'); o.setAttribute('aria-hidden', 'true');
+      const tile = [...document.querySelectorAll('.ctl-ex')].find(t => t.dataset.ex === id); if (tile) tile.focus();
+    }
+    function ctlKey(e) {
+      if (!_ctl.open) return;
+      if (e.key === 'Escape') ctlClosePopup(); else if (e.key === 'Tab') { e.preventDefault(); document.getElementById('ctl-x').focus(); }
+    }
+    document.getElementById('ctl-exgrid').addEventListener('click', e => { const t = e.target.closest('.ctl-ex'); if (t) ctlOpenPopup(t.dataset.ex); });
+    document.getElementById('ctl-exgrid').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('ctl-ex')) { e.preventDefault(); ctlOpenPopup(e.target.dataset.ex); } });
+    document.getElementById('ctl-al').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b) ctlAck(b.dataset.k); });
+    document.getElementById('ctl-ov').addEventListener('click', e => { if (e.target.id === 'ctl-ov') ctlClosePopup(); });
+    document.getElementById('ctl-x').addEventListener('click', ctlClosePopup);
+
+    // Sound: soft chime x3 at 30 min, siren at 45 min. Browsers only start audio after a click.
+    // ctl.sound is "wanted AND running"; the wish is remembered in localStorage.
+    function ctlTone({ f, to, at, dur, vol = .25, type = 'sine', env = 'decay' }) {
+      const ctx = _ctl.ctx, o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + at;
+      o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+      o.connect(g); g.connect(_ctl.master);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .012);
+      if (env === 'decay') g.gain.exponentialRampToValueAtTime(.001, t + dur); else { g.gain.setValueAtTime(vol, t + dur - .02); g.gain.linearRampToValueAtTime(0, t + dur); }
+      o.start(t); o.stop(t + dur + .05);
+    }
+    const CTL_SOUNDS = {
+      warn: () => [523, 659, 784, 523, 659, 784, 523, 659, 784].forEach((f, i) => ctlTone({ f, at: i * .4, dur: .55, vol: .3 })),
+      alert: () => [0, 1, 2].forEach(k => { ctlTone({ f: 650, to: 1050, at: k * 1.7, dur: .85, vol: .2, type: 'sawtooth', env: 'gate' }); ctlTone({ f: 1050, to: 650, at: k * 1.7 + .85, dur: .85, vol: .2, type: 'sawtooth', env: 'gate' }); }),
+    };
+    function ctlStopSound() { if (_ctl.master) { _ctl.master.gain.cancelScheduledValues(_ctl.ctx.currentTime); _ctl.master.gain.setTargetAtTime(0, _ctl.ctx.currentTime, .03); } }
+    function ctlPlay(kind) {
+      if (!_ctl.sound) return;
+      ctlStopSound(); _ctl.master = _ctl.ctx.createGain(); _ctl.master.connect(_ctl.ctx.destination); CTL_SOUNDS[kind]();
+    }
+    function ctlAudio() { // true when the browser lets us make sound
+      if (!_ctl.ctx) _ctl.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      return _ctl.ctx.resume().then(() => _ctl.ctx.state === 'running');
+    }
+    function ctlRenderSound() {
+      const b = document.getElementById('ctl-sound'); b.className = 'action-btn ctl-sound ' + (_ctl.sound ? 'on' : 'off'); b.setAttribute('aria-pressed', String(_ctl.sound));
+      document.getElementById('ctl-sound-ic').className = 'fi ' + (_ctl.sound ? 'fi-rr-volume' : 'fi-rr-volume-mute');
+      document.getElementById('ctl-sound-t').textContent = _ctl.sound ? 'Sound on' : 'Sound off, click to enable';
+    }
+    function ctlSoundInit() {
+      let want = false; try { want = localStorage.getItem(CTL_SOUND_KEY) === '1'; } catch (_) { }
+      _ctl.sound = false; ctlRenderSound();
+      if (want) ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); }).catch(() => { });
+    }
+    function ctlToggleSound() {
+      const on = !_ctl.sound;
+      try { localStorage.setItem(CTL_SOUND_KEY, on ? '1' : '0'); } catch (_) { }
+      if (!on) { ctlStopSound(); _ctl.sound = false; return ctlRenderSound(); }
+      ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); }).catch(() => { });
+    }
+    /* ═══════════════════════ END CONTROL ROOM ═══════════════════════ */
 
   </script>
 </body>
