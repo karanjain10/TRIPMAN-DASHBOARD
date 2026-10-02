@@ -6203,7 +6203,7 @@
     .ctl-tp.bad { background:var(--c-bad-bg); border:2px solid var(--c-bad-line); border-left-width:4px; padding:4px 6px 5px; }
     .ctl-tp.bad .m, .ctl-tp.bad .tb { color:var(--bad); font-weight:600; } .ctl-tp.bad .m { font-weight:700; }
     .ctl-tp.idle { border-style:dashed; border-color:var(--border-strong); border-left-color:var(--border-strong); }
-    .ctl-multi { position:absolute; bottom:6px; right:6px; width:7px; height:7px; border-radius:50%; background:#d97706; }
+    .ctl-multi { display:inline-block; width:6px; height:6px; border-radius:50%; background:#d97706; margin-left:4px; vertical-align:middle; }
     .ctl-alerts { overflow:hidden; }
     .ctl-alerts-h { padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
     .ctl-count { font-family:var(--font-mono); font-size:12px; padding:1px 7px; border-radius:10px; background:var(--c-bad-bg); color:var(--bad); } .ctl-count.z { background:var(--c-ok-bg); color:var(--ok); }
@@ -25397,7 +25397,7 @@
           <div class="ctl-ex-s"><b>${trips}</b> trips${elapsed >= 30 ? ` · <b>${(trips / (elapsed / 60)).toFixed(1)}</b>/h` : ''} · ${plural(t.tippers.length, 'tipper')}</div>
           <div class="ctl-dots">${t.tippers.map(x => {
             const idle = x.none && x.min < SILENT_WARN_MIN, cls = idle ? 'idle' : ({ alert: 'bad', warn: 'warn', ok: 'ok' })[silentLevel(x.min)];
-            return `<div class="ctl-tp ${cls}" title="Tipper ${ctlEsc(x.n)}: driver has ${x.trips} trips this shift (all trucks). ${x.none ? 'No trip yet' : x.min + ' min since last trip'}">${x.multi ? '<span class="ctl-multi" title="Driver also drove another truck this shift. Trips counted across both."></span>' : ''}<span class="l1"><span class="n">${ctlEsc(x.n)}</span><span class="m">${idle ? 'none' : x.min + 'm'}</span></span><span class="tb${x.trips ? '' : ' z'}">${plural(x.trips, 'trip')}</span></div>`;
+            return `<div class="ctl-tp ${cls}" title="Tipper ${ctlEsc(x.n)}: driver has ${x.trips} trips this shift (all trucks). ${x.none ? 'No trip yet' : x.min + ' min since last trip'}"><span class="l1"><span class="n">${ctlEsc(x.n)}${x.multi ? '<span class="ctl-multi" title="Driver also drove another truck this shift. Trips counted across both."></span>' : ''}</span><span class="m">${idle ? 'none' : x.min + 'm'}</span></span><span class="tb${x.trips ? '' : ' z'}">${plural(x.trips, 'trip')}</span></div>`;
           }).join('')}</div></div>`;
       }).join('') : `<div class="ctl-none">No production excavators deployed in Shift ${shift} yet.</div>`;
 
@@ -25433,7 +25433,7 @@
       p.innerHTML = `On this pace Shift ${shift} finishes near <b>${final}</b>. The average finish is <b>${Math.round(total)}</b>.`;
       document.getElementById('ctl-lg-u').textContent = `Average of last ${cur.days} normal Shift ${shift}`;
 
-      const W = 640, H = 170, L = 34, R = 10, T = 10, B = 24, ymax = Math.max(80, Math.ceil(Math.max(total, final, trips) / 80) * 80);
+      const W = 640, H = 170, L = 34, R = 10, T = 10, B = 24, ymax = Math.max(80, Math.ceil(Math.max(total, final, trips) * 1.12 / 80) * 80); // headroom for the finish label
       const X = m => L + m / 480 * (W - L - R), Y = v => H - B - v / ymax * (H - T - B), pt = (m, v) => `${X(m).toFixed(1)},${Y(v).toFixed(1)}`;
       const mins = _depRawTrips.map(t => (new Date(t.timestamp) - start) / 60000).filter(m => !isNaN(m));
       const act = [];
@@ -25443,7 +25443,7 @@
       c += [0, 120, 240, 360, 480].map(m => `<text x="${X(m)}" y="${H - 6}" text-anchor="${m === 480 ? 'end' : 'middle'}">${ovClock(new Date(start.getTime() + m * 60000))}</text>`).join('');
       c += `<polyline fill="none" stroke="var(--text-muted)" stroke-width="2" points="${cur.usual.map((v, i) => pt(i * 30, v)).join(' ')}"/>`;
       c += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="${act.join(' ')}"/>`;
-      c += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4" points="${pt(elapsed, trips)} ${pt(480, final)}"/><text x="${W - R}" y="${Y(final) - 7}" text-anchor="end" style="fill:var(--accent)">${final}</text>`;
+      c += `<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4" points="${pt(elapsed, trips)} ${pt(480, final)}"/><text x="${W - R}" y="${Math.max(Y(final) - 7, T + 8)}" text-anchor="end" style="fill:var(--accent)">${final}</text>`;
       c += `<line x1="${X(elapsed)}" x2="${X(elapsed)}" y1="${T}" y2="${H - B}" stroke="var(--text-secondary)" stroke-dasharray="2 3"/><circle cx="${X(elapsed)}" cy="${Y(trips)}" r="4.5" fill="var(--accent)"/>`;
       chart.innerHTML = c;
     }
