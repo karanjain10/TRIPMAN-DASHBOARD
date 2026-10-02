@@ -5822,6 +5822,12 @@
     .fi::before { display: block; }
     #app .content { padding: 28px 32px 56px; }
     .ov-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+    .ov-col { display: inline-block; height: 1lh; overflow: hidden; vertical-align: top; }
+    .ov-strip { display: block; transition: transform .7s cubic-bezier(.2, .8, .2, 1); }
+    .ov-strip span { display: block; height: 1lh; line-height: inherit; }
+    .ctl-pace-big .ov-num, .ctl-ex-s .ov-num { letter-spacing: inherit; }
+    .ov-num.ov-flash { background: color-mix(in srgb, var(--ok) 22%, transparent); border-radius: 6px; }
+    .ov-num.ov-flash.ov-fade { background: transparent; transition: background .9s ease-out; }
 
     /* header */
     .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--brand-fill); }
@@ -6214,13 +6220,13 @@
     .ctl-al button { grid-row:1 / span 3; grid-column:2; align-self:center; font-size:12px; }
     .ctl-al.acked { opacity:.7; background:transparent; border-left-color:var(--border-strong); }
     .ctl-none { padding:22px 16px; color:var(--text-secondary); }
+    .ctl-test { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; } .ctl-test button { height:28px; font-size:12px; }
     .ctl-alerts details summary { padding:10px 16px; cursor:pointer; font-size:12px; color:var(--text-secondary); }
     .ctl-foot { padding:10px 16px; font-size:12px; color:var(--text-secondary); background:var(--bg); border-top:1px solid var(--border); } .ctl-foot b { color:var(--text-primary); font-weight:500; }
     .ctl-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9100; align-items:flex-start; justify-content:center; padding:48px 16px; overflow:auto; }
     .ctl-ov.show { display:flex; }
     .ctl-dlg { position:relative; width:min(440px,100%); box-shadow:0 20px 60px rgba(0,0,0,.35); outline:none; }
     .ctl-dlg .dep-live-card { cursor:default; transform:none; } .ctl-dlg .dep-live-card:hover { transform:none; box-shadow:none; }
-    .ctl-test { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; } .ctl-test button { height:28px; font-size:12px; }
     .ctl-x { position:absolute; top:10px; right:10px; width:30px; padding:0; justify-content:center; font-size:18px; }
     @media (max-width:980px) { .ctl-grid, .ctl-pace { grid-template-columns:1fr; } .ctl-pace-l { border-right:0; border-bottom:1px solid var(--border); } .ctl-body { padding:12px 16px 32px; } }
   </style>
@@ -16544,7 +16550,44 @@
       const vs = dateRange.type === 'today' ? `yesterday at ${ovClock(new Date())} (${before})` : `the previous 7 days (${before})`;
       return `<span class="ov-delta ${pct >= 0 ? 'ov-ok' : 'ov-bad'}">${pct >= 0 ? '+' : '−'}${Math.abs(pct)}%</span> vs ${vs}`;
     }
-    const ovNum = (v, dec) => `<span class="ov-num">${v.toLocaleString('en-IN', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 })}</span>`;
+    // key = this number rolls (odometer + green flash) when it changes between renders; pass it only for live values.
+    const ovNum = (v, dec, key) => `<span class="ov-num"${key ? ` data-roll="${key}" data-v="${v}" data-dec="${dec || 0}"` : ''}>${v.toLocaleString('en-IN', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 })}</span>`;
+    const _ovPrev = {};
+    // The tiles are rebuilt as HTML on every render, so each rolling number remembers its last value by key and
+    // rolls from it. Only digits that changed move; a 9 -> 0 carry rolls on up to the next 0. Skipped for
+    // reduced motion, the first render, and when the digit count changes (999 -> 1,000): those just flash.
+    function ovRollApply(root) {
+      const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      root.querySelectorAll('.ov-num[data-roll]').forEach(el => {
+        const key = el.dataset.roll, v = +el.dataset.v, dec = +el.dataset.dec;
+        const prev = _ovPrev[key];
+        _ovPrev[key] = v;
+        if (prev === undefined || prev === v || calm) return;
+        const f = x => x.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        const from = f(prev), to = f(v);
+        el.classList.add('ov-flash');
+        requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('ov-fade')));
+        if (from.length !== to.length) return;
+        const strips = [];
+        el.textContent = '';
+        [...to].forEach((ch, i) => {
+          if (!/\d/.test(ch)) { el.append(ch); return; }
+          const col = document.createElement('span'), st = document.createElement('span');
+          col.className = 'ov-col'; st.className = 'ov-strip';
+          for (let k = 0; k <= 10; k++) st.appendChild(Object.assign(document.createElement('span'), { textContent: k % 10 }));
+          st.style.transition = 'none';
+          st.style.transform = `translateY(-${from[i]}lh)`;
+          col.appendChild(st); el.appendChild(col);
+          if (from[i] !== ch) strips.push([st, +ch, +from[i]]);
+        });
+        void el.offsetWidth;
+        strips.forEach(([st, nd, od]) => {
+          st.style.transition = '';
+          st.style.transform = `translateY(-${nd < od ? 10 : nd}lh)`;
+          if (nd < od) setTimeout(() => { st.style.transition = 'none'; st.style.transform = `translateY(-${nd}lh)`; }, 720);
+        });
+      });
+    }
 
     function ovRenderTiles() {
       const host = document.getElementById('ov-tiles');
@@ -16560,6 +16603,8 @@
       const quiet = ['loading', 'drilling', 'support', 'utility'].filter(k => !active(k));
       const skel = pending ? ' skel' : '';
       const label = k => EQUIPMENT_CLASSES.find(c => c.key === k).label;
+      const rollScope = pending ? '' : dateRange.type + '|' + [...activeFilters.shifts].sort();   // a new date or shift filter is a new number, not a roll
+      const rk = n => rollScope ? n + '|' + rollScope : '';
 
       // Haulage: the largest cell
       const h = stats.haulage;
@@ -16568,7 +16613,7 @@
       const hero = `<div class="ov-t ov-hero" style="--col:1 / ${loadingOn || smalls.length ? 7 : 13};">
         <div class="ov-t-top"><span class="ov-t-label">Haulage</span>
           <button class="ov-linkbtn" onclick="ovToggleTrips(true)">Full trips view →</button></div>
-        <div class="ov-t-value">${ovNum(trips.length)}<span class="ov-unit">Trips</span></div>
+        <div class="ov-t-value">${ovNum(trips.length, 0, rk('hero-trips'))}<span class="ov-unit">Trips</span></div>
         <div class="ov-t-sub">${trips.length ? cap(`${ovRangeWord()} · ${pending ? '…' : plural(h.units, 'unit')} deployed`) : `No trips logged ${ovRangeWord()} yet`}</div>
         <div class="ov-t-sub">${ovDeltaText(trips.length)}</div>
         ${ovBars(ovSeries(trips))}
@@ -16599,7 +16644,7 @@
         const withData = rate.filter(r => r.perHour !== null); // incomplete shifts are left out silently
         loadingTile = `<div class="ov-t ov-loadingt ov-click${skel}" onclick="ldOpen()" onkeydown="if(event.key==='Enter')ldOpen()" role="button" tabindex="0" aria-label="Open the Loading machine breakdown">
           <div class="ov-t-top"><span class="ov-t-label">Loading</span><span class="ov-linkbtn">Machine breakdown →</span></div>
-          <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1) + '<span class="ov-unit">h</span>'}</div>
+          <div class="ov-t-value">${l.hours === null ? '<span class="ov-none">—</span>' : ovNum(l.hours, 1, rk('loading-hours')) + '<span class="ov-unit">h</span>'}</div>
           <div class="ov-t-sub">${pending ? '…' : `${plural(l.units, 'excavator')}, ${prodUnits} in production · Hours from closed readings`}</div>
           ${withData.length ? `<div class="ov-rate-head">Trips per hour, by shift (production only)</div>
           <div class="ov-rate">${withData.map(r => `<div class="ov-rate-col" title="${r.trips} trips over ${r.hours.toLocaleString('en-IN', { maximumFractionDigits: 1 })} production hours">
@@ -16616,7 +16661,7 @@
         const drill = k === 'drilling';   // the Drilling tile opens the Drilling page, like Loading does
         return `<div class="ov-t ov-small${drill ? ' ov-click' : ''}${skel}"${drill ? ` onclick="openDrillPage()" onkeydown="if(event.key==='Enter')openDrillPage()" role="button" tabindex="0" aria-label="Open the Drilling page"` : ''}>
           <div class="ov-t-top"><span class="ov-t-label">${label(k)}</span>${drill ? '<span class="ov-linkbtn">Open →</span>' : ''}</div>
-          <div class="ov-t-value">${val === null || val === undefined ? '<span class="ov-none">—</span>' : ovNum(val, 1) + `<span class="ov-unit">${k === 'utility' ? 'km' : 'h'}</span>`}</div>
+          <div class="ov-t-value">${val === null || val === undefined ? '<span class="ov-none">—</span>' : ovNum(val, 1, rk('small-' + k)) + `<span class="ov-unit">${k === 'utility' ? 'km' : 'h'}</span>`}</div>
           <div class="ov-t-sub">${pending ? '…' : sub}</div>${ovBar(s)}</div>`;
       }).join('');
       const hasRight = loadingOn || smalls.length > 0;
@@ -16624,6 +16669,7 @@
         ? `<div class="ov-right">${loadingTile}${smalls.length ? `<div class="ov-smalls${loadingOn ? '' : ' solo'}" style="--n:${smalls.length}">${smallTiles}</div>` : ''}</div>`
         : '';
       host.innerHTML = hero + right;
+      ovRollApply(host);
 
       document.getElementById('ov-quiet').innerHTML = quiet.length
         ? `Nothing deployed ${ovRangeWord()}: ` + quiet.map(label).join(', ') + '.'
@@ -25394,9 +25440,10 @@
       document.getElementById('ctl-exgrid').innerHTML = tiles.length ? tiles.map(t => {
         const silent = t.tippers.filter(x => x.min >= SILENT_WARN_MIN), hot = silent.length >= 3 && silent.length / t.tippers.length >= 0.6;
         const trips = t.tippers.reduce((a, x) => a + x.truckTrips, 0), mat = OV_MATERIALS.find(([n]) => n === t.material);
+        const tripsN = ovNum(trips, 0, `ctl-ex|${_ctl.scope}|${t.id}`);
         return `<div class="ctl-ex${hot ? ' hot' : ''}" data-ex="${ctlEsc(t.id)}" role="button" tabindex="0" aria-label="Open ${ctlEsc(t.id)} deployment card">
           <div class="ctl-ex-h"><b>${ctlEsc(t.id)}</b>${t.material ? `<span class="ctl-mat"><i style="background:${mat ? mat[1] : 'var(--text-muted)'}"></i>${ctlEsc(t.material)}</span>` : ''}<span class="sp"></span><span class="ctl-hint">details ↗</span></div>
-          <div class="ctl-ex-s"><b>${trips}</b> trips${elapsed >= 30 ? ` · <b>${(trips / (elapsed / 60)).toFixed(1)}</b>/h` : ''} · ${plural(t.tippers.length, 'tipper')}</div>
+          <div class="ctl-ex-s"><b>${tripsN}</b> trips${elapsed >= 30 ? ` · <b>${(trips / (elapsed / 60)).toFixed(1)}</b>/h` : ''} · ${plural(t.tippers.length, 'tipper')}</div>
           <div class="ctl-dots">${t.tippers.map(x => {
             const idle = x.none && x.min < SILENT_WARN_MIN, cls = idle ? 'idle' : ({ alert: 'bad', warn: 'warn', ok: 'ok' })[silentLevel(x.min)];
             return `<div class="ctl-tp ${cls}" title="Tipper ${ctlEsc(x.n)}: driver has ${x.trips} trips this shift (all trucks). ${x.none ? 'No trip yet' : x.min + ' min since last trip'}"><span class="l1"><span class="n">${ctlEsc(x.n)}${x.multi ? '<span class="ctl-multi" title="Driver also drove another truck this shift. Trips counted across both."></span>' : ''}</span><span class="m">${idle ? 'none' : x.min + 'm'}</span></span><span class="tb${x.trips ? '' : ' z'}">${plural(x.trips, 'trip')}</span></div>`;
@@ -25417,6 +25464,7 @@
       const cnt = document.getElementById('ctl-cnt'); cnt.textContent = open.length; cnt.className = 'ctl-count' + (open.length ? '' : ' z');
 
       ctlRenderPace(start, elapsed, shift);
+      ovRollApply(document.getElementById('control-page'));
       if (_ctl.open) ctlFillPopup();
     }
 
@@ -25424,12 +25472,12 @@
       const trips = _depRawTrips.length, cur = _ctl.curves, n = document.getElementById('ctl-pace-n'), d = document.getElementById('ctl-pace-d'), p = document.getElementById('ctl-pace-p'), chart = document.getElementById('ctl-chart');
       const note = (chip, text) => { d.textContent = chip; d.className = 'ctl-delta idle'; p.textContent = text; chart.innerHTML = ''; document.getElementById('ctl-lg-u').textContent = ''; };
       if (!cur) {
-        n.innerHTML = String(trips) + '<small>trips</small>';
+        n.innerHTML = ovNum(trips, 0, 'ctl-pace|' + _ctl.scope) + '<small>trips</small>';
         return note(cur === undefined ? 'Loading shift history' : 'No comparison yet', cur === undefined ? 'Comparing with recent shifts.' : cur === false ? 'Shift history did not load.' : `Not enough past Shift ${shift} data to compare yet.`);
       }
       const usualNow = ctlAt(cur.usual, elapsed), loNow = ctlAt(cur.lo, elapsed), total = cur.usual[16];
       const final = ctlFinish(trips, usualNow, total), state = ctlPaceState(trips, Math.round(usualNow), Math.round(loNow)), diff = trips - Math.round(usualNow);
-      n.innerHTML = `${trips}<small>trips · average by now ${Math.round(usualNow)}</small>`;
+      n.innerHTML = `${ovNum(trips, 0, 'ctl-pace|' + _ctl.scope)}<small>trips · average by now ${Math.round(usualNow)}</small>`;
       d.textContent = state === 'bad' ? `Behind · ${Math.abs(diff)} under the average` : state === 'warn' ? `${Math.abs(diff)} under the average` : `On pace · ${diff >= 0 ? '+' : '−'}${Math.abs(diff)} vs the average`;
       d.className = 'ctl-delta ' + state;
       p.innerHTML = `On this pace Shift ${shift} finishes near <b>${final}</b>. The average finish is <b>${Math.round(total)}</b>.`;
@@ -25495,6 +25543,7 @@
       o.start(t); o.stop(t + dur + .05);
     }
     const CTL_SOUNDS = {
+      check: () => [[523, 0, .45], [784, .4, .6]].forEach(([f, at, dur]) => ctlTone({ f, at, dur, vol: .3 })), // 1 s "sound works" ping
       warn: () => [523, 659, 784, 523, 659, 784, 523, 659, 784].forEach((f, i) => ctlTone({ f, at: i * .4, dur: .55, vol: .3 })),
       alert: () => [0, 1, 2].forEach(k => { ctlTone({ f: 650, to: 1050, at: k * 1.7, dur: .85, vol: .2, type: 'sawtooth', env: 'gate' }); ctlTone({ f: 1050, to: 650, at: k * 1.7 + .85, dur: .85, vol: .2, type: 'sawtooth', env: 'gate' }); }),
     };
@@ -25535,4 +25584,3 @@
 </body>
 
 </html>
-      check: () => [[523, 0, .45], [784, .4, .6]].forEach(([f, at, dur]) => ctlTone({ f, at, dur, vol: .3 })), // 1 s "sound works" ping
