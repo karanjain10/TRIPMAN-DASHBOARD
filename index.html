@@ -6220,6 +6220,7 @@
     .ctl-ov.show { display:flex; }
     .ctl-dlg { position:relative; width:min(440px,100%); box-shadow:0 20px 60px rgba(0,0,0,.35); outline:none; }
     .ctl-dlg .dep-live-card { cursor:default; transform:none; } .ctl-dlg .dep-live-card:hover { transform:none; box-shadow:none; }
+    .ctl-test { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; } .ctl-test button { height:28px; font-size:12px; }
     .ctl-x { position:absolute; top:10px; right:10px; width:30px; padding:0; justify-content:center; font-size:18px; }
     @media (max-width:980px) { .ctl-grid, .ctl-pace { grid-template-columns:1fr; } .ctl-pace-l { border-right:0; border-bottom:1px solid var(--border); } .ctl-body { padding:12px 16px 32px; } }
   </style>
@@ -7296,7 +7297,8 @@
         <aside class="ctl-card ctl-alerts">
           <div class="ctl-alerts-h"><span class="ctl-eyebrow">Alerts</span><span class="ctl-count" id="ctl-cnt"></span></div>
           <div id="ctl-al"></div>
-          <div class="ctl-foot"><b>30 min</b> amber, soft chime. <b>45 min</b> red, siren. Acknowledging quiets that alert only. If it escalates, it sounds again.</div>
+          <div class="ctl-foot"><b>30 min</b> amber, soft chime. <b>45 min</b> red, siren. Acknowledging quiets that alert only. If it escalates, it sounds again.
+            <div class="ctl-test"><span>Check your speakers:</span><button class="action-btn" onclick="ctlTest('warn')">Play 30 min chime</button><button class="action-btn" onclick="ctlTest('alert')">Play 45 min siren</button></div></div>
         </aside>
       </div>
     </div>
@@ -25513,13 +25515,19 @@
     function ctlSoundInit() {
       let want = false; try { want = localStorage.getItem(CTL_SOUND_KEY) === '1'; } catch (_) { }
       _ctl.sound = false; ctlRenderSound();
-      if (want) ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); }).catch(() => { });
+      if (want) ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); if (ok) ctlPlay('check'); }).catch(() => { });
     }
     function ctlToggleSound() {
       const on = !_ctl.sound;
       try { localStorage.setItem(CTL_SOUND_KEY, on ? '1' : '0'); } catch (_) { }
       if (!on) { ctlStopSound(); _ctl.sound = false; return ctlRenderSound(); }
-      ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); }).catch(() => { });
+      ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); if (ok) ctlPlay('check'); }).catch(() => { }); // the ping = "sound works"
+    }
+    // The "Play" buttons: lets the manager hear both sounds before relying on them. A click also unlocks audio.
+    function ctlTest(kind) {
+      if (_ctl.sound) return ctlPlay(kind);
+      try { localStorage.setItem(CTL_SOUND_KEY, '1'); } catch (_) { }
+      ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); if (ok) ctlPlay(kind); }).catch(() => { });
     }
     /* ═══════════════════════ END CONTROL ROOM ═══════════════════════ */
 
@@ -25527,3 +25535,4 @@
 </body>
 
 </html>
+      check: () => [[523, 0, .45], [784, .4, .6]].forEach(([f, at, dur]) => ctlTone({ f, at, dur, vol: .3 })), // 1 s "sound works" ping
