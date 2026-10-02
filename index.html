@@ -5825,7 +5825,7 @@
     #app .content { padding: 28px 32px 56px; }
     .ov-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
     .ov-col { display: inline-block; height: 1lh; overflow: hidden; vertical-align: top; }
-    .ov-strip { display: block; transition: transform .7s cubic-bezier(.2, .8, .2, 1); }
+    .ov-strip { display: block; transition: transform 1.1s cubic-bezier(.45, .05, .2, 1); }
     .ov-strip span { display: block; height: 1lh; line-height: inherit; }
     .ctl-pace-big .ov-num, .ctl-ex-s .ov-num { letter-spacing: inherit; }
     .ctl-sk, .ctl-sk-chart { background: linear-gradient(90deg, var(--track) 25%, var(--hover) 50%, var(--track) 75%) 0 0 / 200% 100%; animation: ovShimmer 1.2s infinite; border-radius: 6px; }
@@ -5833,7 +5833,7 @@
     .ctl-in { animation: ctlIn .45s ease-out; } @keyframes ctlIn { from { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .ctl-sk, .ctl-sk-chart, .ctl-in { animation: none; } }
     .ov-num.ov-flash { background: color-mix(in srgb, var(--ok) 22%, transparent); border-radius: 6px; }
-    .ov-num.ov-flash.ov-fade { background: transparent; transition: background .9s ease-out; }
+    .ov-num.ov-flash.ov-fade { background: transparent; transition: background 1.5s ease-out; }
 
     /* header */
     .ov-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--brand-fill); }
@@ -16560,20 +16560,32 @@
     }
     // key = this number rolls (odometer + green flash) when it changes between renders; pass it only for live values.
     const ovNum = (v, dec, key) => `<span class="ov-num"${key ? ` data-roll="${key}" data-v="${v}" data-dec="${dec || 0}"` : ''}>${v.toLocaleString('en-IN', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 })}</span>`;
-    const _ovPrev = {};
-    // The tiles are rebuilt as HTML on every render, so each rolling number remembers its last value by key and
-    // rolls from it. Only digits that changed move; a 9 -> 0 carry rolls on up to the next 0. Skipped for
-    // reduced motion, the first render, and when the digit count changes (999 -> 1,000): those just flash.
+    const _ovPrev = {}, _ovRoll = {};
+    // The tiles are rebuilt as HTML on every render, and one refresh triggers several renders in a row (trips, then
+    // the comparison, extra trips, tile data). So each rolling number remembers its last value by key and rolls
+    // from it, and a re-render that lands mid-roll rebuilds the roll with a negative transition-delay so it carries
+    // on from where it had got to instead of snapping. Only digits that changed move; a 9 -> 0 carry rolls on up to
+    // the next 0. Skipped for reduced motion, the first render, and when the digit count changes (999 -> 1,000):
+    // those just flash.
+    const OV_ROLL_MS = 1100, OV_FLASH_MS = 1500;
     function ovRollApply(root) {
       const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const now = performance.now();
       root.querySelectorAll('.ov-num[data-roll]').forEach(el => {
         const key = el.dataset.roll, v = +el.dataset.v, dec = +el.dataset.dec;
+        const live = _ovRoll[key];
+        let rolling = live && live.to === v && now - live.t0 < OV_FLASH_MS;
         const prev = _ovPrev[key];
         _ovPrev[key] = v;
-        if (prev === undefined || prev === v || calm) return;
+        if (!rolling) {
+          if (prev === undefined || prev === v || calm) return;
+          _ovRoll[key] = { from: prev, to: v, t0: now };
+        }
+        const { from: fromV, t0 } = _ovRoll[key], age = Math.round(now - t0);
         const f = x => x.toLocaleString('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
-        const from = f(prev), to = f(v);
+        const from = f(fromV), to = f(v);
         el.classList.add('ov-flash');
+        el.style.transitionDelay = `-${age}ms`;
         requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('ov-fade')));
         if (from.length !== to.length) return;
         const strips = [];
@@ -16590,9 +16602,9 @@
         });
         void el.offsetWidth;
         strips.forEach(([st, nd, od]) => {
-          st.style.transition = '';
+          st.style.transition = `transform ${OV_ROLL_MS}ms cubic-bezier(.45, .05, .2, 1) -${age}ms`;
           st.style.transform = `translateY(-${nd < od ? 10 : nd}lh)`;
-          if (nd < od) setTimeout(() => { st.style.transition = 'none'; st.style.transform = `translateY(-${nd}lh)`; }, 720);
+          if (nd < od) setTimeout(() => { st.style.transition = 'none'; st.style.transform = `translateY(-${nd}lh)`; }, Math.max(0, OV_ROLL_MS + 20 - age));
         });
       });
     }
