@@ -4,8 +4,8 @@ const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/\/\/ ms:pure:start([\s\S]*?)\/\/ ms:pure:end/);
 assert(m, 'ms:pure markers not found in index.html');
-const { MS_TYPES, msReasons, msUnit, msPerson, msCounts, msDeactBody, msReactBody } =
-  new Function(m[1] + '; return { MS_TYPES, msReasons, msUnit, msPerson, msCounts, msDeactBody, msReactBody };')();
+const { MS_TYPES, msReasons, msUnit, msPerson, msCounts, msTotals, msDeactBody, msReactBody } =
+  new Function(m[1] + '; return { MS_TYPES, msReasons, msUnit, msPerson, msCounts, msTotals, msDeactBody, msReactBody };')();
 
 // 11 types: tipper + excavator + the nine others; people wording matches the app
 assert.strictEqual(MS_TYPES.length, 11);
@@ -29,6 +29,12 @@ assert.strictEqual(msPerson({ _id: 'p', name: 'Anil', person_id: 'DZ-1', is_acti
 assert.strictEqual(msPerson({ _id: 'p', name: 'Sam', driver_id: 'DRV9' }).sub, 'DRV9');
 
 assert.deepStrictEqual(msCounts([{ active: true }, { active: false }, { active: true }]), { total: 3, active: 2, inactive: 1 });
+
+// site-wide KPIs add up every type; empty types count as zero
+const A = { active: true }, I = { active: false };
+assert.deepStrictEqual(msTotals([[A, I], [A], []], [[A, A, I], [], [I]]),
+  { equipment: { total: 3, active: 2, inactive: 1 }, manpower: { total: 4, active: 2, inactive: 2 } });
+assert.deepStrictEqual(msTotals([[]], [[]]).manpower, { total: 0, active: 0, inactive: 0 });
 
 // status change bodies: reason is mandatory, notes capped, reactivation clears the old reason
 const who = { id: 'w1', name: 'Admin' };

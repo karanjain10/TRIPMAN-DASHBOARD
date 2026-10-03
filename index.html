@@ -6022,6 +6022,11 @@
     .ms-card .n { display: block; margin: 6px 0 2px; font-family: var(--font-mono); font-size: 24px; }
     .ms-card small { font-size: 11.5px; color: var(--text-muted); }
     .ms-card small .on { color: var(--ok); } .ms-card small .off { color: var(--bad); }
+    .ms-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .ms-kpi { padding: 14px 16px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); }
+    .ms-kpi small { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+    .ms-kpi b { display: block; margin: 4px 0; font-family: var(--font-mono); font-size: 32px; color: var(--brand); }
+    .ms-kpi i { font-style: normal; font-size: 12.5px; } .ms-kpi i.on { color: var(--ok); } .ms-kpi i.off { color: var(--bad); }
     .ms-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
     .ms-list { border-top: 1px solid var(--rule); }
     .ms-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-bottom: 1px solid var(--rule); font-size: 13px; }
@@ -25361,6 +25366,8 @@
       return { id: d._id, title: d.name || '—', sub: d.driver_id || d.operator_id || d.person_id || '', active: d.is_active !== false, why: '' };
     }
     const msCounts = items => ({ total: items.length, active: items.filter(i => i.active).length, inactive: items.filter(i => !i.active).length });
+    // Site-wide KPIs: every equipment unit, and every driver / operator, across all types.
+    const msTotals = (unitLists, peopleLists) => ({ equipment: msCounts(unitLists.flat()), manpower: msCounts(peopleLists.flat()) });
 
     // Deactivation form -> PATCH body. Reason is mandatory, like the app.
     function msDeactBody(form, who) {
@@ -25371,7 +25378,7 @@
     const msReactBody = who => ({ is_active: true, deactivation_reason: null, expected_return_date: null, deactivation_notes: null, performed_by: who.id, performed_by_name: who.name });
     // ms:pure:end
 
-    const _ms = { state: 'loading', docs: { vehicles: [], machines: [], others: [] }, sel: null, tab: 'equipment', people: [], q: '' };
+    const _ms = { state: 'loading', docs: { vehicles: [], machines: [], others: [] }, sel: null, tab: 'equipment', ppl: {}, q: '' };
     const msWho = () => ({ id: currentUser && (currentUser._id || currentUser.id), name: currentUser && currentUser.name });
     const msGet = async path => { const r = await apiFetch(`${API}${path}`); if (!r.ok) throw new Error(await bkErr(r)); return r.json(); };
     // The units of one type, normalised. Tippers/excavators and the generic "others" live in different collections.
@@ -25388,8 +25395,10 @@
       Object.assign(_ms, { state: 'loading', sel: null, tab: 'equipment', q: '' });
       msRender();
       try {
-        const [vehicles, machines, others] = await Promise.all(['/vehicles', '/machines', '/others'].map(msGet));
-        _ms.docs = { vehicles, machines, others }; _ms.state = 'ready';
+        const [vehicles, machines, others, ...lists] = await Promise.all(['/vehicles', '/machines', '/others', ...MS_TYPES.map(msPeoplePath)].map(msGet));
+        _ms.docs = { vehicles, machines, others };
+        MS_TYPES.forEach((t, i) => { _ms.ppl[t.key] = lists[i].map(d => ({ ...msPerson(d), raw: d })); });
+        _ms.state = 'ready';
       } catch (e) { _ms.state = 'error'; _ms.err = e.message; }
       msRender();
     }
@@ -25398,16 +25407,8 @@
       document.getElementById('manage-page').style.display = 'none';
       document.getElementById('app').style.display = 'block';
     }
-    async function msOpenType(key) {
-      Object.assign(_ms, { sel: key, tab: 'equipment', people: [], q: '', peopleState: 'loading' });
-      msRender();
-      const t = MS_TYPES.find(x => x.key === key);
-      try {
-        const path = t.who === 'equipment-people' ? `/equipment-people?equipment_type=${key}` : '/' + t.who;
-        _ms.people = (await msGet(path)).map(d => ({ ...msPerson(d), raw: d })); _ms.peopleState = 'ready';
-      } catch (e) { _ms.peopleState = 'error'; _ms.err = e.message; }
-      if (_ms.sel === key) msRender();
-    }
+    const msPeoplePath = t => t.who === 'equipment-people' ? `/equipment-people?equipment_type=${t.key}` : '/' + t.who;
+    function msOpenType(key) { Object.assign(_ms, { sel: key, tab: 'equipment', q: '' }); msRender(); }
 
     // Send a status change, then swap the returned record into the list.
     async function msSend(method, path, body) {
@@ -25429,7 +25430,7 @@
       try {
         const path = t.who === 'equipment-people' ? `/equipment-people/${p.id}` : `/${t.who}/${p.id}`;
         const doc = await msSend('PUT', path, { is_active: !p.active });
-        _ms.people[_ms.people.findIndex(x => x.id === p.id)] = { ...msPerson(doc), raw: doc };
+        const arr = _ms.ppl[t.key]; arr[arr.findIndex(x => x.id === p.id)] = { ...msPerson(doc), raw: doc };
         showToast(p.active ? 'Deactivated' : 'Activated');
       } catch (e) { showToast('Could not change status: ' + e.message); }
       msRender();
@@ -25462,16 +25463,17 @@
         const cards = MS_TYPES.map(x => ({ x, c: msCounts(msUnits(x).map(u => ({ active: u.active }))) })).sort((a, b) => b.c.total - a.c.total || a.x.label.localeCompare(b.x.label))
           .map(({ x, c }) => bkEl('button', { class: 'ms-card', onclick: () => msOpenType(x.key) }, bkEl('b', {}, x.label), bkEl('span', { class: 'n' }, String(c.total)),
             bkEl('small', {}, bkEl('span', { class: 'on' }, c.active + ' active'), ' · ', bkEl('span', { class: 'off' }, c.inactive + ' inactive'))));
-        body.replaceChildren(bkEl('div', { class: 'ms-bar' }, bkEl('span', { class: 'wp-count' }, 'Equipment on this site'), bkEl('span', { style: 'flex:1' }),
+        const tot = msTotals(MS_TYPES.map(x => msUnits(x)), MS_TYPES.map(x => _ms.ppl[x.key]));
+        const kpi = (label, c) => bkEl('div', { class: 'ms-kpi' }, bkEl('small', {}, label), bkEl('b', {}, String(c.total)),
+          bkEl('span', {}, bkEl('i', { class: 'on' }, c.active + ' active'), ' · ', bkEl('i', { class: 'off' }, c.inactive + ' inactive')));
+        body.replaceChildren(bkEl('div', { class: 'ms-kpis' }, kpi('Total equipment', tot.equipment), kpi('Total manpower', tot.manpower)), bkEl('div', { class: 'ms-bar' }, bkEl('span', { class: 'wp-count' }, 'Equipment on this site'), bkEl('span', { style: 'flex:1' }),
           bkEl('button', { class: 'bk-btn', onclick: () => openBulkPage('workers', 'manage') }, 'Bulk upload')), bkEl('div', { class: 'ms-grid' }, cards));
         return;
       }
 
-      const onEq = _ms.tab === 'equipment', all = onEq ? msUnits(t) : _ms.people, c = msCounts(all);
+      const onEq = _ms.tab === 'equipment', all = onEq ? msUnits(t) : _ms.ppl[t.key], c = msCounts(all);
       const q = _ms.q.trim().toLowerCase(), rows = all.filter(i => !q || (i.title + ' ' + i.sub).toLowerCase().includes(q));
-      const list = (!onEq && _ms.peopleState === 'loading') ? [bkEl('div', { class: 'wp-note' }, 'Loading…')]
-        : (!onEq && _ms.peopleState === 'error') ? [bkEl('div', { class: 'wp-note' }, 'Could not load: ' + _ms.err)]
-        : rows.length ? rows.map(i => bkEl('div', { class: 'ms-row' + (i.active ? '' : ' off') },
+      const list = rows.length ? rows.map(i => bkEl('div', { class: 'ms-row' + (i.active ? '' : ' off') },
             bkEl('div', { class: 'ms-main' }, bkEl('b', {}, i.title), bkEl('div', { class: 'ms-sub' }, i.sub), i.why ? bkEl('div', { class: 'ms-why' }, i.why) : null),
             bkEl('span', { class: 'ms-badge' }, i.active ? 'Active' : 'Inactive'),
             bkEl('button', { class: 'bk-btn', onclick: () => onEq ? (i.active ? msAskDeactivate(t, i) : msToggleUnit(t, i)) : msTogglePerson(t, i) }, i.active ? 'Deactivate' : 'Activate')))
