@@ -5990,6 +5990,57 @@
     .wp-acts button:disabled { opacity: .5; cursor: default; }
     .wp-note { padding: 28px 12px; color: var(--text-muted); font-size: 13px; }
     .wp-skel { height: 15px; margin: 15px 12px; background: var(--rule); border-radius: 2px; }
+    /* Bulk upload (admin) */
+    .bk-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+    .bk-cats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .bk-cat { height: 32px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; }
+    .bk-cat.on { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+    .bk-step { padding: 14px 16px; margin-bottom: 12px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); }
+    .bk-step h3 { margin: 0 0 4px; font-size: 14px; }
+    .bk-step p { margin: 0 0 10px; font-size: 12.5px; color: var(--text-secondary); }
+    .bk-warn { padding: 8px 10px; margin-bottom: 10px; border-left: 3px solid var(--warn); background: var(--hover); font-size: 12.5px; color: var(--warn); }
+    .bk-btn { white-space: nowrap; height: 32px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--rule); background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; }
+    .bk-btn.primary { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+    .bk-btn:disabled { opacity: .5; cursor: default; }
+    .bk-site { display: block; padding: 4px 0; font-size: 13px; cursor: pointer; }
+    .bk-counts { display: flex; gap: 8px; margin: 8px 0 12px; }
+    .bk-count { flex: 1; padding: 10px; border: 1px solid var(--rule); border-radius: 3px; text-align: center; font-size: 11px; color: var(--text-muted); }
+    .bk-count b { display: block; font-family: var(--font-mono); font-size: 20px; color: var(--text-primary); }
+    .bk-count.ok b { color: var(--ok); } .bk-count.warn b { color: var(--warn); } .bk-count.bad b { color: var(--bad); }
+    .bk-prob { display: flex; gap: 8px; padding: 4px 0; font-size: 12.5px; }
+    .bk-tag { flex: none; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; background: var(--track); }
+    .bk-tag.bad { color: var(--bad); } .bk-tag.warn { color: var(--warn); }
+    .bk-file { margin-left: 10px; font-size: 12px; color: var(--text-secondary); }
+    /* Manage site (admin) */
+    .ms-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+    .ms-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .ms-bar input[type=search] { flex: 1; min-width: 140px; height: 34px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; }
+    .ms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .ms-card { padding: 14px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+    .ms-card:hover { background: var(--hover); }
+    .ms-card b { display: block; font-size: 14px; }
+    .ms-card .n { display: block; margin: 6px 0 2px; font-family: var(--font-mono); font-size: 24px; }
+    .ms-card small { font-size: 11.5px; color: var(--text-muted); }
+    .ms-card small .on { color: var(--ok); } .ms-card small .off { color: var(--bad); }
+    .ms-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .ms-list { border-top: 1px solid var(--rule); }
+    .ms-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-bottom: 1px solid var(--rule); font-size: 13px; }
+    .ms-row.off { opacity: .6; }
+    .ms-main { flex: 1; min-width: 0; }
+    .ms-main b { font-weight: 600; }
+    .ms-sub { margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
+    .ms-why { margin-top: 3px; font-size: 12px; color: var(--bad); }
+    .ms-badge { flex: none; padding: 1px 7px; border-radius: 3px; font-size: 10.5px; font-weight: 600; background: var(--track); color: var(--ok); }
+    .ms-row.off .ms-badge { color: var(--bad); }
+    .ms-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.45); }
+    .ms-dlg { width: 100%; max-width: 420px; padding: 18px; border-radius: 4px; background: var(--surface); color: var(--text-primary); }
+    .ms-dlg h3 { margin: 0 0 4px; font-size: 15px; }
+    .ms-dlg label { display: block; margin: 12px 0 4px; font-size: 12px; color: var(--text-secondary); }
+    .ms-dlg input, .ms-dlg textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--bg); color: var(--text-primary); font: inherit; font-size: 13px; }
+    .ms-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ms-chip { height: 28px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); color: var(--text-primary); font: inherit; font-size: 12.5px; cursor: pointer; }
+    .ms-chip.on { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
+    .ms-dlg .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 
     /* Drilling */
     .dr-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -6316,6 +6367,7 @@
         <div class="nav-group" id="nav-group-admin" style="display:none;">Admin</div>
         <button class="nav-item" id="manual-trip-btn" data-nav="manual" onclick="navGo('manual')" style="display:none;"><i class="fi fi-rr-edit" aria-hidden="true"></i><span>Manual entry</span></button>
         <button class="nav-item" id="workers-btn" data-nav="workers" onclick="navGo('workers')" style="display:none;"><i class="fi fi-rr-users" aria-hidden="true"></i><span>Worker permissions</span></button>
+        <button class="nav-item" id="manage-btn" data-nav="manage" onclick="navGo('manage')" style="display:none;"><i class="fi fi-rr-building" aria-hidden="true"></i><span>Manage site</span></button>
 
         <div class="nav-foot">
           <label for="home-view-select">Home layout</label>
@@ -8284,6 +8336,29 @@
       </div>
       <div class="wp-list" id="wp-list"></div>
     </div>
+  </div>
+
+  <div id="bulk-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeBulkPage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Bulk upload</div>
+      <div class="topbar-user"><span style="font-size:12px;color:var(--text-muted);">Admin only</span></div>
+    </div>
+    <div class="bk-wrap">
+      <div class="bk-cats" id="bk-cats"></div>
+      <div id="bk-body"></div>
+    </div>
+  </div>
+
+  <div id="manage-page" style="display:none;min-height:100vh;background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" onclick="msBack()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title" id="ms-title">Manage site</div>
+      <div class="topbar-user"><span style="font-size:12px;color:var(--text-muted);">Admin only</span></div>
+    </div>
+    <div class="ms-wrap" id="ms-body"></div>
   </div>
 
   <div id="manual-trip-page" style="display:none;min-height:100vh;background:var(--bg);">
@@ -16030,6 +16105,8 @@
       if (manual) manual.style.display = isAdmin ? 'flex' : 'none';
       const workersBtn = document.getElementById('workers-btn');
       if (workersBtn) workersBtn.style.display = isAdmin ? 'flex' : 'none';
+      const manageBtn = document.getElementById('manage-btn');
+      if (manageBtn) manageBtn.style.display = isAdmin ? 'flex' : 'none';
       const adminGroup = document.getElementById('nav-group-admin');
       if (adminGroup) adminGroup.style.display = isAdmin ? '' : 'none';
       const showOps = canSeeShiftOps();
@@ -16158,7 +16235,7 @@
         reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
         deployments: openDeploymentsPage, eqhealth: openEqHealthPage, livemap: openLiveMapPage,
         compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
-        manual: openManualTripPage, workers: openWorkersPage, drilling: openDrillPage, control: openControlPage
+        manual: openManualTripPage, workers: openWorkersPage, manage: openManagePage, bulk: openBulkPage, drilling: openDrillPage, control: openControlPage
       };
       if (targets[key]) targets[key]();
     }
@@ -16169,7 +16246,7 @@
     const _navPages = {
       'reports-hub-page': 'reports', 'lf-page': 'loadfactor', 'haul-page': 'haul', 'deployments-page': 'deployments',
       'eq-health-page': 'eqhealth', 'livemap-page': 'livemap', 'drill-page': 'drilling', 'compliance-page': 'compliance',
-      'changeover-page': 'changeover', 'handover-page': 'handover', 'manual-trip-page': 'manual', 'workers-page': 'workers', 'control-page': 'control'
+      'changeover-page': 'changeover', 'handover-page': 'handover', 'manual-trip-page': 'manual', 'workers-page': 'workers', 'bulk-page': 'bulk', 'manage-page': 'manage', 'control-page': 'control'
     };
     const _navDates = { compliance: ['src-date-from', 'src-date-to'], changeover: ['co-date-from', 'co-date-to'] };
     let _navReady = false;
@@ -24933,6 +25010,478 @@
     function closeWorkersPage() {
       document.getElementById('workers-page').style.display = 'none';
       document.getElementById('app').style.display = 'block';
+    }
+
+    // ─── BULK UPLOAD (admin) ──────────────────────────────────────────────────────
+    // Supervisors, drivers, tippers, excavators and operators use the app's /bulk/* endpoints
+    // (template + validate + commit). The nine "other equipment" types and their people have no
+    // bulk endpoint, so those rows are checked here and created one by one via /others and
+    // /equipment-people. Both flows end in the same preview -> confirm -> result screen.
+    // bulk:pure:start
+    const BULK_MAX_ROWS = 1000, BULK_MAX_BYTES = 5 * 1024 * 1024;
+    const BULK_OTHER_TYPES = ['dozer', 'grader', 'drill_machine', 'drill_compressor', 'loader', 'lmv', 'water_tanker', 'generator', 'diesel_tanker'];
+    const BULK_CATS = [
+      { key: 'workers',   label: 'Supervisors' },
+      { key: 'drivers',   label: 'Drivers' },
+      { key: 'vehicles',  label: 'Vehicles (tippers)' },
+      { key: 'machines',  label: 'Machines (excavators)' },
+      { key: 'operators', label: 'Operators' },
+      { key: 'others',    label: 'Other equipment', local: true },
+      { key: 'people',    label: 'Other equipment: drivers & operators', local: true }
+    ];
+    // [header, field, required, type]
+    const BULK_LOCAL = {
+      others: {
+        file: 'other_equipment_bulk_template.xlsx', sheet: 'Equipment',
+        cols: [['Equipment Type*', 'vehicle_type', true, 'type'], ['Number Plate*', 'number_plate', true, 'str'], ['Vehicle Number', 'vehicle_number', false, 'str'],
+               ['Model', 'model', false, 'str'], ['Fuel Tank Capacity', 'fuel_tank_capacity', false, 'float'], ['Water Tank Capacity', 'water_tank_capacity', false, 'float'],
+               ['Diesel Tanker Capacity', 'diesel_tanker_capacity', false, 'float'], ['Is Active (TRUE/FALSE)', 'is_active', false, 'bool']],
+        example: ['dozer', 'MH40 EF 1111', 'D-1', 'CAT D6', 300, 0, 0, 'TRUE']
+      },
+      people: {
+        file: 'other_equipment_people_bulk_template.xlsx', sheet: 'People',
+        cols: [['Equipment Type*', 'equipment_type', true, 'type'], ['Name*', 'name', true, 'str'], ['Person ID*', 'person_id', true, 'str'],
+               ['License Number', 'license_number', false, 'str'], ['Is Active (TRUE/FALSE)', 'is_active', false, 'bool']],
+        example: ['dozer', 'Anil Pawar', 'DZ-OP1', 'OL-2029-0100', 'TRUE']
+      }
+    };
+    const bulkNorm = t => String(t == null ? '' : t).split('(')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    const bulkBlank = v => v == null || (typeof v === 'string' && v.trim() === '');
+    const bulkName = s => String(s).trim().replace(/\s+/g, ' ');
+
+    // One cell -> typed value. Throws Error(message) the way the app's validator words it.
+    function bulkCoerce(v, type, required, header) {
+      const h = header.replace('*', '').split('(')[0].trim();
+      if (bulkBlank(v)) { if (required) throw new Error('Missing required field: ' + h); return null; }
+      if (type === 'str') return String(v).trim();
+      if (type === 'type') {
+        const t = String(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
+        if (!BULK_OTHER_TYPES.includes(t)) throw new Error(`'${h}' must be one of: ${BULK_OTHER_TYPES.join(', ')} (got '${v}')`);
+        return t;
+      }
+      if (type === 'float') {
+        const n = typeof v === 'number' ? v : Number(String(v).trim());
+        if (!isFinite(n) || n < 0) throw new Error(`'${h}' must be a positive number (got '${v}')`);
+        return n;
+      }
+      if (typeof v === 'boolean') return v;
+      const s = String(v).trim().toLowerCase();
+      if (['true', '1', 'yes', 'y'].includes(s)) return true;
+      if (['false', '0', 'no', 'n'].includes(s)) return false;
+      throw new Error(`'${h}' must be TRUE or FALSE (got '${v}')`);
+    }
+
+    // aoa = sheet as rows of cells (first row = headers). Returns { error } or { rows }.
+    function bulkParseLocal(key, aoa) {
+      const cols = BULK_LOCAL[key].cols;
+      if (!aoa.length) return { error: 'The file is empty.' };
+      const byNorm = {}; cols.forEach(c => { byNorm[bulkNorm(c[0])] = c; byNorm[bulkNorm(c[1])] = c; });
+      const idx = {}; (aoa[0] || []).forEach((h, i) => { const c = byNorm[bulkNorm(h)]; if (c) idx[i] = c; });
+      const missing = cols.filter(c => c[2] && !Object.values(idx).includes(c)).map(c => c[0]);
+      if (missing.length) return { error: `Template is missing required column(s): ${missing.join(', ')}. Download a fresh template.` };
+      const rows = [];
+      for (let r = 1; r < aoa.length; r++) {
+        const raw = {}; let any = false;
+        for (const i in idx) { const v = (aoa[r] || [])[i]; raw[idx[i][0]] = v == null ? null : v; if (!bulkBlank(v)) any = true; }
+        if (!any) continue;
+        if (rows.length >= BULK_MAX_ROWS) return { error: `Too many rows. Maximum ${BULK_MAX_ROWS} rows per upload.` };
+        const fields = {}; let error = null;
+        for (const i in idx) {
+          const [header, field, req, type] = idx[i];
+          try { fields[field] = bulkCoerce((aoa[r] || [])[i], type, req, header); } catch (e) { error = e.message; break; }
+        }
+        rows.push({ row_no: r + 1, fields, raw, error });
+      }
+      return { rows };
+    }
+
+    // Duplicate key for a row: same type + same plate / person id, spaces and case ignored (like the app).
+    function bulkLocalKey(key, f) {
+      return key === 'others' ? f.vehicle_type + '|' + String(f.number_plate).replace(/\s+/g, '').toUpperCase()
+                              : f.equipment_type + '|' + String(f.person_id).replace(/\s+/g, '').toLowerCase();
+    }
+    // existing = Set of keys already in the database. Each entry carries the body to POST when valid.
+    function bulkClassifyLocal(key, parsed, existing) {
+      const seen = new Set();
+      return parsed.map(p => {
+        const e = { row_no: p.row_no, raw: p.raw, status: 'valid', problem: null, body: null };
+        if (p.error) { e.status = 'error'; e.problem = p.error; return e; }
+        const f = p.fields, k = bulkLocalKey(key, f);
+        if (seen.has(k) || existing.has(k)) {
+          e.status = 'duplicate';
+          e.problem = (key === 'others' ? `Number plate '${f.number_plate}'` : `Person ID '${f.person_id}'`) + (seen.has(k) ? ' appears twice in this file' : ' already exists for ' + (f.vehicle_type || f.equipment_type));
+        } else if (key === 'others') {
+          e.body = { vehicle_type: f.vehicle_type, number_plate: f.number_plate, vehicle_number: f.vehicle_number || '', model: f.model || '',
+                     fuel_tank_capacity: f.fuel_tank_capacity || 0, water_tank_capacity: f.water_tank_capacity || 0,
+                     diesel_tanker_capacity: f.diesel_tanker_capacity || 0, is_active: f.is_active !== false };
+        } else {
+          e.body = { equipment_type: f.equipment_type, name: bulkName(f.name), person_id: f.person_id, license_number: f.license_number || null, is_active: f.is_active !== false };
+        }
+        seen.add(k);
+        return e;
+      });
+    }
+    // bulk:pure:end
+
+    const _bk = { key: 'workers', file: null, preview: null, local: null, siteId: '', busy: '', result: null };
+    const bkIsAdmin = () => !!(currentUser && currentUser.is_admin === true);
+
+    function bkEl(tag, attrs, ...kids) {
+      const n = document.createElement(tag);
+      for (const k in (attrs || {})) {
+        if (k === 'class') n.className = attrs[k];
+        else if (k.startsWith('on')) n.addEventListener(k.slice(2), attrs[k]);
+        else if (attrs[k] != null && attrs[k] !== false) n.setAttribute(k, attrs[k]);
+      }
+      kids.flat().forEach(c => { if (c != null && c !== false) n.append(c); });
+      return n;
+    }
+
+    function openBulkPage(key, from) {
+      if (!bkIsAdmin()) { showToast('Admin access required'); return; }
+      _bk.from = from || '';
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('manage-page').style.display = 'none';
+      document.getElementById('bulk-page').style.display = 'block';
+      bkSelect(BULK_CATS.some(c => c.key === key) ? key : _bk.key);
+    }
+    function closeBulkPage() {
+      document.getElementById('bulk-page').style.display = 'none';
+      if (_bk.from === 'manage') { _bk.from = ''; openManagePage(); return; }   // reload so new rows show
+      document.getElementById('app').style.display = 'block';
+    }
+    function bkSelect(key) {
+      Object.assign(_bk, { key, file: null, preview: null, local: null, result: null, busy: '' });
+      bkRender();
+    }
+    function bkSites() {
+      const list = (availableSites || []).map(s => ({ id: s.id || s._id, name: s.name || s.site_name || s.id || s._id })).filter(s => s.id);
+      if (!list.length && currentSiteId) list.push({ id: currentSiteId, name: 'Current site' });
+      return list;
+    }
+
+    async function bkErr(res) {
+      let d = ''; try { const j = await res.json(); d = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail); } catch (_) {}
+      return d || `HTTP ${res.status}`;
+    }
+    function bkSave(blob, name) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    function bkSaveB64(name, b64) {
+      const bin = atob(b64), u = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      bkSave(new Blob([u], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
+    }
+
+    async function bkTemplate() {
+      const cat = BULK_CATS.find(c => c.key === _bk.key);
+      try {
+        if (cat.local) {
+          const s = BULK_LOCAL[cat.key], wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([s.cols.map(c => c[0]), s.example]), s.sheet);
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Allowed Equipment Types'], ...BULK_OTHER_TYPES.map(t => [t])]), 'Allowed types');
+          XLSX.writeFile(wb, s.file);
+        } else {
+          const res = await apiFetch(`${API}/bulk/template/${cat.key}`);
+          if (!res.ok) throw new Error(await bkErr(res));
+          const t = await res.json(); bkSaveB64(t.filename, t.content_b64);
+        }
+      } catch (e) { showToast('Could not get the template: ' + e.message); }
+    }
+
+    // File chosen -> validate it (nothing is saved yet).
+    async function bkPick(input) {
+      const f = input.files[0]; input.value = '';
+      if (!f) return;
+      if (!/\.xlsx$/i.test(f.name)) { showToast('Only .xlsx files are accepted.'); return; }
+      if (f.size > BULK_MAX_BYTES) { showToast('File too large. Maximum 5 MB.'); return; }
+      const cat = BULK_CATS.find(c => c.key === _bk.key);
+      Object.assign(_bk, { file: f, preview: null, local: null, result: null, busy: 'check' }); bkRender();
+      try {
+        if (cat.local) {
+          const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+          const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: null, raw: true });
+          const p = bulkParseLocal(cat.key, aoa);
+          if (p.error) throw new Error(p.error);
+          const entries = bulkClassifyLocal(cat.key, p.rows, await bkExisting(cat.key, p.rows));
+          _bk.local = entries; _bk.preview = bkSummary(entries);
+        } else {
+          const fd = new FormData(); fd.append('file', f);
+          const res = await apiFetch(`${API}/bulk/validate/${cat.key}`, { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(await bkErr(res));
+          _bk.preview = await res.json();
+        }
+      } catch (e) { _bk.file = null; showToast('Validation failed: ' + e.message); }
+      _bk.busy = ''; bkRender();
+    }
+
+    async function bkExisting(key, parsedRows) {
+      const out = new Set();
+      if (key === 'others') {
+        const res = await apiFetch(`${API}/others`);
+        if (!res.ok) throw new Error(await bkErr(res));
+        (await res.json()).forEach(u => out.add(bulkLocalKey('others', u)));
+      } else {
+        const types = [...new Set(parsedRows.map(r => r.fields.equipment_type).filter(Boolean))];
+        for (const t of types) {
+          const res = await apiFetch(`${API}/equipment-people?equipment_type=${encodeURIComponent(t)}`);
+          if (!res.ok) throw new Error(await bkErr(res));
+          (await res.json()).forEach(p => out.add(bulkLocalKey('people', { equipment_type: t, person_id: p.person_id })));
+        }
+      }
+      return out;
+    }
+    function bkSummary(entries) {
+      const n = s => entries.filter(e => e.status === s).length;
+      return { total: entries.length, valid: n('valid'), duplicates: n('duplicate'), errors: n('error'),
+               rows: entries.map(e => ({ row_no: e.row_no, status: e.status, problem: e.problem })) };
+    }
+
+    async function bkConfirm() {
+      const cat = BULK_CATS.find(c => c.key === _bk.key);
+      if (_bk.busy || !_bk.preview || !_bk.preview.valid) return;
+      if (!cat.local && !_bk.siteId) { showToast('Choose a target site first.'); return; }
+      _bk.busy = 'commit'; bkRender();
+      try {
+        if (cat.local) {
+          // Re-check duplicates right before writing, then create the valid rows one by one.
+          const existing = await bkExisting(cat.key, _bk.local.map(e => ({ fields: { equipment_type: e.body && e.body.equipment_type } })));
+          const todo = _bk.local.filter(e => e.status === 'valid');
+          let done = 0;
+          for (const e of todo) {
+            if (existing.has(bulkLocalKey(cat.key, e.body))) { e.status = 'duplicate'; e.problem = 'Already exists'; continue; }
+            const res = await apiFetch(`${API}/${cat.key === 'others' ? 'others' : 'equipment-people'}`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(e.body) });
+            if (res.ok) { done++; existing.add(bulkLocalKey(cat.key, e.body)); } else { e.status = 'error'; e.problem = 'Insert failed: ' + await bkErr(res); }
+            if (done % 10 === 0) { _bk.progress = `${done} of ${todo.length} saved…`; bkRender(); }
+          }
+          const bad = _bk.local.filter(e => e.status !== 'valid');
+          _bk.result = { inserted: done, skipped_duplicate: bad.filter(e => e.status === 'duplicate').length, failed: bad.filter(e => e.status === 'error').length, bad };
+        } else {
+          const fd = new FormData(); fd.append('file', _bk.file); fd.append('target_site_id', _bk.siteId);
+          const res = await apiFetch(`${API}/bulk/commit/${cat.key}`, { method: 'POST', body: fd });
+          if (!res.ok) throw new Error(await bkErr(res));
+          _bk.result = await res.json();
+        }
+      } catch (e) { showToast('Insert failed: ' + e.message); }
+      _bk.busy = ''; _bk.progress = ''; bkRender();
+    }
+
+    function bkErrorsFile() {
+      const r = _bk.result, cat = BULK_CATS.find(c => c.key === _bk.key);
+      if (!cat.local) { bkSaveB64(r.errors_file.filename, r.errors_file.content_b64); return; }
+      const safe = v => (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) ? "'" + v : v;   // keep Excel from running cells as formulas
+      const heads = BULK_LOCAL[cat.key].cols.map(c => c[0]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[...heads, 'Problem'], ...r.bad.map(e => [...heads.map(h => safe(e.raw[h])), safe(e.problem)])]), 'Errors & Skipped');
+      XLSX.writeFile(wb, `${cat.key}_errors_and_skipped.xlsx`);
+    }
+
+    function bkRender() {
+      const cats = document.getElementById('bk-cats'), body = document.getElementById('bk-body');
+      cats.replaceChildren(...BULK_CATS.map(c => bkEl('button', { class: 'bk-cat' + (c.key === _bk.key ? ' on' : ''), onclick: () => bkSelect(c.key) }, c.label)));
+      const cat = BULK_CATS.find(c => c.key === _bk.key), p = _bk.preview, r = _bk.result;
+      const counts = items => bkEl('div', { class: 'bk-counts' }, items.map(([l, v, cls]) => bkEl('div', { class: 'bk-count ' + cls }, bkEl('b', {}, String(v)), l)));
+      const steps = [];
+
+      steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, '1. Download the template'),
+        bkEl('p', {}, 'One row per record. Columns marked * are required. Do not change the header row.'),
+        cat.key === 'workers' ? bkEl('div', { class: 'bk-warn' }, 'This file holds login passwords in plain text. Delete it once uploaded.') : null,
+        bkEl('button', { class: 'bk-btn', onclick: bkTemplate }, 'Download template')));
+
+      if (cat.local) {
+        const s = bkSites().find(x => x.id === currentSiteId);
+        steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, '2. Site'),
+          bkEl('p', {}, `Records are added to your active site${s ? ': ' + s.name : ''}. To use another site, switch site first.`)));
+      } else {
+        const sites = bkSites();
+        if (!sites.some(x => x.id === _bk.siteId)) _bk.siteId = sites.some(x => x.id === currentSiteId) ? currentSiteId : (sites.length === 1 ? sites[0].id : '');
+        steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, '2. Choose the target site'), bkEl('p', {}, 'Every uploaded record is assigned to this site.'),
+          sites.length ? sites.map(s => bkEl('label', { class: 'bk-site' },
+            bkEl('input', { type: 'radio', name: 'bk-site', checked: s.id === _bk.siteId ? '' : null, onchange: () => { _bk.siteId = s.id; bkRender(); } }), ' ' + s.name))
+            : bkEl('p', {}, 'No sites available for this login.')));
+      }
+
+      const input = bkEl('input', { type: 'file', accept: '.xlsx', hidden: '', onchange: e => bkPick(e.target) });
+      steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, '3. Upload your file'), bkEl('p', {}, 'Every row is checked first. Nothing is saved until you confirm.'),
+        input, bkEl('button', { class: 'bk-btn', disabled: _bk.busy ? '' : null, onclick: () => input.click() }, _bk.busy === 'check' ? 'Checking…' : (_bk.file ? 'Choose a different file' : 'Choose file')),
+        _bk.file ? bkEl('span', { class: 'bk-file' }, _bk.file.name) : null));
+
+      if (p && !r) {
+        const bad = p.rows.filter(x => x.status !== 'valid');
+        steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, 'Preview'),
+          counts([['Total', p.total, ''], ['Valid', p.valid, 'ok'], ['Duplicates', p.duplicates, 'warn'], ['Errors', p.errors, 'bad']]),
+          bad.length ? [bkEl('p', {}, 'Rows needing attention (these will be skipped):'),
+            ...bad.slice(0, 100).map(x => bkEl('div', { class: 'bk-prob' }, bkEl('span', { class: 'bk-tag ' + (x.status === 'duplicate' ? 'warn' : 'bad') }, x.status === 'duplicate' ? 'DUP' : 'ERR'), `Row ${x.row_no}: ${x.problem}`)),
+            bad.length > 100 ? bkEl('p', {}, `…and ${bad.length - 100} more. They are all in the downloadable errors file after upload.`) : null]
+            : bkEl('p', {}, `All ${p.valid} rows are valid and ready.`),
+          bkEl('button', { class: 'bk-btn primary', disabled: (_bk.busy || !p.valid || (!cat.local && !_bk.siteId)) ? '' : null, onclick: bkConfirm },
+            _bk.busy === 'commit' ? (_bk.progress || 'Saving…') : `Confirm and add ${p.valid} row${p.valid === 1 ? '' : 's'}`)));
+      }
+      if (r) {
+        steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, 'Upload complete'),
+          counts([['Added', r.inserted, 'ok'], ['Skipped (duplicate)', r.skipped_duplicate, 'warn'], ['Failed', r.failed, 'bad']]),
+          (r.errors_file || (r.bad && r.bad.length)) ? bkEl('button', { class: 'bk-btn', onclick: bkErrorsFile }, 'Download errors and skipped rows') : null, ' ',
+          bkEl('button', { class: 'bk-btn primary', onclick: () => bkSelect(_bk.key) }, 'Upload another file')));
+      }
+      body.replaceChildren(...steps);
+    }
+
+    // ─── MANAGE SITE (admin) ──────────────────────────────────────────────────────
+    // Every equipment type with its units and its people, active/inactive status, and the same
+    // activate / deactivate calls the app makes. Bulk upload opens from here.
+    // ms:pure:start
+    const MS_REASONS = {
+      tipper: ['Tyre', 'Engine', 'Electrical', 'Hydraulic', 'Suspension', 'Others'],
+      excavator: ['Engine', 'Hydraulic', 'Leakage', 'Electrical', 'Bucket', 'Others']
+    };
+    const MS_DEFAULT_REASONS = ['Tyre', 'Engine', 'Scheduled Maintenance', 'Accident', 'Other'];
+    const MS_TYPES = [
+      { key: 'tipper',           label: 'Tipper',           people: 'Drivers',   units: 'vehicles', who: 'drivers',   bulk: ['vehicles', 'drivers'] },
+      { key: 'excavator',        label: 'Excavator',        people: 'Operators', units: 'machines', who: 'operators', bulk: ['machines', 'operators'] },
+      ...[['dozer', 'Dozer', 'Operators'], ['grader', 'Grader', 'Operators'], ['drill_machine', 'Drill Machine', 'Operators'],
+          ['drill_compressor', 'Drill Compressor', 'Operators'], ['loader', 'Loader', 'Operators'], ['lmv', 'LMV', 'Drivers'],
+          ['water_tanker', 'Water Tanker', 'Drivers'], ['generator', 'Generator', 'Operators'], ['diesel_tanker', 'Diesel Tanker', 'Drivers']]
+        .map(([key, label, people]) => ({ key, label, people, units: 'others', who: 'equipment-people', bulk: ['others', 'people'] }))
+    ];
+    const msReasons = key => MS_REASONS[key] || MS_DEFAULT_REASONS;
+    const msNum = (label, v) => (v ? `${label} ${v}` : null);
+
+    // One unit document -> what the list shows. `kind` is the type key.
+    function msUnit(kind, d) {
+      const t = kind === 'tipper' ? { title: d.vehicle_number, bits: [d.number_plate, d.model, msNum('Capacity', d.capacity_m3 && d.capacity_m3 + ' m³'), msNum('Fuel tank', d.fuel_tank_capacity)] }
+        : kind === 'excavator' ? { title: d.machine_number ? `${d.machine_id} (No. ${d.machine_number})` : d.machine_id, bits: [d.number_plate, d.model, msNum('Bucket', d.bucket_capacity_m3 && d.bucket_capacity_m3 + ' m³'), msNum('Fuel tank', d.fuel_tank_capacity)] }
+        : { title: d.number_plate, bits: [d.vehicle_number, d.model, msNum('Fuel tank', d.fuel_tank_capacity), msNum('Water tank', d.water_tank_capacity), msNum('Diesel tank', d.diesel_tanker_capacity)] };
+      return { id: d._id, title: t.title || '—', sub: t.bits.filter(Boolean).join(' · '), active: d.is_active !== false,
+               why: d.is_active === false && d.deactivation_reason ? [d.deactivation_reason, d.expected_return_date && 'back ' + d.expected_return_date, d.deactivation_notes].filter(Boolean).join(' · ') : '' };
+    }
+    function msPerson(d) {
+      return { id: d._id, title: d.name || '—', sub: d.driver_id || d.operator_id || d.person_id || '', active: d.is_active !== false, why: '' };
+    }
+    const msCounts = items => ({ total: items.length, active: items.filter(i => i.active).length, inactive: items.filter(i => !i.active).length });
+
+    // Deactivation form -> PATCH body. Reason is mandatory, like the app.
+    function msDeactBody(form, who) {
+      if (!form.reason) throw new Error('Choose a reason');
+      return { is_active: false, deactivation_reason: form.reason, expected_return_date: form.date || null,
+               deactivation_notes: (form.notes || '').trim().slice(0, 300) || null, performed_by: who.id, performed_by_name: who.name };
+    }
+    const msReactBody = who => ({ is_active: true, deactivation_reason: null, expected_return_date: null, deactivation_notes: null, performed_by: who.id, performed_by_name: who.name });
+    // ms:pure:end
+
+    const _ms = { state: 'loading', docs: { vehicles: [], machines: [], others: [] }, sel: null, tab: 'equipment', people: [], q: '' };
+    const msWho = () => ({ id: currentUser && (currentUser._id || currentUser.id), name: currentUser && currentUser.name });
+    const msGet = async path => { const r = await apiFetch(`${API}${path}`); if (!r.ok) throw new Error(await bkErr(r)); return r.json(); };
+    // The units of one type, normalised. Tippers/excavators and the generic "others" live in different collections.
+    function msUnits(t) {
+      const docs = t.units === 'others' ? _ms.docs.others.filter(d => d.vehicle_type === t.key) : _ms.docs[t.units];
+      return docs.map(d => ({ ...msUnit(t.key, d), raw: d }));
+    }
+
+    async function openManagePage() {
+      if (!bkIsAdmin()) { showToast('Admin access required'); return; }
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('bulk-page').style.display = 'none';
+      document.getElementById('manage-page').style.display = 'block';
+      Object.assign(_ms, { state: 'loading', sel: null, tab: 'equipment', q: '' });
+      msRender();
+      try {
+        const [vehicles, machines, others] = await Promise.all(['/vehicles', '/machines', '/others'].map(msGet));
+        _ms.docs = { vehicles, machines, others }; _ms.state = 'ready';
+      } catch (e) { _ms.state = 'error'; _ms.err = e.message; }
+      msRender();
+    }
+    function msBack() {
+      if (_ms.sel) { _ms.sel = null; _ms.q = ''; msRender(); return; }
+      document.getElementById('manage-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+    async function msOpenType(key) {
+      Object.assign(_ms, { sel: key, tab: 'equipment', people: [], q: '', peopleState: 'loading' });
+      msRender();
+      const t = MS_TYPES.find(x => x.key === key);
+      try {
+        const path = t.who === 'equipment-people' ? `/equipment-people?equipment_type=${key}` : '/' + t.who;
+        _ms.people = (await msGet(path)).map(d => ({ ...msPerson(d), raw: d })); _ms.peopleState = 'ready';
+      } catch (e) { _ms.peopleState = 'error'; _ms.err = e.message; }
+      if (_ms.sel === key) msRender();
+    }
+
+    // Send a status change, then swap the returned record into the list.
+    async function msSend(method, path, body) {
+      const res = await apiFetch(`${API}${path}`, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(await bkErr(res));
+      return res.json();
+    }
+    async function msToggleUnit(t, u, form) {
+      try {
+        const body = form ? msDeactBody(form, msWho()) : msReactBody(msWho());
+        const doc = await msSend('PATCH', `/${t.units}/${u.id}`, body);
+        const list = _ms.docs[t.units]; list[list.findIndex(d => d._id === u.id)] = doc;
+        showToast(form ? 'Deactivated' : 'Activated');
+      } catch (e) { showToast('Could not change status: ' + e.message); }
+      msRender();
+    }
+    async function msTogglePerson(t, p) {
+      if (p.active && !confirm(`Deactivate ${p.title}? They will be removed from any current assignment.`)) return;
+      try {
+        const path = t.who === 'equipment-people' ? `/equipment-people/${p.id}` : `/${t.who}/${p.id}`;
+        const doc = await msSend('PUT', path, { is_active: !p.active });
+        _ms.people[_ms.people.findIndex(x => x.id === p.id)] = { ...msPerson(doc), raw: doc };
+        showToast(p.active ? 'Deactivated' : 'Activated');
+      } catch (e) { showToast('Could not change status: ' + e.message); }
+      msRender();
+    }
+
+    // Deactivation dialog: reason chips (required), optional return date and notes.
+    function msAskDeactivate(t, u) {
+      const form = { reason: '', date: '', notes: '' };
+      const confirmBtn = bkEl('button', { class: 'bk-btn primary', disabled: '', onclick: () => { close(); msToggleUnit(t, u, form); } }, 'Deactivate');
+      const chips = msReasons(t.key).map(r => bkEl('button', { class: 'ms-chip', onclick: e => {
+        form.reason = r; chips.forEach(c => c.classList.toggle('on', c === e.target)); confirmBtn.disabled = false; } }, r));
+      const modal = bkEl('div', { class: 'ms-modal', onclick: e => { if (e.target === modal) close(); } },
+        bkEl('div', { class: 'ms-dlg', role: 'dialog', 'aria-modal': 'true' },
+          bkEl('h3', {}, `Deactivate ${u.title}`), bkEl('div', { class: 'ms-sub' }, u.sub),
+          bkEl('label', {}, 'Reason (required)'), bkEl('div', { class: 'ms-chips' }, chips),
+          bkEl('label', {}, 'Expected back (optional)'), bkEl('input', { type: 'date', oninput: e => { form.date = e.target.value; } }),
+          bkEl('label', {}, 'Notes (optional)'), bkEl('textarea', { rows: '3', maxlength: '300', oninput: e => { form.notes = e.target.value; } }),
+          bkEl('div', { class: 'acts' }, bkEl('button', { class: 'bk-btn', onclick: () => close() }, 'Cancel'), confirmBtn)));
+      const close = () => modal.remove();
+      document.body.append(modal);
+    }
+
+    function msRender() {
+      const body = document.getElementById('ms-body'), t = MS_TYPES.find(x => x.key === _ms.sel);
+      document.getElementById('ms-title').textContent = t ? t.label : 'Manage site';
+      if (_ms.state === 'loading') { body.replaceChildren(bkEl('div', { class: 'wp-note' }, 'Loading…')); return; }
+      if (_ms.state === 'error') { body.replaceChildren(bkEl('div', { class: 'wp-note' }, 'Could not load equipment: ' + _ms.err, ' ', bkEl('button', { class: 'bk-btn', onclick: openManagePage }, 'Try again'))); return; }
+
+      if (!t) {   // grid of types, biggest first
+        const cards = MS_TYPES.map(x => ({ x, c: msCounts(msUnits(x).map(u => ({ active: u.active }))) })).sort((a, b) => b.c.total - a.c.total || a.x.label.localeCompare(b.x.label))
+          .map(({ x, c }) => bkEl('button', { class: 'ms-card', onclick: () => msOpenType(x.key) }, bkEl('b', {}, x.label), bkEl('span', { class: 'n' }, String(c.total)),
+            bkEl('small', {}, bkEl('span', { class: 'on' }, c.active + ' active'), ' · ', bkEl('span', { class: 'off' }, c.inactive + ' inactive'))));
+        body.replaceChildren(bkEl('div', { class: 'ms-bar' }, bkEl('span', { class: 'wp-count' }, 'Equipment on this site'), bkEl('span', { style: 'flex:1' }),
+          bkEl('button', { class: 'bk-btn', onclick: () => openBulkPage('workers', 'manage') }, 'Bulk upload')), bkEl('div', { class: 'ms-grid' }, cards));
+        return;
+      }
+
+      const onEq = _ms.tab === 'equipment', all = onEq ? msUnits(t) : _ms.people, c = msCounts(all);
+      const q = _ms.q.trim().toLowerCase(), rows = all.filter(i => !q || (i.title + ' ' + i.sub).toLowerCase().includes(q));
+      const list = (!onEq && _ms.peopleState === 'loading') ? [bkEl('div', { class: 'wp-note' }, 'Loading…')]
+        : (!onEq && _ms.peopleState === 'error') ? [bkEl('div', { class: 'wp-note' }, 'Could not load: ' + _ms.err)]
+        : rows.length ? rows.map(i => bkEl('div', { class: 'ms-row' + (i.active ? '' : ' off') },
+            bkEl('div', { class: 'ms-main' }, bkEl('b', {}, i.title), bkEl('div', { class: 'ms-sub' }, i.sub), i.why ? bkEl('div', { class: 'ms-why' }, i.why) : null),
+            bkEl('span', { class: 'ms-badge' }, i.active ? 'Active' : 'Inactive'),
+            bkEl('button', { class: 'bk-btn', onclick: () => onEq ? (i.active ? msAskDeactivate(t, i) : msToggleUnit(t, i)) : msTogglePerson(t, i) }, i.active ? 'Deactivate' : 'Activate')))
+          : [bkEl('div', { class: 'wp-note' }, all.length ? 'Nothing matches your search.' : `No ${onEq ? t.label.toLowerCase() + ' units' : t.people.toLowerCase()} yet.`)];
+      const q_ = bkEl('input', { type: 'search', placeholder: 'Search', 'aria-label': 'Search', value: _ms.q, oninput: e => { _ms.q = e.target.value; const p = e.target.selectionStart; msRender(); const n = document.querySelector('#ms-body input[type=search]'); n.focus(); n.setSelectionRange(p, p); } });
+      body.replaceChildren(
+        bkEl('div', { class: 'ms-tabs' },
+          ...[['equipment', t.label + ' equipment'], ['people', t.people]].map(([k, l]) => bkEl('button', { class: 'bk-cat' + (_ms.tab === k ? ' on' : ''), onclick: () => { _ms.tab = k; _ms.q = ''; msRender(); } }, l))),
+        bkEl('div', { class: 'ms-bar' }, q_, bkEl('span', { class: 'wp-count' }, `${c.active} active · ${c.inactive} inactive`),
+          bkEl('button', { class: 'bk-btn', onclick: () => openBulkPage(t.bulk[onEq ? 0 : 1], 'manage') }, 'Add in bulk')),
+        bkEl('div', { class: 'ms-list' }, list));
     }
 
     function wpRender() {
