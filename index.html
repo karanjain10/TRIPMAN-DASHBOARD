@@ -14242,6 +14242,46 @@
       } catch (e) { return []; }
     }
 
+    // Hours worked come from the HMR (hour meter) in shift readings, not from machine sessions.
+    // ex:pure:start
+    // readings: rows from GET /shift-readings; ids: every id this machine goes by.
+    // Per date+shift: closing minus opening across that shift's readings (the meter is continuous, so
+    // two operators in one shift add up and a duplicate or admin correction is not counted twice).
+    // A reading with no closing value yet is flagged `partial`; it adds no hours.
+    function exShiftHours(readings, ids) {
+      const num = v => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) ? null : Number(v);
+      const acc = {};
+      (readings || []).forEach(r => {
+        if (!ids.includes(String(r.vehicle_id)) || !r.date || !r.shift) return;
+        const k = `${r.date}||${String(r.shift).toUpperCase()}`;
+        const e = acc[k] || (acc[k] = { date: r.date, shift: String(r.shift).toUpperCase(), lo: null, hi: null, partial: false });
+        const h = (r.readings && r.readings.HMR) || {}, o = num(h.opening_value), c = num(h.closing_value);
+        if (o === null || c === null || c < o) { e.partial = true; return; }
+        e.lo = e.lo === null ? o : Math.min(e.lo, o); e.hi = e.hi === null ? c : Math.max(e.hi, c);
+      });
+      const out = {};
+      Object.keys(acc).forEach(k => { const e = acc[k]; out[k] = { date: e.date, shift: e.shift, hours: e.lo === null ? 0 : e.hi - e.lo, partial: e.partial }; });
+      return out;
+    }
+    // ex:pure:end
+
+    // Shift readings for every day in the range (the endpoint takes one date at a time).
+    async function fetchExcavatorReadings(startDate, endDate) {
+      const dates = dosListDates(startDate, endDate), rows = [];
+      let failedDays = 0;
+      for (let i = 0; i < dates.length; i += 8) {
+        await Promise.all(dates.slice(i, i + 8).map(async d => {
+          try {
+            const res = await apiFetch(`${API}/shift-readings?date=${encodeURIComponent(d)}`);
+            if (!res.ok) { failedDays++; return; }
+            const data = await res.json();
+            if (Array.isArray(data)) rows.push(...data.filter(r => String(r.equipment_type || '').toLowerCase() === 'excavator'));
+          } catch (_) { failedDays++; }
+        }));
+      }
+      return { rows, failedDays };
+    }
+
     async function fetchMachineAssignments(startDate, endDate) {
       try {
         const p = new URLSearchParams({ start_date: startDate, end_date: endDate });
@@ -14265,12 +14305,13 @@
   </div>`;
 
       showLoading(true);
-      let rangeTrips = [], sessions = [], assignments = [];
+      let rangeTrips = [], sessions = [], assignments = [], readings = { rows: [], failedDays: 0 };
       try {
-        [rangeTrips, sessions, assignments] = await Promise.all([
+        [rangeTrips, sessions, assignments, readings] = await Promise.all([
           fetchAllTripsForRange(dateFrom, dateTo),
           fetchMachineSessions(dateFrom, dateTo),
-          fetchMachineAssignments(dateFrom, dateTo)
+          fetchMachineAssignments(dateFrom, dateTo),
+          fetchExcavatorReadings(dateFrom, dateTo)
         ]);
       } catch (e) {
         showToast('Failed to fetch data. Check connection.');
@@ -14282,7 +14323,7 @@
 
       area.innerHTML = '';
       [...exSelectedMachineIds].forEach(machineId => {
-        const cardHtml = buildExcavatorCard(machineId, rangeTrips, sessions, assignments, dateFrom, dateTo);
+        const cardHtml = buildExcavatorCard(machineId, rangeTrips, sessions, assignments, dateFrom, dateTo, readings);
         const wrapper = document.createElement('div');
         wrapper.innerHTML = cardHtml;
         area.appendChild(wrapper.firstElementChild);
@@ -14294,7 +14335,7 @@
     }
 
     // ── Build one excavator card ──────────────────────────────────────────────────
-    function buildExcavatorCard(machineId, rangeTrips, sessions, assignments, dateFrom, dateTo) {
+    function buildExcavatorCard(machineId, rangeTrips, sessions, assignments, dateFrom, dateTo, readings = { rows: [], failedDays: 0 }) {
       const machine = getMachineById(machineId);
       const machineLabel = machine ? (machine.machine_number || machineId) : machineId;
       const model = machine ? (machine.model || '—') : '—';
@@ -14321,7 +14362,6 @@
         if (!date || !shift) return;
         const k = `${date}||${shift}`;
         if (!comboMap[k]) comboMap[k] = { date, shift, hours: 0, sessionCount: 0, tripCount: 0, operatorIds: new Set(), operatorNames: new Set(), rawSessions: [] };
-        comboMap[k].hours += (s.hours_worked || s.hours || 0);
         comboMap[k].sessionCount++;
         comboMap[k].rawSessions.push(s);
         // Prefer embedded operator_name; fall back to id lookup
@@ -14337,6 +14377,14 @@
         if (s.location) {
           comboMap[k].location = s.location;
         }
+      });
+
+      // Hours: HMR from this machine's shift readings (a shift can have readings but no session)
+      const shiftHours = exShiftHours(readings.rows, [machineId, machine && machine._id, machine && machine.id].filter(Boolean).map(String));
+      Object.values(shiftHours).forEach(h => {
+        const k = `${h.date}||${h.shift}`;
+        if (!comboMap[k]) comboMap[k] = { date: h.date, shift: h.shift, hours: 0, sessionCount: 0, tripCount: 0, operatorIds: new Set(), operatorNames: new Set(), rawSessions: [] };
+        comboMap[k].hours = h.hours; comboMap[k].partial = h.partial;
       });
 
       // Count trips per combo
@@ -14404,7 +14452,7 @@
           const d = t.mining_date || (t.timestamp ? t.timestamp.split('T')[0] : null);
           return d === c.date && t.shift === c.shift;
         }).length;
-        const hrs = c.hours > 0 ? c.hours.toFixed(2) : '—';
+        const hrs = c.hours > 0 ? c.hours.toFixed(2) + (c.partial ? '*' : '') : (c.partial ? '—*' : '—');
         const rate = (trips > 0 && c.hours > 0) ? (trips / c.hours).toFixed(2) : '—';
         const operators = (() => {
           const direct = [...(c.operatorNames || [])].filter(Boolean);
@@ -14439,8 +14487,8 @@
         let sessionSubRows = '';
         if (hasMultiSessions && c.rawSessions && c.rawSessions.length > 0) {
           sessionSubRows = c.rawSessions.map((s, si) => {
-            const sHrs = (s.hours_worked || s.hours || 0);
-            const sHrsFmt = sHrs > 0 ? sHrs.toFixed(2) : '—';
+            const sHrs = 0;           // hours are per shift (HMR), not per session
+            const sHrsFmt = '—';
             const sOp = s.operator_name || getOperatorName(s.operator_id) || '—';
             const sMat = s.material_type || s.material || mat;
             const sLoc = s.location || loc;
@@ -14547,7 +14595,7 @@
     <div class="ex-kpi">
       <div class="ex-kpi-label">Total Hours Worked</div>
       <div class="ex-kpi-value">${totalHours > 0 ? totalHours.toFixed(1) : '—'}</div>
-      <div class="ex-kpi-sub">sum across all sessions</div>
+      <div class="ex-kpi-sub">${readings.failedDays ? `⚠ shift readings missing for ${readings.failedDays} day${readings.failedDays === 1 ? '' : 's'}` : 'from shift readings (HMR)'}</div>
     </div>
     <div class="ex-kpi">
       <div class="ex-kpi-label">Avg Loading Rate</div>
@@ -14582,6 +14630,7 @@
         </tr></thead>
         <tbody>${sessionTableRows || '<tr><td colspan="10" style="padding:20px;text-align:center;color:var(--text-muted);">No session data found</td></tr>'}</tbody>
       </table>
+      ${combos.some(c => c.partial) ? '<div style="padding:8px 12px;font-size:11px;color:var(--text-muted);">* a shift reading has no closing HMR value yet, so those hours are not counted.</div>' : ''}
       <div class="ex-summary-row">
         <span>Total sessions: <strong>${totalSessions}</strong></span>
         <span>Total hours: <strong>${totalHours > 0 ? totalHours.toFixed(1) : '—'}</strong></span>
@@ -14738,11 +14787,12 @@
       table.style.display = 'none';
 
       showLoading(true);
-      let rangeTrips = [], sessions = [];
+      let rangeTrips = [], sessions = [], readings = { rows: [], failedDays: 0 };
       try {
-        [rangeTrips, sessions] = await Promise.all([
+        [rangeTrips, sessions, readings] = await Promise.all([
           fetchAllTripsForRange(dateFrom, dateTo),
-          fetchMachineSessions(dateFrom, dateTo)
+          fetchMachineSessions(dateFrom, dateTo),
+          fetchExcavatorReadings(dateFrom, dateTo)
         ]);
       } catch (e) {
         showToast('Failed to fetch data');
@@ -14763,7 +14813,8 @@
       // For each machine that has trips OR sessions in range
       const machineIds = [...new Set([
         ...rangeTrips.map(t => t.machine_id).filter(Boolean),
-        ...sessions.map(s => s.machine_id).filter(Boolean)
+        ...sessions.map(s => s.machine_id).filter(Boolean),
+        ...readings.rows.map(r => r.vehicle_id).filter(Boolean)
       ])];
 
       exCmpAllRows = machineIds.map(mid => {
@@ -14776,13 +14827,14 @@
           return d && d >= dateFrom && d <= dateTo;
         });
         const sessionCount = macSessions.length;
-        const totalHours = macSessions.reduce((s, x) => s + (x.hours_worked || 0), 0);
+        const totalHours = Object.values(exShiftHours(readings.rows, [mid, machine && machine._id, machine && machine.id].filter(Boolean).map(String)))
+          .reduce((s, h) => s + h.hours, 0);   // from shift readings (HMR)
         const rate = (trips > 0 && totalHours > 0) ? Math.round((trips / totalHours) * 100) / 100 : null;
         return { mid, label, model, trips, sessionCount, totalHours, rate };
       });
 
       document.getElementById('ex-cmp-subtitle').textContent =
-        `${dateFrom} → ${dateTo}  ·  ${exCmpAllRows.length} excavators`;
+        `${dateFrom} → ${dateTo}  ·  ${exCmpAllRows.length} excavators  ·  hours from shift readings` + (readings.failedDays ? `  ·  ⚠ readings missing for ${readings.failedDays} day${readings.failedDays === 1 ? '' : 's'}` : '');
 
       exCmpSortField = 'trips'; exCmpSortDir = -1;
       renderExCmpTable();
@@ -14852,11 +14904,12 @@
       Promise.all([
         fetchAllTripsForRange(dateFrom, dateTo),
         fetchMachineSessions(dateFrom, dateTo),
-        fetchMachineAssignments(dateFrom, dateTo)
-      ]).then(([trips, sessions, assignments]) => {
+        fetchMachineAssignments(dateFrom, dateTo),
+        fetchExcavatorReadings(dateFrom, dateTo)
+      ]).then(([trips, sessions, assignments, readings]) => {
         showLoading(false);
         const area = document.getElementById('ex-cards-area');
-        const cardHtml = buildExcavatorCard(machineId, trips, sessions, assignments, dateFrom, dateTo);
+        const cardHtml = buildExcavatorCard(machineId, trips, sessions, assignments, dateFrom, dateTo, readings);
         const wrapper = document.createElement('div');
         wrapper.innerHTML = cardHtml;
         area.appendChild(wrapper.firstElementChild);
