@@ -25019,7 +25019,10 @@
     // /equipment-people. Both flows end in the same preview -> confirm -> result screen.
     // bulk:pure:start
     const BULK_MAX_ROWS = 1000, BULK_MAX_BYTES = 5 * 1024 * 1024;
-    const BULK_OTHER_TYPES = ['dozer', 'grader', 'drill_machine', 'drill_compressor', 'loader', 'lmv', 'water_tanker', 'generator', 'diesel_tanker'];
+    const BULK_TYPE_NAMES = { dozer: 'Dozer', grader: 'Grader', drill_machine: 'Drill Machine', drill_compressor: 'Drill Compressor', loader: 'Loader',
+                              lmv: 'LMV', water_tanker: 'Water Tanker', generator: 'Generator', diesel_tanker: 'Diesel Tanker' };
+    const BULK_OTHER_TYPES = Object.keys(BULK_TYPE_NAMES);
+    const BULK_DRIVER_TYPES = ['lmv', 'water_tanker', 'diesel_tanker'];   // the rest have operators
     const BULK_CATS = [
       { key: 'workers',   label: 'Supervisors' },
       { key: 'drivers',   label: 'Drivers' },
@@ -25029,22 +25032,26 @@
       { key: 'others',    label: 'Other equipment', local: true },
       { key: 'people',    label: 'Other equipment: drivers & operators', local: true }
     ];
-    // [header, field, required, type]
-    const BULK_LOCAL = {
-      others: {
-        file: 'other_equipment_bulk_template.xlsx', sheet: 'Equipment',
-        cols: [['Equipment Type*', 'vehicle_type', true, 'type'], ['Number Plate*', 'number_plate', true, 'str'], ['Vehicle Number', 'vehicle_number', false, 'str'],
-               ['Model', 'model', false, 'str'], ['Fuel Tank Capacity', 'fuel_tank_capacity', false, 'float'], ['Water Tank Capacity', 'water_tank_capacity', false, 'float'],
-               ['Diesel Tanker Capacity', 'diesel_tanker_capacity', false, 'float'], ['Is Active (TRUE/FALSE)', 'is_active', false, 'bool']],
-        example: ['dozer', 'MH40 EF 1111', 'D-1', 'CAT D6', 300, 0, 0, 'TRUE']
-      },
-      people: {
-        file: 'other_equipment_people_bulk_template.xlsx', sheet: 'People',
-        cols: [['Equipment Type*', 'equipment_type', true, 'type'], ['Name*', 'name', true, 'str'], ['Person ID*', 'person_id', true, 'str'],
-               ['License Number', 'license_number', false, 'str'], ['Is Active (TRUE/FALSE)', 'is_active', false, 'bool']],
-        example: ['dozer', 'Anil Pawar', 'DZ-OP1', 'OL-2029-0100', 'TRUE']
+    // Template for one equipment type: only the columns that type has in the app.
+    // [header, field, required, type]. A generator may have no plate, so its vehicle number is the identifier.
+    const BULK_EXAMPLES = { dozer: ['CAT D6', 'DZ-01'], grader: ['CAT 140K', 'GR-01'], drill_machine: ['Atlas Copco D65', 'DM-01'], drill_compressor: ['Atlas XRVS', 'DC-01'],
+                            loader: ['JCB 432', 'LD-01'], lmv: ['Mahindra Bolero', 'LMV-01'], water_tanker: ['Tata 1613', 'WT-01'], generator: ['Cummins 125 kVA', 'GN-01'], diesel_tanker: ['Tata 2518', 'DT-01'] };
+    function bulkSpec(key, type) {
+      const name = BULK_TYPE_NAMES[type], gen = type === 'generator', drivers = BULK_DRIVER_TYPES.includes(type);
+      if (key === 'people') {
+        const who = drivers ? 'Drivers' : 'Operators';
+        return { file: `${type}_${who.toLowerCase()}_bulk_template.xlsx`, sheet: name + ' ' + who,
+          cols: [['Name*', 'name', true, 'str'], ['Person ID*', 'person_id', true, 'str'], ['License Number', 'license_number', false, 'str'], ['Is Active (TRUE/FALSE)', 'is_active', false, 'bool']],
+          example: drivers ? ['Suresh Yadav', 'DRV101', 'DL-2029-0001', 'TRUE'] : ['Anil Pawar', 'OP101', 'OL-2029-0100', 'TRUE'] };
       }
-    };
+      const cols = [[gen ? 'Number Plate' : 'Number Plate*', 'number_plate', !gen, 'str'], ['Model', 'model', false, 'str'], [gen ? 'Vehicle Number*' : 'Vehicle Number', 'vehicle_number', gen, 'str'],
+                    ['Fuel Tank Capacity (L)', 'fuel_tank_capacity', false, 'float']];
+      const ex = [gen ? '' : 'MH40 EF 1111', BULK_EXAMPLES[type][0], BULK_EXAMPLES[type][1], 300];
+      if (type === 'water_tanker') { cols.push(['Water Tank Capacity (L)', 'water_tank_capacity', false, 'float']); ex.push(5000); }
+      if (type === 'diesel_tanker') { cols.push(['Diesel Tanker Capacity (L)', 'diesel_tanker_capacity', false, 'float']); ex.push(8000); }
+      cols.push(['Is Active (TRUE/FALSE)', 'is_active', false, 'bool']); ex.push('TRUE');
+      return { file: `${type}_bulk_template.xlsx`, sheet: name, cols, example: ex };
+    }
     const bulkNorm = t => String(t == null ? '' : t).split('(')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
     const bulkBlank = v => v == null || (typeof v === 'string' && v.trim() === '');
     const bulkName = s => String(s).trim().replace(/\s+/g, ' ');
@@ -25054,11 +25061,6 @@
       const h = header.replace('*', '').split('(')[0].trim();
       if (bulkBlank(v)) { if (required) throw new Error('Missing required field: ' + h); return null; }
       if (type === 'str') return String(v).trim();
-      if (type === 'type') {
-        const t = String(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
-        if (!BULK_OTHER_TYPES.includes(t)) throw new Error(`'${h}' must be one of: ${BULK_OTHER_TYPES.join(', ')} (got '${v}')`);
-        return t;
-      }
       if (type === 'float') {
         const n = typeof v === 'number' ? v : Number(String(v).trim());
         if (!isFinite(n) || n < 0) throw new Error(`'${h}' must be a positive number (got '${v}')`);
@@ -25072,8 +25074,8 @@
     }
 
     // aoa = sheet as rows of cells (first row = headers). Returns { error } or { rows }.
-    function bulkParseLocal(key, aoa) {
-      const cols = BULK_LOCAL[key].cols;
+    function bulkParseLocal(key, type, aoa) {
+      const cols = bulkSpec(key, type).cols;
       if (!aoa.length) return { error: 'The file is empty.' };
       const byNorm = {}; cols.forEach(c => { byNorm[bulkNorm(c[0])] = c; byNorm[bulkNorm(c[1])] = c; });
       const idx = {}; (aoa[0] || []).forEach((h, i) => { const c = byNorm[bulkNorm(h)]; if (c) idx[i] = c; });
@@ -25085,20 +25087,22 @@
         for (const i in idx) { const v = (aoa[r] || [])[i]; raw[idx[i][0]] = v == null ? null : v; if (!bulkBlank(v)) any = true; }
         if (!any) continue;
         if (rows.length >= BULK_MAX_ROWS) return { error: `Too many rows. Maximum ${BULK_MAX_ROWS} rows per upload.` };
-        const fields = {}; let error = null;
+        const fields = { [key === 'others' ? 'vehicle_type' : 'equipment_type']: type }; let error = null;
         for (const i in idx) {
-          const [header, field, req, type] = idx[i];
-          try { fields[field] = bulkCoerce((aoa[r] || [])[i], type, req, header); } catch (e) { error = e.message; break; }
+          const [header, field, req, ftype] = idx[i];
+          try { fields[field] = bulkCoerce((aoa[r] || [])[i], ftype, req, header); } catch (e) { error = e.message; break; }
         }
         rows.push({ row_no: r + 1, fields, raw, error });
       }
       return { rows };
     }
 
-    // Duplicate key for a row: same type + same plate / person id, spaces and case ignored (like the app).
+    // Duplicate key: same type + same plate / person id, spaces and case ignored (like the app).
+    // Generators often have no plate (the app saves 'N/A'), so they are told apart by vehicle number.
     function bulkLocalKey(key, f) {
-      return key === 'others' ? f.vehicle_type + '|' + String(f.number_plate).replace(/\s+/g, '').toUpperCase()
-                              : f.equipment_type + '|' + String(f.person_id).replace(/\s+/g, '').toLowerCase();
+      const clean = s => String(s == null ? '' : s).replace(/\s+/g, '');
+      if (key === 'people') return f.equipment_type + '|' + clean(f.person_id).toLowerCase();
+      return f.vehicle_type + '|' + (f.vehicle_type === 'generator' ? clean(f.vehicle_number).toLowerCase() : clean(f.number_plate).toUpperCase());
     }
     // existing = Set of keys already in the database. Each entry carries the body to POST when valid.
     function bulkClassifyLocal(key, parsed, existing) {
@@ -25108,12 +25112,14 @@
         if (p.error) { e.status = 'error'; e.problem = p.error; return e; }
         const f = p.fields, k = bulkLocalKey(key, f);
         if (seen.has(k) || existing.has(k)) {
+          const what = key === 'people' ? `Person ID '${f.person_id}'` : f.vehicle_type === 'generator' ? `Vehicle number '${f.vehicle_number}'` : `Number plate '${f.number_plate}'`;
           e.status = 'duplicate';
-          e.problem = (key === 'others' ? `Number plate '${f.number_plate}'` : `Person ID '${f.person_id}'`) + (seen.has(k) ? ' appears twice in this file' : ' already exists for ' + (f.vehicle_type || f.equipment_type));
+          e.problem = what + (seen.has(k) ? ' appears twice in this file' : ' already exists');
         } else if (key === 'others') {
-          e.body = { vehicle_type: f.vehicle_type, number_plate: f.number_plate, vehicle_number: f.vehicle_number || '', model: f.model || '',
-                     fuel_tank_capacity: f.fuel_tank_capacity || 0, water_tank_capacity: f.water_tank_capacity || 0,
-                     diesel_tanker_capacity: f.diesel_tanker_capacity || 0, is_active: f.is_active !== false };
+          e.body = { vehicle_type: f.vehicle_type, number_plate: f.number_plate || 'N/A', vehicle_number: f.vehicle_number || '', model: f.model || '',
+                     fuel_tank_capacity: f.fuel_tank_capacity || 0, is_active: f.is_active !== false };
+          if (f.vehicle_type === 'water_tanker') e.body.water_tank_capacity = f.water_tank_capacity || 0;
+          if (f.vehicle_type === 'diesel_tanker') e.body.diesel_tanker_capacity = f.diesel_tanker_capacity || 0;
         } else {
           e.body = { equipment_type: f.equipment_type, name: bulkName(f.name), person_id: f.person_id, license_number: f.license_number || null, is_active: f.is_active !== false };
         }
@@ -25123,7 +25129,7 @@
     }
     // bulk:pure:end
 
-    const _bk = { key: 'workers', file: null, preview: null, local: null, siteId: '', busy: '', result: null };
+    const _bk = { key: 'workers', type: 'dozer', file: null, preview: null, local: null, siteId: '', busy: '', result: null };
     const bkIsAdmin = () => !!(currentUser && currentUser.is_admin === true);
 
     function bkEl(tag, attrs, ...kids) {
@@ -25137,9 +25143,9 @@
       return n;
     }
 
-    function openBulkPage(key, from) {
+    function openBulkPage(key, from, type) {
       if (!bkIsAdmin()) { showToast('Admin access required'); return; }
-      _bk.from = from || '';
+      _bk.from = from || ''; if (BULK_TYPE_NAMES[type]) _bk.type = type;
       document.getElementById('app').style.display = 'none';
       document.getElementById('manage-page').style.display = 'none';
       document.getElementById('bulk-page').style.display = 'block';
@@ -25178,9 +25184,8 @@
       const cat = BULK_CATS.find(c => c.key === _bk.key);
       try {
         if (cat.local) {
-          const s = BULK_LOCAL[cat.key], wb = XLSX.utils.book_new();
+          const s = bulkSpec(cat.key, _bk.type), wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([s.cols.map(c => c[0]), s.example]), s.sheet);
-          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Allowed Equipment Types'], ...BULK_OTHER_TYPES.map(t => [t])]), 'Allowed types');
           XLSX.writeFile(wb, s.file);
         } else {
           const res = await apiFetch(`${API}/bulk/template/${cat.key}`);
@@ -25202,9 +25207,9 @@
         if (cat.local) {
           const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
           const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: null, raw: true });
-          const p = bulkParseLocal(cat.key, aoa);
+          const p = bulkParseLocal(cat.key, _bk.type, aoa);
           if (p.error) throw new Error(p.error);
-          const entries = bulkClassifyLocal(cat.key, p.rows, await bkExisting(cat.key, p.rows));
+          const entries = bulkClassifyLocal(cat.key, p.rows, await bkExisting(cat.key, _bk.type));
           _bk.local = entries; _bk.preview = bkSummary(entries);
         } else {
           const fd = new FormData(); fd.append('file', f);
@@ -25216,20 +25221,11 @@
       _bk.busy = ''; bkRender();
     }
 
-    async function bkExisting(key, parsedRows) {
+    async function bkExisting(key, type) {
       const out = new Set();
-      if (key === 'others') {
-        const res = await apiFetch(`${API}/others`);
-        if (!res.ok) throw new Error(await bkErr(res));
-        (await res.json()).forEach(u => out.add(bulkLocalKey('others', u)));
-      } else {
-        const types = [...new Set(parsedRows.map(r => r.fields.equipment_type).filter(Boolean))];
-        for (const t of types) {
-          const res = await apiFetch(`${API}/equipment-people?equipment_type=${encodeURIComponent(t)}`);
-          if (!res.ok) throw new Error(await bkErr(res));
-          (await res.json()).forEach(p => out.add(bulkLocalKey('people', { equipment_type: t, person_id: p.person_id })));
-        }
-      }
+      const res = await apiFetch(key === 'others' ? `${API}/others?vehicle_type=${type}` : `${API}/equipment-people?equipment_type=${type}`);
+      if (!res.ok) throw new Error(await bkErr(res));
+      (await res.json()).forEach(d => out.add(bulkLocalKey(key, key === 'others' ? d : { equipment_type: type, person_id: d.person_id })));
       return out;
     }
     function bkSummary(entries) {
@@ -25246,7 +25242,7 @@
       try {
         if (cat.local) {
           // Re-check duplicates right before writing, then create the valid rows one by one.
-          const existing = await bkExisting(cat.key, _bk.local.map(e => ({ fields: { equipment_type: e.body && e.body.equipment_type } })));
+          const existing = await bkExisting(cat.key, _bk.type);
           const todo = _bk.local.filter(e => e.status === 'valid');
           let done = 0;
           for (const e of todo) {
@@ -25272,7 +25268,7 @@
       const r = _bk.result, cat = BULK_CATS.find(c => c.key === _bk.key);
       if (!cat.local) { bkSaveB64(r.errors_file.filename, r.errors_file.content_b64); return; }
       const safe = v => (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) ? "'" + v : v;   // keep Excel from running cells as formulas
-      const heads = BULK_LOCAL[cat.key].cols.map(c => c[0]);
+      const heads = bulkSpec(cat.key, _bk.type).cols.map(c => c[0]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[...heads, 'Problem'], ...r.bad.map(e => [...heads.map(h => safe(e.raw[h])), safe(e.problem)])]), 'Errors & Skipped');
       XLSX.writeFile(wb, `${cat.key}_errors_and_skipped.xlsx`);
@@ -25284,11 +25280,16 @@
       const cat = BULK_CATS.find(c => c.key === _bk.key), p = _bk.preview, r = _bk.result;
       const counts = items => bkEl('div', { class: 'bk-counts' }, items.map(([l, v, cls]) => bkEl('div', { class: 'bk-count ' + cls }, bkEl('b', {}, String(v)), l)));
       const steps = [];
+      if (cat.local) {
+        const pick = k => { Object.assign(_bk, { type: k, file: null, preview: null, local: null, result: null }); bkRender(); };
+        steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, 'Equipment type'), bkEl('p', {}, 'Each type has its own template with only the fields that type uses.'),
+          bkEl('div', { class: 'ms-chips' }, BULK_OTHER_TYPES.map(k => bkEl('button', { class: 'ms-chip' + (k === _bk.type ? ' on' : ''), disabled: _bk.busy ? '' : null, onclick: () => pick(k) }, BULK_TYPE_NAMES[k])))));
+      }
 
       steps.push(bkEl('div', { class: 'bk-step' }, bkEl('h3', {}, '1. Download the template'),
         bkEl('p', {}, 'One row per record. Columns marked * are required. Do not change the header row.'),
         cat.key === 'workers' ? bkEl('div', { class: 'bk-warn' }, 'This file holds login passwords in plain text. Delete it once uploaded.') : null,
-        bkEl('button', { class: 'bk-btn', onclick: bkTemplate }, 'Download template')));
+        bkEl('button', { class: 'bk-btn', onclick: bkTemplate }, cat.local ? `Download ${BULK_TYPE_NAMES[_bk.type]} template` : 'Download template')));
 
       if (cat.local) {
         const s = bkSites().find(x => x.id === currentSiteId);
@@ -25480,7 +25481,7 @@
         bkEl('div', { class: 'ms-tabs' },
           ...[['equipment', t.label + ' equipment'], ['people', t.people]].map(([k, l]) => bkEl('button', { class: 'bk-cat' + (_ms.tab === k ? ' on' : ''), onclick: () => { _ms.tab = k; _ms.q = ''; msRender(); } }, l))),
         bkEl('div', { class: 'ms-bar' }, q_, bkEl('span', { class: 'wp-count' }, `${c.active} active · ${c.inactive} inactive`),
-          bkEl('button', { class: 'bk-btn', onclick: () => openBulkPage(t.bulk[onEq ? 0 : 1], 'manage') }, 'Add in bulk')),
+          bkEl('button', { class: 'bk-btn', onclick: () => openBulkPage(t.bulk[onEq ? 0 : 1], 'manage', t.key) }, 'Add in bulk')),
         bkEl('div', { class: 'ms-list' }, list));
     }
 
