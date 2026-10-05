@@ -5643,6 +5643,62 @@
     .dep-live-card:hover .dep-card-hist-hint { opacity: 1; }
 
     /* ── DAILY OPERATIONS REPORT ─────────────────────────────────────────── */
+    /* ── FLEET SUMMARY ─────────────────────────────────────────────────── */
+    #fleet-summary-page { display:none; min-height:100vh; background:var(--bg);
+      --fl-s1:#2a78d6; --fl-s2:#eb6834; --fl-grid:#e7e6e2; }
+    :root[data-theme="dark"] #fleet-summary-page { --fl-s1:#3987e5; --fl-s2:#d95926; --fl-grid:#2c2c2a; }
+    .fl-body { max-width:1440px; margin:0 auto; padding:20px 24px 40px; }
+    .fl-controls { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+    .fl-status { font-size:12px; color:var(--text-secondary); padding-bottom:10px; }
+    .fl-banner { margin-bottom:12px; padding:10px 14px; border:1px solid var(--border-strong,var(--border)); border-left:4px solid #c0392b; background:var(--surface); font-size:13px; color:var(--text-primary); }
+    .fl-sheet { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:18px 22px 16px; transition:opacity .15s; }
+    .fl-sheet.loading { opacity:.55; }
+    .fl-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; padding-bottom:10px; margin-bottom:14px; border-bottom:2px solid var(--text-primary); }
+    .fl-head h1 { margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; color:var(--text-primary); }
+    .fl-head .m { font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); text-align:right; }
+    .fl-cols { display:grid; grid-template-columns:1fr 1fr; gap:0 26px; }
+    .fl-col { min-width:0; }
+    .fl-col + .fl-col { border-left:1px solid var(--border); padding-left:26px; }
+    .fl-h { display:flex; align-items:baseline; gap:10px; margin:0 0 10px; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-secondary); }
+    .fl-h em { font-style:normal; font-weight:500; letter-spacing:0; text-transform:none; color:var(--text-muted); }
+    .fl-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); margin-bottom:14px; }
+    .fl-k { background:var(--surface); padding:8px 10px 9px; min-width:0; }
+    .fl-k .l { display:block; font-size:10px; color:var(--text-secondary); }
+    .fl-k b { display:block; margin-top:2px; font-size:19px; font-weight:600; font-family:var(--font-mono); color:var(--text-primary); line-height:1.15; }
+    .fl-k b small { font-size:11px; font-weight:500; color:var(--text-secondary); margin-left:2px; }
+    .fl-k .s { display:block; margin-top:2px; font-size:10px; color:var(--text-muted); }
+    .fl-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; margin-bottom:14px; }
+    .fl-charts figure { margin:0; min-width:0; }
+    .fl-charts figcaption { font-size:11px; font-weight:600; color:var(--text-primary); margin-bottom:4px; }
+    .fl-cv { position:relative; height:176px; }
+    .fl-tbl { width:100%; border-collapse:collapse; font-size:11.5px; }
+    .fl-tbl th { text-align:right; font-size:10px; font-weight:600; color:var(--text-secondary); padding:4px 6px; border-bottom:1px solid var(--text-primary); white-space:nowrap; }
+    .fl-tbl td { text-align:right; padding:5px 6px; border-bottom:1px solid var(--border); font-family:var(--font-mono); color:var(--text-primary); }
+    .fl-tbl th:first-child, .fl-tbl td:first-child, .fl-tbl .t { text-align:left; }
+    .fl-tbl td.t { font-family:var(--font-main); color:var(--text-secondary); }
+    .fl-link { background:none; border:0; padding:0; font:inherit; font-weight:600; color:var(--text-primary); text-decoration:underline; text-decoration-color:var(--border-strong,var(--border)); text-underline-offset:3px; cursor:pointer; }
+    .fl-link:hover { text-decoration-color:var(--text-primary); }
+    .fl-more { margin-top:8px; background:none; border:0; padding:2px 0; font-size:12px; color:var(--text-secondary); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+    .fl-empty { padding:14px 0; font-size:12px; color:var(--text-secondary); }
+    .fl-foot { margin:14px 0 0; padding-top:10px; border-top:1px solid var(--border); font-size:11px; line-height:1.5; color:var(--text-secondary); }
+    .fl-foot b { color:var(--text-primary); font-weight:600; }
+    .fl-back { background:none; border:0; padding:0; margin-bottom:8px; font-size:12px; color:var(--text-secondary); cursor:pointer; }
+    .fl-src { display:inline-block; padding:1px 6px; border:1px solid var(--border-strong,var(--border)); border-radius:3px; font-family:var(--font-main); font-size:10px; color:var(--text-secondary); }
+    .fl-src.n { border-color:var(--fl-s2); color:var(--text-primary); }
+    @media (max-width:980px) { .fl-cols, .fl-charts { grid-template-columns:1fr; } .fl-col + .fl-col { border-left:0; padding-left:0; margin-top:22px; } .fl-kpis { grid-template-columns:repeat(2,1fr); } }
+    @media print {
+      @page { size:A4 landscape; margin:8mm; }
+      body.fl-printing > *:not(#fleet-summary-page) { display:none !important; }
+      body.fl-printing #fleet-summary-page .topbar, body.fl-printing .fl-controls, body.fl-printing .fl-more, body.fl-printing .fl-banner { display:none !important; }
+      body.fl-printing #fleet-summary-page { background:#fff; min-height:0; }
+      body.fl-printing .fl-body { padding:0; max-width:none; }
+      body.fl-printing .fl-sheet { border:0; padding:0; }
+      body.fl-printing .fl-cv { height:124px; }
+      body.fl-printing .fl-kpis { margin-bottom:8px; } body.fl-printing .fl-charts { margin-bottom:8px; gap:8px 14px; }
+      body.fl-printing .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
+      body.fl-printing .fl-tbl { font-size:10px; } body.fl-printing .fl-tbl td { padding:3px 5px; }
+    }
+
     #daily-operations-page { display:none; min-height:100vh; background:var(--bg); }
     .dos-body { max-width:1440px; margin:0 auto; padding:24px; }
     .dos-controls { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; padding:18px; margin-bottom:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
@@ -7582,6 +7638,15 @@
           </div>
         </div>
 
+        <!-- Fleet Summary -->
+        <div onclick="openReportFrom('fleet')" style="cursor:pointer;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:24px 28px;display:flex;align-items:flex-start;gap:18px;transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(16,185,129,.10)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+          <svg width="36" height="36" viewBox="0 0 36 36" style="flex-shrink:0;" aria-hidden="true"><rect x="3" y="20" width="7" height="13" fill="currentColor" opacity=".35"/><rect x="14" y="8" width="7" height="25" fill="currentColor" opacity=".6"/><rect x="25" y="14" width="7" height="19" fill="currentColor"/></svg>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:5px;">Fleet Summary</div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">One page for tippers and excavators: fuel, trips, hours, kms, breakdowns and their reasons, including breakdowns nobody reported. Print or save as PDF.</div>
+          </div>
+        </div>
+
         <!-- Daily Operations Report -->
         <div onclick="openReportFrom('daily-operations')" style="cursor:pointer;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:24px 28px;display:flex;align-items:flex-start;gap:18px;transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(16,185,129,.10)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
           <div style="font-size:36px;line-height:1;flex-shrink:0;">📋</div>
@@ -7592,6 +7657,28 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- FLEET SUMMARY REPORT PAGE -->
+  <div id="fleet-summary-page">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeReportToHub()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Fleet Summary</div>
+      <div class="topbar-user" style="display:flex;gap:8px;">
+        <button class="action-btn primary" onclick="flPrint()" style="height:30px;font-size:12px;">Print / PDF</button>
+      </div>
+    </div>
+    <div class="fl-body">
+      <div class="fl-controls">
+        <div class="dos-field"><label for="fl-from">From</label><input id="fl-from" type="date" onchange="flLoad()"></div>
+        <div class="dos-field"><label for="fl-to">To</label><input id="fl-to" type="date" onchange="flLoad()"></div>
+        <div class="dos-field"><label for="fl-pick">Single unit</label><select id="fl-pick" onchange="flPickUnit(this.value)" style="height:36px;min-width:165px;padding:0 10px;color:var(--text-primary);background:var(--surface);border:1px solid var(--border);border-radius:7px;font-family:var(--font-main);"><option value="">Choose a unit</option></select></div>
+        <span class="fl-status" id="fl-status"></span>
+      </div>
+      <div id="fl-banner"></div>
+      <div id="fl-main" class="fl-sheet"></div>
     </div>
   </div>
 
@@ -12538,7 +12625,7 @@
     // ── Reports Hub ───────────────────────────────────────────────────────────────
     const _ALL_REPORT_PAGES = [
       'driver-report-page', 'truck-report-page',
-      'fuel-page', 'excavator-page', 'daily-operations-page'
+      'fuel-page', 'excavator-page', 'daily-operations-page', 'fleet-summary-page'
     ];
 
     function openReportsHub() {
@@ -12570,6 +12657,7 @@
       else if (type === 'fuel')      { openFuelPage(); }
       else if (type === 'excavator') { openExcavatorPage(); }
       else if (type === 'daily-operations') { openDailyOperationsReport(); }
+      else if (type === 'fleet') { openFleetSummaryPage(); }
     }
 
     // ─── DAILY OPERATIONS REPORT ──────────────────────────────────────────────
@@ -15428,58 +15516,11 @@
     // Returns one event per truck/date/shift. Equipment Health logs are primary;
     // driver switches remain a secondary signal when no log was recorded.
     function getTruckBreakdownEvents(vehicleId, rangeTrips, statusLogs = []) {
-      // Secondary signal: another driver drove this truck's driver on a different
-      // truck later in the same shift, suggesting the original truck stopped.
-      const vNum = getVehicleNum(vehicleId);
-      const events = [];
-      // Group by date+shift
-      const byDS = {};
-      rangeTrips.forEach(t => {
-        const date = t.mining_date || (t.timestamp ? t.timestamp.split('T')[0] : null);
-        if (!date) return;
-        const k = `${date}||${t.shift || '?'}`;
-        if (!byDS[k]) byDS[k] = { date, shift: t.shift || '?', trips: [] };
-        byDS[k].trips.push(t);
-      });
-      Object.values(byDS).forEach(({ date, shift, trips }) => {
-        // For THIS truck: who drove it?
-        const driversOnThisTruck = new Set(
-          trips.filter(t => t.vehicle_id === vehicleId).map(t => t.driver_id).filter(Boolean)
-        );
-        // Was any of those drivers also detected driving a DIFFERENT truck AFTER this truck in same shift+date?
-        driversOnThisTruck.forEach(dId => {
-          // Get all trips for this driver in this shift
-          const driverTrips = trips.filter(t => t.driver_id === dId);
-          // Sort chronologically
-          driverTrips.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-          // Get sequence of unique consecutive trucks
-          const truckSequence = [];
-          driverTrips.forEach(t => {
-            const num = getVehicleNum(t.vehicle_id);
-            if (num && num !== '—' && truckSequence[truckSequence.length - 1] !== num) {
-              truckSequence.push(num);
-            }
-          });
-
-          if (truckSequence.length > 1) {
-            // A breakdown for THIS truck occurs if the driver drove it, and then drove something else.
-            // i.e., vNum appears in the sequence at an index before the last element.
-            let brokeDown = false;
-            for (let i = 0; i < truckSequence.length - 1; i++) {
-              if (truckSequence[i] === vNum) {
-                brokeDown = true;
-                break;
-              }
-            }
-            if (brokeDown) {
-              events.push({ date, shift, driver: getDriverName(dId), trucks: truckSequence, source: 'Driver switch' });
-            }
-          }
-        });
-      });
+      // Secondary signal: the shared driver-switch rule (fleetInferSwitches). This truck was left for another one
+      // by the same driver in the same shift, so it counts as broken down and the truck the driver ended on does not.
       const bySlot = new Map();
-      events.forEach(event => bySlot.set(`${event.date}||${event.shift}`, event));
+      fleetInferSwitches(rangeTrips).filter(e => e.id === String(vehicleId)).forEach(e =>
+        bySlot.set(`${e.date}||${e.shift}`, { date: e.date, shift: e.shift, driver: getDriverName(e.driverId), trucks: [getVehicleNum(e.id), getVehicleNum(e.toId)], source: 'Driver switch' }));
       trStatusEventForTruck(vehicleId, rangeTrips, statusLogs).forEach(event => {
         const key = `${event.date}||${event.shift}`;
         const inferred = bySlot.get(key);
@@ -26008,6 +26049,356 @@
     }
 
     /* ═══════════════════════ END DRILLING ═══════════════════════ */
+
+    /* ═══════════════════════ FLEET SUMMARY ═══════════════════════ */
+    // One-page report for tippers and excavators: fuel, trips, hours, kms, breakdowns and why. The rules sit in the
+    // fleet:pure block so tests/fleet-summary.test.js can run them without a browser.
+
+    // fleet:pure:start
+    // A deactivation whose note says the unit was idle, returned, transferred, on trial or serviced was taken off duty, not broken.
+    const FLEET_OFFDUTY = /\b(IDEL|IDLE|RETURN|TRANSFER|TRIAL|SERVICE|NO LIST|UNKNOWN|OTHER SITE)/;
+    const FLEET_REASONS = { TYRE: 'Tyre', ELECTRICAL: 'Electrical', SUSPENSION: 'Suspension', ENGINE: 'Engine', HYDRAULIC: 'Hydraulic', LEAKAGE: 'Leakage', BUCKET: 'Bucket / track' };
+    // Most deactivations are logged as "Others" with a free-text note. Order matters: the first pattern that matches wins.
+    const FLEET_CAUSES = [
+      ['Accident', /ACCIDENT|OVERTURN|DAMAGE/], ['Bucket / track', /BUCKET|TRACK/], ['Tyre', /TYRE|TIRE|WHEEL|HUB|PUNCTURE/],
+      ['Cooling', /COOLANT|OVER ?HEAT|RADIATOR/], ['Leakage', /LEAK|LICK/], ['Transmission', /GEAR|CLUTCH|PTO|SHAFT|BEARING|TRANSMISSION/],
+      ['Steering', /STEERING/], ['Suspension', /PATTA|U BOLT|SPRING|SUSPENSION|BALANCE/], ['Brakes', /BRAKE|BREAK|PAD\b/],
+      ['Engine', /PICKUP|RPM|DPF|AD ?BLUE|FAN BELT|EXCEL|RACE|ENGINE|DIESEL/], ['Hydraulic', /PRESSURE|HYDRAULIC/],
+      ['Electrical', /A\/C|ELECTR|SIGNAL|BATTERY|LIGHT|WIRING/], ['Body', /BODY|BRACKET|PALLA|TELBORD|TAILBOARD/]
+    ];
+    function fleetClassify(reason, notes) {
+      const r = String(reason || '').trim().toUpperCase(), n = String(notes || '').trim().toUpperCase();
+      if (FLEET_REASONS[r]) return { offDuty: false, cause: FLEET_REASONS[r] };
+      if (FLEET_OFFDUTY.test(n)) return { offDuty: true, cause: 'Off duty' };
+      const hit = FLEET_CAUSES.find(([, re]) => re.test(n));
+      return { offDuty: false, cause: hit ? hit[0] : 'Other' };
+    }
+
+    // Equipment Health logs -> one event per DEACTIVATED, closed by the next ACTIVATED of the same unit (hours null while still open).
+    // The shift comes from the log's own shift_id ("C_2026-06-30"), which is the mining date and avoids reading UTC timestamps as local.
+    function fleetPairLogs(logs) {
+      const ms = l => Date.parse(l.timestamp || l.created_at), by = {}, out = [];
+      [...logs].sort((a, b) => ms(a) - ms(b)).forEach(l => (by[l.entity_id] = by[l.entity_id] || []).push(l));
+      Object.values(by).forEach(xs => {
+        let open = null;
+        const close = end => {
+          if (!open) return;
+          const [shift, date] = String(open.shift_id || '').split('_'), reason = open.deactivation_reason || open.reason, notes = open.deactivation_notes || open.notes;
+          out.push({ id: String(open.entity_id), name: open.entity_name, type: open.entity_type, date: date || String(open.timestamp).slice(0, 10), shift: shift || '?',
+            startMs: ms(open), hours: end ? (ms(end) - ms(open)) / 3600e3 : null, openNow: !end, reason: reason || '', notes: notes || '', reported: true, ...fleetClassify(reason, notes) });
+          open = null;
+        };
+        xs.forEach(l => { if (l.action === 'DEACTIVATED') { close(null); open = l; } else if (l.action === 'ACTIVATED') close(l); });
+        close(null);
+      });
+      return out.sort((a, b) => a.startMs - b.startMs);
+    }
+
+    // Breakdowns nobody reported. If a driver runs truck 34 and then a different truck later in the same shift, 34 is counted as
+    // broken down (at its last trip) and the truck the driver ended on is not. Left out when we cannot tell:
+    //   - a truck the driver came back to (34 -> 35 -> 34): which one stopped is a guess
+    //   - another driver ran the old truck after the switch: it was still running, the driver was just moved
+    function fleetInferSwitches(trips) {
+      const slots = {}, out = [];
+      trips.forEach(t => {
+        const ts = Date.parse(t.timestamp);
+        if (!t.mining_date || !t.shift || !t.vehicle_id || !Number.isFinite(ts)) return;
+        (slots[`${t.mining_date}|${t.shift}`] = slots[`${t.mining_date}|${t.shift}`] || []).push({ v: String(t.vehicle_id), d: t.driver_id ? String(t.driver_id) : '', ts });
+      });
+      Object.keys(slots).forEach(key => {
+        const all = slots[key].sort((a, b) => a.ts - b.ts), [date, shift] = key.split('|'), byDriver = {};
+        all.forEach(t => { if (t.d) (byDriver[t.d] = byDriver[t.d] || []).push(t); });
+        Object.keys(byDriver).forEach(driver => {
+          const runs = [];
+          byDriver[driver].forEach(t => { const r = runs[runs.length - 1]; if (r && r.v === t.v) r.last = t.ts; else runs.push({ v: t.v, last: t.ts }); });
+          if (new Set(runs.map(r => r.v)).size < runs.length) return;
+          runs.slice(0, -1).forEach((r, i) => {
+            if (all.some(t => t.v === r.v && t.d !== driver && t.ts > r.last)) return;
+            out.push({ id: r.v, date, shift, driverId: driver, toId: runs[i + 1].v, atMs: r.last, hours: null, openNow: false, reported: false, offDuty: false, cause: 'Not reported', reason: '', notes: '' });
+          });
+        });
+      });
+      return out;
+    }
+
+    // Reported + inferred events whose shift falls in [from, to]. An inferred one is dropped when the same unit has any reported
+    // entry (even an idle one) in that shift: somebody already said what happened.
+    function fleetEvents(reported, inferred, from, to) {
+      const inRange = e => e.date >= from && e.date <= to, rep = reported.filter(inRange), seen = new Set(rep.map(e => `${e.id}|${e.date}|${e.shift}`));
+      return [...rep, ...inferred.filter(inRange).filter(e => !seen.has(`${e.id}|${e.date}|${e.shift}`))]
+        .sort((a, b) => a.date.localeCompare(b.date) || a.shift.localeCompare(b.shift) || b.reported - a.reported || String(a.id).localeCompare(String(b.id)));
+    }
+
+    // Per-unit and per-kind totals. units = [{ id, name, kind: 'tipper'|'excavator' }]; trips follow vehicle_id for tippers and
+    // machine_id for excavators, fuel follows the fill date, hours and kms are the meter movement in each shift's readings
+    // (a shift with a missing opening or closing is skipped). Units with nothing in the range are left out.
+    function fleetRollup({ units, trips, fuel, readings, events, from, to }) {
+      const add = (o, k, n) => { o[k] = (o[k] || 0) + n; };
+      const tripsBy = { tipper: {}, excavator: {} }, fuelBy = {}, slot = {}, evBy = {};
+      trips.forEach(t => { if (t.vehicle_id) add(tripsBy.tipper, String(t.vehicle_id), 1); if (t.machine_id) add(tripsBy.excavator, String(t.machine_id), 1); });
+      fuel.forEach(f => { const d = String(f.refill_date || '').slice(0, 10); if (d >= from && d <= to) add(fuelBy, String(f.vehicle_id), Number(f.litres_filled) || 0); });
+      readings.forEach(r => {
+        const id = String(r.vehicle_id || r.equipment_id || r.machine_id || ''), date = String(r.date || '').slice(0, 10);
+        if (!id || date < from || date > to) return;
+        ['HMR', 'KMR'].forEach(m => {
+          const x = (r.readings && r.readings[m]) || {}, o = x.opening_value, c = x.closing_value;
+          if (o == null || c == null || !Number.isFinite(Number(o)) || !Number.isFinite(Number(c)) || Number(c) < Number(o)) return;
+          const k = `${m}|${id}|${date}|${String(r.shift).toUpperCase()}`, e = slot[k] || (slot[k] = { m, id, lo: Infinity, hi: -Infinity });
+          e.lo = Math.min(e.lo, Number(o)); e.hi = Math.max(e.hi, Number(c));
+        });
+      });
+      const meter = { HMR: {}, KMR: {} };
+      Object.values(slot).forEach(e => add(meter[e.m], e.id, e.hi - e.lo));
+      events.forEach(e => (evBy[e.id] = evBy[e.id] || []).push(e));
+      const out = { tipper: { units: [], totals: null }, excavator: { units: [], totals: null }, offDuty: 0, inferred: 0 };
+      ['tipper', 'excavator'].forEach(kind => {
+        const totals = { units: 0, trips: 0, fuelL: 0, hours: 0, kms: 0, bd: 0, reported: 0, inferred: 0, downtimeH: 0, unitsWithBd: 0, causes: {}, byDay: {} };
+        units.filter(u => u.kind === kind).forEach(u => {
+          const evs = evBy[u.id] || [], bds = evs.filter(e => !e.offDuty), row = {
+            id: u.id, name: u.name, kind, trips: tripsBy[kind][u.id] || 0, fuelL: fuelBy[u.id] || 0, hours: meter.HMR[u.id] || 0, kms: kind === 'tipper' ? meter.KMR[u.id] || 0 : 0,
+            bd: bds.length, reported: bds.filter(e => e.reported).length, inferred: bds.filter(e => !e.reported).length,
+            downtimeH: bds.reduce((a, e) => a + (e.hours || 0), 0), openNow: bds.filter(e => e.openNow).length, offDuty: evs.length - bds.length, causes: {}, events: evs
+          };
+          bds.forEach(e => add(row.causes, e.cause, 1));
+          if (!(row.trips || row.fuelL || row.hours || row.kms || evs.length)) return;
+          out[kind].units.push(row);
+          totals.units++; ['trips', 'fuelL', 'hours', 'kms', 'bd', 'reported', 'inferred', 'downtimeH'].forEach(k => { totals[k] += row[k]; });
+          if (row.bd) totals.unitsWithBd++;
+          bds.forEach(e => { add(totals.causes, e.cause, 1); const d = totals.byDay[e.date] || (totals.byDay[e.date] = { reported: 0, inferred: 0 }); d[e.reported ? 'reported' : 'inferred']++; });
+          out.offDuty += row.offDuty; out.inferred += row.inferred;
+        });
+        out[kind].totals = totals;
+      });
+      return out;
+    }
+    // fleet:pure:end
+
+    // ── page: loading ──
+    const FL_MAX_DAYS = 31, FL_KIND = { tipper: 'Tippers', excavator: 'Excavators' };
+    let _fl = { data: null, trips: [], price: null, from: '', to: '', charts: [], unit: null, open: { tipper: false, excavator: false }, seq: 0 };
+    const flEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const flNum = (n, d = 0) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: d });
+    const flDate = s => { const [y, m, d] = String(s).split('-'); return `${d}/${m}/${y}`; };
+
+    function openFleetSummaryPage() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('reports-hub-page').style.display = 'none';
+      document.getElementById('fleet-summary-page').style.display = 'block';
+      if (!document.getElementById('fl-from').value) {
+        const t = new Date();
+        document.getElementById('fl-from').value = dosLocalDateString(new Date(t.getFullYear(), t.getMonth(), 1));
+        document.getElementById('fl-to').value = dosLocalDateString(t);
+      }
+      flLoad();
+    }
+
+    // The status-log endpoint caps a page at 500. Keep paging; if it ignores skip it hands back the same page, so stop.
+    async function flFetchStatusLogs(start, end) {
+      const out = []; let firstId = null;
+      for (let page = 0; page < 20; page++) {
+        const res = await apiFetch(`${API}/equipment-status-logs?${new URLSearchParams({ start_date: start, end_date: end, limit: 500, skip: page * 500 })}`);
+        if (!res.ok) throw new Error(`Equipment status logs returned ${res.status}`);
+        const data = await res.json(), rows = Array.isArray(data) ? data : (data.logs || []);
+        if (!rows.length || (page && rows[0]._id === firstId)) break;
+        firstId = page ? firstId : rows[0]._id;
+        out.push(...rows);
+        if (rows.length < 500) break;
+      }
+      return out;
+    }
+    async function flFetchReadings(start, end) {
+      const dates = dosListDates(start, end), rows = []; let failed = 0;
+      for (let i = 0; i < dates.length; i += 8) {
+        await Promise.all(dates.slice(i, i + 8).map(async d => {
+          try {
+            const res = await apiFetch(`${API}/shift-readings?date=${encodeURIComponent(d)}`);
+            if (!res.ok) { failed++; return; }
+            const data = await res.json(); if (Array.isArray(data)) rows.push(...data);
+          } catch (_) { failed++; }
+        }));
+      }
+      return { rows, failed };
+    }
+    const flList = async path => { const r = await apiFetch(`${API}/${path}`); if (!r.ok) throw new Error(`${path} returned ${r.status}`); const d = await r.json(); return Array.isArray(d) ? d : (d.results || d.items || d.vehicles || d.machines || []); };
+
+    async function flLoad() {
+      const from = document.getElementById('fl-from').value, to = document.getElementById('fl-to').value, banner = document.getElementById('fl-banner'), main = document.getElementById('fl-main');
+      banner.innerHTML = '';
+      const days = dashboardDateRange(from, to, FL_MAX_DAYS + 1).length;
+      if (!from || !to || from > to) { main.innerHTML = '<div class="fl-empty">Pick a start and end date.</div>'; return; }
+      if (days > FL_MAX_DAYS) { main.innerHTML = `<div class="fl-empty">The range is longer than ${FL_MAX_DAYS} days. Pick a shorter one: every day needs its own shift-readings request.</div>`; return; }
+      const seq = ++_fl.seq, status = document.getElementById('fl-status');
+      status.textContent = 'Loading trips, fuel, shift readings and breakdown logs…';
+      if (_fl.data) main.classList.add('loading'); else main.innerHTML = '<div class="fl-empty">Loading…</div>';
+      try {
+        const [trips, vehicles, machines, fuel, purchases, readings, logs] = await Promise.all([
+          fetchAllTripsForRange(from, to), flList('vehicles'), flList('machines'),
+          dosFetchPaged('fuel-logs', `?start_date=${from}&end_date=${to}`),
+          dosFetchPaged('fuel-purchases', `?start_date=${from}&end_date=${to}`).catch(() => []),
+          flFetchReadings(from, to),
+          flFetchStatusLogs(ovShiftDate(from, -30), ovShiftDate(to, 30))   // wide, so a breakdown that closes after the range still gets its hours
+        ]);
+        if (seq !== _fl.seq) return; // a newer range was picked while this one loaded
+        const units = [
+          ...vehicles.map(v => ({ id: String(v._id), name: v.vehicle_number || v.number_plate || String(v._id), kind: 'tipper' })),
+          ...machines.map(m => ({ id: String(m._id), name: m.machine_number || m.machine_id || String(m._id), kind: 'excavator' }))
+        ];
+        const events = fleetEvents(fleetPairLogs(logs.filter(l => l.entity_type === 'vehicle' || l.entity_type === 'machine')), fleetInferSwitches(trips), from, to);
+        const qty = purchases.reduce((a, p) => a + (Number(p.quantity_litres) || 0), 0), cost = purchases.reduce((a, p) => a + (Number(p.total_price) || 0), 0);
+        _fl = { ..._fl, from, to, trips, price: qty > 0 ? cost / qty : null, unit: null, data: fleetRollup({ units, trips, fuel, readings: readings.rows, events, from, to }) };
+        if (readings.failed) banner.innerHTML = `<div class="fl-banner">Shift readings failed to load for ${readings.failed} of ${days} days, so engine hours and kms are too low.</div>`;
+        const pick = document.getElementById('fl-pick');
+        pick.innerHTML = '<option value="">Choose a unit</option>' + ['tipper', 'excavator'].map(k => `<optgroup label="${FL_KIND[k]}">${_fl.data[k].units.map(u => `<option value="${k}|${flEsc(u.id)}">${flEsc(u.name)}</option>`).join('')}</optgroup>`).join('');
+        status.textContent = `Updated ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`;
+        main.classList.remove('loading');
+        flRender();
+      } catch (e) {
+        if (seq !== _fl.seq) return;
+        console.error(e);
+        main.classList.remove('loading'); status.textContent = '';
+        banner.innerHTML = `<div class="fl-banner">Could not build the report: ${flEsc(e.message)}. Nothing below is current. Try Refresh by changing the date.</div>`;
+      }
+    }
+
+    // ── page: drawing ──
+    function flTheme() {
+      const cs = getComputedStyle(document.getElementById('fleet-summary-page')), v = n => cs.getPropertyValue(n).trim();
+      return { s1: v('--fl-s1'), s2: v('--fl-s2'), grid: v('--fl-grid'), ink: v('--text-primary'), sub: v('--text-secondary'), surface: v('--surface') };
+    }
+    function flKillCharts() { _fl.charts.forEach(c => c.destroy()); _fl.charts = []; }
+    // Value at the bar tip (text token, not the series colour).
+    const flTipPlugin = t => ({ id: 'flTip', afterDatasetsDraw(ch) {
+      const ctx = ch.ctx; ctx.save(); ctx.fillStyle = t.ink; ctx.font = '600 10px ui-monospace, Menlo, monospace'; ctx.textBaseline = 'middle';
+      ch.getDatasetMeta(0).data.forEach((b, i) => ctx.fillText(flNum(ch.data.datasets[0].data[i]), b.x + 5, b.y)); ctx.restore();
+    } });
+    // One bar chart: thin bars, 4px rounded data end square at the baseline, hairline grid, legend only for 2+ series.
+    function flChart(id, labels, datasets, o = {}) {
+      const el = document.getElementById(id); if (!el) return;
+      const t = flTheme(), horiz = !!o.horizontal, stacked = !!o.stacked, many = datasets.length > 1;
+      _fl.charts.push(new Chart(el, {
+        type: 'bar',
+        data: { labels, datasets: datasets.map(ds => ({ borderRadius: 4, borderSkipped: stacked ? false : horiz ? 'left' : 'bottom', maxBarThickness: 18, categoryPercentage: .8, barPercentage: horiz ? .85 : 1, borderColor: t.surface, borderWidth: stacked ? { top: 2 } : 0, ...ds })) },
+        plugins: o.tips ? [flTipPlugin(t)] : [],
+        options: {
+          indexAxis: horiz ? 'y' : 'x', responsive: true, maintainAspectRatio: false, animation: false,
+          layout: { padding: { right: o.tips ? 38 : 4, top: 2 } },
+          interaction: { mode: 'index', axis: horiz ? 'y' : 'x', intersect: false },
+          scales: {
+            [horiz ? 'x' : 'y']: { stacked, beginAtZero: true, border: { display: false }, grid: { color: t.grid, lineWidth: 1 }, ticks: { color: t.sub, font: { size: 10 }, precision: 0, maxTicksLimit: 5, callback: v => flNum(v) } },
+            [horiz ? 'y' : 'x']: { stacked, border: { color: t.grid }, grid: { display: false }, ticks: { color: t.sub, font: { size: horiz ? 9 : 10 }, autoSkip: !horiz, maxTicksLimit: horiz ? undefined : 10, maxRotation: 0 } }
+          },
+          plugins: {
+            legend: { display: many, position: 'bottom', labels: { color: t.sub, boxWidth: 8, boxHeight: 8, font: { size: 10 }, padding: 8 } },
+            tooltip: { backgroundColor: '#1a1a19', titleColor: '#c3c2b7', bodyColor: '#ffffff', padding: 8, cornerRadius: 4, boxWidth: 8, boxHeight: 8, boxPadding: 4,
+              callbacks: { label: c => ` ${flNum(c.parsed[horiz ? 'x' : 'y'], o.dec || 0)}${o.unit ? ' ' + o.unit : ''}${many ? '  ' + c.dataset.label : ''}` } }
+          }
+        }
+      }));
+    }
+    const flTop = (units, key, n = 10) => units.filter(u => u[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, n);
+    const flMainCause = u => Object.entries(u.causes).sort((a, b) => b[1] - a[1])[0];
+    const flTile = (label, value, unit, sub) => `<div class="fl-k"><span class="l">${label}</span><b>${value}${unit ? `<small>${unit}</small>` : ''}</b>${sub ? `<span class="s">${sub}</span>` : ''}</div>`;
+
+    function flKpis(kind, t) {
+      const price = _fl.price, tiles = [
+        flTile('Fuel issued', flNum(t.fuelL), 'L', price && t.fuelL ? `${fuelRupee(t.fuelL * price)} at ₹${price.toFixed(0)}/L` : ''),
+        flTile('Trips', flNum(t.trips), '', t.units > 1 ? `${flNum(t.trips / t.units, 0)} per unit` : ''),
+        flTile('Engine hours', flNum(t.hours, 0), 'h', ''),
+        kind === 'tipper' ? flTile('Kms driven', flNum(t.kms), 'km', '') : flTile('Fuel per hour', t.hours > 0 ? flNum(t.fuelL / t.hours, 1) : '—', t.hours > 0 ? 'L/h' : '', 'fills ÷ engine hours'),
+        flTile('Breakdowns', flNum(t.bd), '', t.bd ? `${t.reported} reported, ${t.inferred} not reported` : 'none in range'),
+        flTile('Downtime', flNum(t.downtimeH, 0), 'h', t.bd ? 'closed breakdowns only' : ''),
+        flTile('Units broken down', `${t.unitsWithBd} <small>of ${t.units}</small>`, '', ''),
+        flTile('Per breakdown', t.bd ? flNum(t.trips / t.bd, 0) : '—', t.bd ? 'trips' : '', t.bd ? 'trips between breakdowns' : '')
+      ];
+      return tiles;
+    }
+    function flUnitRows(kind, list) {
+      return list.map(u => { const mc = flMainCause(u), id = flEsc(u.id); return `<tr>
+        <td><button class="fl-link" onclick="flOpenUnit('${kind}','${id}')">${flEsc(u.name)}</button></td>
+        <td>${u.bd}${u.inferred ? ` <span class="fl-src n" title="breakdowns inferred from a driver switch, not reported">${u.inferred} not rep.</span>` : ''}</td>
+        <td>${u.bd ? flNum(u.downtimeH, 1) + (u.openNow ? '+' : '') : '—'}</td><td class="t">${mc ? flEsc(mc[0]) + (mc[1] > 1 ? ' ×' + mc[1] : '') : '—'}</td>
+        <td>${flNum(u.fuelL)}</td><td>${flNum(u.trips)}</td><td>${flNum(u.hours, 1)}</td></tr>`; }).join('');
+    }
+    const flTblHead = '<thead><tr><th>Unit</th><th>Breakdowns</th><th>Down h</th><th class="t">Main cause</th><th>Fuel L</th><th>Trips</th><th>Hours</th></tr></thead>';
+
+    function flRender() {
+      flKillCharts();
+      const d = _fl.data, main = document.getElementById('fl-main'), days = dashboardDateRange(_fl.from, _fl.to, FL_MAX_DAYS + 1);
+      const any = d.tipper.totals.units + d.excavator.totals.units;
+      if (!any) { main.innerHTML = '<div class="fl-empty">No trips, fuel, shift readings or breakdowns for either fleet in this range.</div>'; return; }
+      const col = kind => {
+        const t = d[kind].totals, units = d[kind].units, worst = units.filter(u => u.bd).sort((a, b) => b.bd - a.bd || b.downtimeH - a.downtimeH).slice(0, 5);
+        return `<section class="fl-col" aria-label="${FL_KIND[kind]}">
+          <h2 class="fl-h"><span>${FL_KIND[kind]}</span><em>${t.units} active in range</em></h2>
+          <div class="fl-kpis">${flKpis(kind, t).join('')}</div>
+          <div class="fl-charts">
+            <figure><figcaption>Fuel issued, top 10 (L)</figcaption><div class="fl-cv"><canvas id="fl-${kind}-fuel" role="img" aria-label="Fuel issued by ${kind}, top 10"></canvas></div></figure>
+            <figure><figcaption>Trips, top 10</figcaption><div class="fl-cv"><canvas id="fl-${kind}-trips" role="img" aria-label="Trips by ${kind}, top 10"></canvas></div></figure>
+            <figure><figcaption>Breakdowns by cause</figcaption><div class="fl-cv"><canvas id="fl-${kind}-cause" role="img" aria-label="Breakdowns by cause"></canvas></div></figure>
+            <figure><figcaption>Breakdowns per day</figcaption><div class="fl-cv"><canvas id="fl-${kind}-day" role="img" aria-label="Breakdowns per day, reported and not reported"></canvas></div></figure>
+          </div>
+          ${worst.length ? `<table class="fl-tbl">${flTblHead}<tbody>${flUnitRows(kind, worst)}</tbody></table>` : '<div class="fl-empty">No breakdowns in this range.</div>'}
+          <button class="fl-more" onclick="flToggleAll('${kind}')" aria-expanded="${_fl.open[kind]}">${_fl.open[kind] ? 'Hide' : 'Show'} all ${units.length} units as a table</button>
+          <div id="fl-all-${kind}">${_fl.open[kind] ? flAllTable(kind) : ''}</div>
+        </section>`;
+      };
+      const tb = d.tipper.totals, eb = d.excavator.totals;
+      main.innerHTML = `<div class="fl-head"><h1>Fleet summary</h1><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)} · ${days.length} ${days.length === 1 ? 'day' : 'days'}${_fl.price ? ` · diesel ₹${_fl.price.toFixed(0)}/L average purchase` : ''}</div></div>
+        <div class="fl-cols">${col('tipper')}${col('excavator')}</div>
+        <p class="fl-foot"><b>${tb.bd + eb.bd} breakdowns</b> in the range (${tb.reported + eb.reported} reported in Equipment Health, ${tb.inferred + eb.inferred} not reported). A breakdown is <b>not reported</b> when a driver ran one tipper and later in the same shift ran a different one: the first tipper is counted, the one the driver ended on is not. A driver who goes back to the first tipper is left out, and so is a tipper someone else drove afterwards. Not inferred for excavators.
+        ${d.offDuty ? `<b>${d.offDuty}</b> deactivations were idle, returned, transferred, trial or service entries and are not counted as breakdowns. ` : ''}Fuel is what was issued in the range, not what was burned. Hours and kms are meter movement from shift readings; a shift with a missing opening or closing reading is skipped.</p>`;
+      ['tipper', 'excavator'].forEach(kind => {
+        const t = d[kind].totals, units = d[kind].units, fuelTop = flTop(units, 'fuelL'), tripTop = flTop(units, 'trips'), causes = Object.entries(t.causes).sort((a, b) => b[1] - a[1]);
+        const t1 = flTheme(), name = u => u.name;
+        flChart(`fl-${kind}-fuel`, fuelTop.map(name), [{ label: 'Fuel issued', data: fuelTop.map(u => Math.round(u.fuelL)), backgroundColor: t1.s1 }], { horizontal: true, tips: true, unit: 'L' });
+        flChart(`fl-${kind}-trips`, tripTop.map(name), [{ label: 'Trips', data: tripTop.map(u => u.trips), backgroundColor: t1.s1 }], { horizontal: true, tips: true });
+        flChart(`fl-${kind}-cause`, causes.map(c => c[0]), [{ label: 'Breakdowns', data: causes.map(c => c[1]), backgroundColor: t1.s1 }], { horizontal: true, tips: true });
+        flChart(`fl-${kind}-day`, days.map(x => x.slice(8)), [
+          { label: 'Reported', data: days.map(x => (t.byDay[x] || {}).reported || 0), backgroundColor: t1.s1 },
+          { label: 'Not reported', data: days.map(x => (t.byDay[x] || {}).inferred || 0), backgroundColor: t1.s2 }], { stacked: true });
+      });
+    }
+    function flAllTable(kind) {
+      const list = [..._fl.data[kind].units].sort((a, b) => b.bd - a.bd || b.fuelL - a.fuelL);
+      return `<table class="fl-tbl" style="margin-top:6px">${flTblHead}<tbody>${flUnitRows(kind, list)}</tbody></table>`;
+    }
+    function flToggleAll(kind) { _fl.open[kind] = !_fl.open[kind]; flRender(); }
+    function flPickUnit(v) { if (!v) return; const [kind, id] = v.split('|'); flOpenUnit(kind, id); document.getElementById('fl-pick').value = ''; }
+
+    // ── page: one unit ──
+    function flOpenUnit(kind, id) {
+      const u = _fl.data[kind].units.find(x => x.id === id); if (!u) return;
+      _fl.unit = { kind, id }; flKillCharts();
+      const days = dashboardDateRange(_fl.from, _fl.to, FL_MAX_DAYS + 1), perDay = {};
+      _fl.trips.forEach(t => { if (String(kind === 'tipper' ? t.vehicle_id : t.machine_id) === id && t.mining_date) perDay[t.mining_date] = (perDay[t.mining_date] || 0) + 1; });
+      const bdDays = new Set(u.events.filter(e => !e.offDuty).map(e => e.date));
+      const src = e => e.reported ? '<span class="fl-src">Reported</span>' : '<span class="fl-src n">Not reported</span>';
+      const hrs = e => e.offDuty ? 'off duty' : e.openNow ? 'still down' : e.hours == null ? '—' : flNum(e.hours, 1) + ' h';
+      const t = { units: 1, ...u, downtimeH: u.downtimeH };
+      document.getElementById('fl-main').innerHTML = `<button class="fl-back" onclick="flBackToFleet()">← Fleet summary</button>
+        <div class="fl-head"><h1>${kind === 'tipper' ? 'Tipper' : 'Excavator'} ${flEsc(u.name)}</h1><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)}</div></div>
+        <div class="fl-kpis" style="grid-template-columns:repeat(6,1fr)">${flKpis(kind, { ...t, unitsWithBd: u.bd ? 1 : 0 }).slice(0, 6).join('')}</div>
+        <div class="fl-charts" style="grid-template-columns:2fr 1fr">
+          <figure><figcaption>Trips per day. Orange days had a breakdown</figcaption><div class="fl-cv"><canvas id="fl-unit-day" role="img" aria-label="Trips per day for this unit"></canvas></div></figure>
+          <figure><figcaption>Breakdowns by cause</figcaption><div class="fl-cv"><canvas id="fl-unit-cause" role="img" aria-label="Breakdowns by cause for this unit"></canvas></div></figure>
+        </div>
+        ${u.events.length ? `<table class="fl-tbl"><thead><tr><th>Date</th><th>Shift</th><th class="t">Source</th><th class="t">Cause</th><th class="t">Note</th><th>Downtime</th></tr></thead><tbody>${u.events.map(e => `<tr><td>${flDate(e.date)}</td><td>${flEsc(e.shift)}</td><td class="t">${src(e)}</td><td class="t">${flEsc(e.cause)}</td><td class="t">${flEsc(e.reported ? [e.reason, e.notes].filter(Boolean).join(': ') : 'driver moved to tipper ' + ((_fl.data[kind].units.find(x => x.id === e.toId) || {}).name || 'another'))}</td><td>${hrs(e)}</td></tr>`).join('')}</tbody></table>` : '<div class="fl-empty">No breakdowns or off-duty entries for this unit in the range.</div>'}`;
+      const t1 = flTheme(), causes = Object.entries(u.causes).sort((a, b) => b[1] - a[1]);
+      flChart('fl-unit-day', days.map(x => x.slice(8)), [
+        { label: 'Trips', data: days.map(x => bdDays.has(x) ? 0 : perDay[x] || 0), backgroundColor: t1.s1 },
+        { label: 'Trips on a day with a breakdown', data: days.map(x => bdDays.has(x) ? perDay[x] || 0 : 0), backgroundColor: t1.s2 }], { stacked: true });
+      flChart('fl-unit-cause', causes.map(c => c[0]), [{ label: 'Breakdowns', data: causes.map(c => c[1]), backgroundColor: t1.s1 }], { horizontal: true, tips: true });
+    }
+    function flBackToFleet() { _fl.unit = null; flRender(); }
+
+    function flPrint() {
+      document.body.classList.add('fl-printing');
+      const done = () => { document.body.classList.remove('fl-printing'); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      _fl.charts.forEach(c => c.resize());
+      setTimeout(() => window.print(), 100);
+    }
+    /* ═══════════════════════ END FLEET SUMMARY ═══════════════════════ */
 
     /* ═══════════════════════ CONTROL ROOM ═══════════════════════ */
     // The page the mines manager leaves open all day. Data comes from the Deployments page's own pipeline:
