@@ -8927,7 +8927,7 @@
             <tr>
               <th>Equipment</th>
               <th>Driver / Operator</th>
-              <th>Shift</th>
+              <th>Shift / Date</th>
               <th>KMR Opening</th>
               <th>KMR Closing</th>
               <th>HMR Opening</th>
@@ -23839,17 +23839,7 @@
         return;
       }
 
-      rows.sort((a, b) => {
-        // Primary: newest date first for multi-day ranges
-        const da = dashboardDate(a.date || a.deployed_since), db = dashboardDate(b.date || b.deployed_since);
-        if (da < db) return  1;
-        if (da > db) return -1;
-        // Secondary: status order (complete first)
-        const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
-        const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
-        if (sa !== sb) return sa - sb;
-        return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
-      });
+      rows.sort(srcCompareRows);
       _srcRenderedRows = rows;
 
       tbody.innerHTML = rows.map((d, idx) => {
@@ -23886,7 +23876,8 @@
         return '<tr data-src-row-index="' + idx + '" style="' + rowBg + 'border-bottom:1px solid var(--border);">' +
           '<td style="font-family:var(--font-mono);font-weight:600;">' + srcGetEquipmentCode(d) + adminBadge + '</td>' +
           '<td>' + srcGetPersonName(d) + '</td>' +
-          '<td><span class="dep-shift-badge">' + (d.shift || '\u2014') + '</span></td>' +
+          '<td><span class="dep-shift-badge">' + (d.shift || '\u2014') + '</span>' +
+            '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">' + srcRowDateLabel(d) + '</div></td>' +
           mkCell('kmr_opening', d.kmr_opening_added, d.kmr_opening_value, d.kmr_opening_timestamp, d.kmr_opening_by, isTip) +
           mkCell('kmr_closing', d.kmr_closing_added, d.kmr_closing_value, d.kmr_closing_timestamp, d.kmr_closing_by, isTip) +
           mkCell('hmr_opening', d.hmr_opening_added, d.hmr_opening_value, d.hmr_opening_timestamp, d.hmr_opening_by, true) +
@@ -23905,29 +23896,43 @@
       }).join('');
     }
 
+    // Chronological: date, then shift A→B→C, then status and equipment as tie-breakers.
+    function srcCompareRows(a, b) {
+      const da = dashboardDate(a.date || a.deployed_since), db = dashboardDate(b.date || b.deployed_since);
+      if (da !== db) return da < db ? -1 : 1;
+      const sh = String(a.shift || '').toUpperCase().localeCompare(String(b.shift || '').toUpperCase());
+      if (sh) return sh;
+      const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
+      const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
+      if (sa !== sb) return sa - sb;
+      return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    // Deployment date as dd/mm/yyyy; deployed_since is the fallback when a row carries no date.
+    function srcRowDateLabel(d) {
+      const iso = dashboardDate(d.date || d.deployed_since);
+      return iso ? iso.split('-').reverse().join('/') : '';
+    }
+
     function srcExportCsv() {
       const statusFilter = _srcStatusFilter;
       let rows = _srcFiltered.slice();
       if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
-      rows.sort((a, b) => {
-        const sa = SRC_STATUS_ORDER[srcGetStatus(a)] ?? 3;
-        const sb = SRC_STATUS_ORDER[srcGetStatus(b)] ?? 3;
-        if (sa !== sb) return sa - sb;
-        return (srcGetEquipmentCode(a) || '').localeCompare(srcGetEquipmentCode(b) || '', undefined, { numeric: true, sensitivity: 'base' });
-      });
+      rows.sort(srcCompareRows);
       const date = document.getElementById('src-date-from').value || 'unknown';
       const esc  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const lines = [
         `${currentCompanyName || 'Tripman'} — Shift Readings Compliance`,
         `Date: ${date}  ·  Shift: ${_srcCurrentShift === 'all' ? 'All' : _srcCurrentShift}  ·  Generated: ${new Date().toLocaleString('en-IN')}`,
         '',
-        'Equipment,Driver/Operator,Shift,KMR Opening,KMR Closing,HMR Opening,HMR Closing,Status,Admin Override,KMR Open Timestamp,KMR Open By,KMR Close Timestamp,KMR Close By,HMR Open Timestamp,HMR Open By,HMR Close Timestamp,HMR Close By',
+        'Equipment,Driver/Operator,Shift,Date,KMR Opening,KMR Closing,HMR Opening,HMR Closing,Status,Admin Override,KMR Open Timestamp,KMR Open By,KMR Close Timestamp,KMR Close By,HMR Open Timestamp,HMR Open By,HMR Close Timestamp,HMR Close By',
         ...rows.map(d => {
           const isTip = srcIsTipper(d);
           return [
             esc(srcGetEquipmentCode(d)),
             esc(srcGetPersonName(d)),
             esc(d.shift || ''),
+            esc(srcRowDateLabel(d)),
             esc(isTip && d.kmr_opening_added ? d.kmr_opening_value : ''),
             esc(isTip && d.kmr_closing_added ? d.kmr_closing_value : ''),
             esc(d.hmr_opening_added ? d.hmr_opening_value : ''),
@@ -24561,7 +24566,8 @@
             saveBtn.textContent = 'Save';
             return;
           }
-          const date = document.getElementById('src-date-from').value;
+          // The row's own date — the From filter is wrong when the range spans several days.
+          const date = dashboardDate(d.date) || document.getElementById('src-date-from').value;
           const metric = _srcPopField.startsWith('hmr_') ? 'HMR' : 'KMR';
           const readingField = _srcPopField.endsWith('_opening') ? 'opening_value' : 'closing_value';
           const readings = {};
