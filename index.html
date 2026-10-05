@@ -6272,6 +6272,7 @@
     .ctl-tp.bad .m, .ctl-tp.bad .tb { color:var(--bad); font-weight:600; } .ctl-tp.bad .m { font-weight:700; }
     .ctl-tp.idle { border-style:dashed; border-color:var(--border-strong); border-left-color:var(--border-strong); }
     .ctl-multi { display:inline-block; width:6px; height:6px; border-radius:50%; background:#d97706; margin-left:4px; vertical-align:middle; }
+    .ctl-side { display:grid; gap:16px; min-width:0; }
     .ctl-alerts { overflow:hidden; }
     .ctl-alerts-h { padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); }
     .ctl-count { font-family:var(--font-mono); font-size:12px; padding:1px 7px; border-radius:10px; background:var(--c-bad-bg); color:var(--bad); } .ctl-count.z { background:var(--c-ok-bg); color:var(--ok); }
@@ -7362,12 +7363,19 @@
           </div>
           <div class="ctl-exgrid" id="ctl-exgrid"></div>
         </section>
+        <div class="ctl-side">
         <aside class="ctl-card ctl-alerts">
           <div class="ctl-alerts-h"><span class="ctl-eyebrow">Alerts</span><span class="ctl-count" id="ctl-cnt"></span></div>
           <div id="ctl-al"></div>
           <div class="ctl-foot"><b>30 min</b> amber, soft chime. <b>45 min</b> red, siren. Acknowledging quiets that alert only. If it escalates, it sounds again.
             <div class="ctl-test"><span>Check your speakers:</span><button class="action-btn" onclick="ctlTest('warn')">Play 30 min chime</button><button class="action-btn" onclick="ctlTest('alert')">Play 45 min siren</button></div></div>
         </aside>
+        <aside class="ctl-card ctl-alerts" aria-label="Refuel first">
+          <div class="ctl-alerts-h"><span class="ctl-eyebrow">Refuel first</span></div>
+          <div id="ctl-fuel"></div>
+          <div class="ctl-foot">Excavators, dozers, loaders and other engine-hour machines. Tippers are left out: their fills are too uneven to estimate. Assumes each fill topped the tank up.</div>
+        </aside>
+        </div>
       </div>
     </div>
     <div class="ctl-ov" id="ctl-ov" aria-hidden="true">
@@ -16889,6 +16897,65 @@
     const ctlFinish = (actual, usualNow, usualTotal) => Math.round(actual + (usualTotal - usualNow) * (actual + CTL_K) / (usualNow + CTL_K));
     // Red only below the lowest of the recent normal days at this point; amber below the average.
     const ctlPaceState = (actual, usualNow, loNow) => actual < loNow ? 'bad' : actual < usualNow ? 'warn' : 'ok';
+
+    // Refuel-first list, for machines metered in engine hours. Tippers and km-metered LMVs are left out: their
+    // fills are partial and their litres per hour swings too much (backtest: tippers ~23% of tank off, excavators ~3%).
+    // A fill is taken to top the tank up, so fuel left = tank - hours since the last fill x the machine's own litres
+    // per hour (average of its last FUEL_FILLS fills + 1 SD, deliberately high).
+    const FUEL_SKIP_TYPES = ['tipper', 'lmv', 'water_tanker', 'diesel_tanker'], FUEL_FILLS = 8, FUEL_MIN_FILLS = 3, FUEL_BUFFER = 1.2;
+    const FUEL_GAP_H = 14, FUEL_AHEAD_H = 8, FUEL_UTIL = 0.8; // widest gap between two shift readings we trust, longest we project past the last one, default run rate
+    // A time string from the API as milliseconds. Shift-reading times come as UTC without a "Z" (fuel-log times are IST),
+    // so utcNaive adds it; a string that already carries an offset is left alone.
+    const ctlTs = (str, utcNaive) => { const t = String(str || ''); return t ? new Date(utcNaive && !/(Z|[+-]\d\d:?\d\d)$/.test(t) ? t + 'Z' : t).getTime() : NaN; };
+    // The meter reading a machine would show at time t, from its shift-reading points pts = [{ ts, v }] sorted by ts.
+    // Between two points less than FUEL_GAP_H apart: a straight line. After the last point: that reading plus the
+    // machine's usual run rate (meter hours per clock hour, from its own readings) for up to FUEL_AHEAD_H. Else null.
+    function fuelHmrAt(pts, t) {
+      let i = pts ? pts.length - 1 : -1; while (i >= 0 && pts[i].ts > t) i--;
+      if (i < 0) return null;
+      const a = pts[i], b = pts[i + 1], H = 3600e3;
+      if (b) return b.ts - a.ts <= FUEL_GAP_H * H ? a.v + (b.v - a.v) * (t - a.ts) / ((b.ts - a.ts) || 1) : null;
+      const age = (t - a.ts) / H; if (age > FUEL_AHEAD_H) return null;
+      const u = [];
+      for (let j = 1; j < pts.length; j++) { const dt = (pts[j].ts - pts[j - 1].ts) / H, dv = pts[j].v - pts[j - 1].v; if (dt >= 1 && dt <= 10 && dv > 0 && dv <= dt) u.push(dv / dt); }
+      return a.v + (u.length >= 5 ? ctlMedian(u) : FUEL_UTIL) * age;
+    }
+    // logs = [{ id, type, hmr (NaN if not logged), litres, ts }]  tanks = { id: { tank, name } }
+    // readings = { id: [{ ts, v }] } shift-reading meter points  shiftHrs = { id: avg hours per shift }  now = ms
+    // Returns machines due for fuel before the next shift, least fuel first. The meter now, and the meter at the last fill
+    // when that fill was logged without one, come from the shift readings (fuelHmrAt), so a reading from 07:20 and a fill at 08:00 both count.
+    function fuelRisk({ logs, tanks, readings, shiftHrs, now }) {
+      const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+      const by = {}, typeRates = {};
+      logs.forEach(l => { if (tanks[l.id] && !FUEL_SKIP_TYPES.includes(l.type)) (by[l.id] = by[l.id] || []).push(l); });
+      const okFill = (l, tank) => l.litres >= 5 && l.litres <= 1.05 * tank; // drops 0.1 L test entries and typo'd thousands
+      // Every fill after the first, with the engine hours since the one before: litres / hours = the machine's rate.
+      const iv = {};
+      Object.keys(by).forEach(id => {
+        const ls = by[id].sort((a, b) => a.ts - b.ts), metered = ls.filter(l => Number.isFinite(l.hmr)), tank = tanks[id].tank, type = ls[0].type;
+        iv[id] = [];
+        for (let i = 1; i < metered.length; i++) {
+          const h = metered[i].hmr - metered[i - 1].hmr;
+          if (h > 0.5 && h < 40 && okFill(metered[i], tank)) { iv[id].push({ h, rate: metered[i].litres / h }); (typeRates[type] = typeRates[type] || []).push(metered[i].litres / h); }
+        }
+      });
+      const out = []; out.noMeter = []; // machines with enough fills but no meter reading from the last FUEL_AHEAD_H, so not checked
+      Object.keys(by).forEach(id => {
+        const med = ctlMedian(typeRates[by[id][0].type] || [1]), { tank, name } = tanks[id];
+        const v = iv[id].filter(x => x.rate >= 0.25 * med && x.rate <= 4 * med); // a 124 L/h "excavator" is a partial fill, not its rate
+        const last = by[id].filter(l => okFill(l, tank)).pop(), cur = fuelHmrAt(readings[id], now);
+        if (v.length < FUEL_MIN_FILLS || !last) return;
+        const est = !Number.isFinite(last.hmr), fillHmr = est ? fuelHmrAt(readings[id], last.ts) : last.hmr;
+        if (cur == null || fillHmr == null) { out.noMeter.push(name); return; }
+        if (cur < fillHmr) return;
+        const r = v.slice(-FUEL_FILLS).map(x => x.rate), m = mean(r), rate = m + Math.sqrt(mean(r.map(x => (x - m) ** 2)));
+        const since = cur - fillHmr, left = tank - since * rate, hoursLeft = left / rate, next = shiftHrs[id] || 8;
+        const stale = since > Math.max(...v.map(x => x.h)); // longer than any gap before: a fill was probably never logged
+        const seen = readings[id].filter(x => x.ts <= now).pop();
+        if (stale || hoursLeft < next * FUEL_BUFFER) out.push({ id, name, hoursLeft: Math.max(0, hoursLeft), fuelLeft: Math.max(0, left), tank, since, next, stale, est, lastTs: last.ts, seenAge: seen ? (now - seen.ts) / 3600e3 : 0 });
+      });
+      return out.sort((a, b) => a.hoursLeft - b.hoursLeft || b.stale - a.stale);
+    }
     // ctl:pure:end
 
     function ovSilentUnits() {
@@ -25946,11 +26013,11 @@
     // The page the mines manager leaves open all day. Data comes from the Deployments page's own pipeline:
     // depSilentRefresh fills _depLiveData / _depRawTrips / _depDriverTripCounts and renders the real excavator
     // cards into the hidden #dep-live-grid, which the popup clones. The pure rules sit in the ctl:pure block.
-    const CTL_FETCH_MS = 60000, CTL_TICK_MS = 15000, CTL_HISTORY_DAYS = 21;
+    const CTL_FETCH_MS = 60000, CTL_TICK_MS = 15000, CTL_HISTORY_DAYS = 21, CTL_FUEL_MS = 15 * 60000, CTL_FUEL_LOG_DAYS = 90, CTL_FUEL_SHIFT_DAYS = 10;
     const CTL_ACK_KEY = 'tripman_ctl_ack', CTL_SOUND_KEY = 'tripman_ctl_sound';
     const CTL_START_H = { A: 6, B: 14, C: 22 };
     const CTL_DEP_INPUTS = ['dep-filter-date', 'dep-filter-type', 'dep-filter-search']; // Deployments filters we borrow
-    let _ctl = { fetchTimer: 0, tickTimer: 0, saved: null, scope: '', curves: undefined, seen: null, acked: new Set(), lastOk: 0, error: false, open: '', ctx: null, master: null, sound: false };
+    let _ctl = { fetchTimer: 0, tickTimer: 0, fuelTimer: 0, fuel: null, saved: null, scope: '', curves: undefined, seen: null, acked: new Set(), lastOk: 0, error: false, open: '', ctx: null, master: null, sound: false };
     const ctlEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const ctlShiftStart = (date, shift) => new Date(`${date}T${ovPad(CTL_START_H[shift])}:00:00`);
 
@@ -25963,11 +26030,13 @@
       clearInterval(_ctl.fetchTimer); clearInterval(_ctl.tickTimer);
       _ctl.fetchTimer = setInterval(ctlRefresh, CTL_FETCH_MS);
       _ctl.tickTimer = setInterval(ctlRender, CTL_TICK_MS);
+      _ctl.fuelTimer = setInterval(ctlLoadFuel, CTL_FUEL_MS);
       document.addEventListener('keydown', ctlKey);
       depFetchVehicleMap().then(ctlRefresh);
+      ctlLoadFuel();
     }
     function ctlStop() {
-      clearInterval(_ctl.fetchTimer); clearInterval(_ctl.tickTimer);
+      clearInterval(_ctl.fetchTimer); clearInterval(_ctl.tickTimer); clearInterval(_ctl.fuelTimer);
       document.removeEventListener('keydown', ctlKey);
       ctlClosePopup(); ctlStopSound();
       if (_ctl.saved) { // hand the Deployments page its own filters back
@@ -25998,6 +26067,58 @@
       _ctl.error = _depLiveData === before; // depSilentRefresh swallows errors; the same array means it failed
       if (!_ctl.error) _ctl.lastOk = Date.now();
       ctlRender();
+    }
+    // Refuel-first list. Not on the 60 s loop: fills are logged a few times a shift. Reads fuel logs (90 days), tank sizes
+    // and the last CTL_FUEL_SHIFT_DAYS mining days of shift readings (current HMR, average hours per shift).
+    async function ctlLoadFuel() {
+      const rows = r => r.ok ? r.json().then(d => Array.isArray(d) ? d : (d.results || d.items || [])) : Promise.reject(new Error(String(r.status)));
+      try {
+        const today = ovMiningDate(new Date());
+        const dates = Array.from({ length: CTL_FUEL_SHIFT_DAYS }, (_, i) => ovShiftDate(today, -i));
+        const [logs, machines, vehicles, others, days] = await Promise.all([
+          dosFetchPaged('fuel-logs', `?start_date=${ovShiftDate(today, -CTL_FUEL_LOG_DAYS)}&end_date=${today}`),
+          ...['machines', 'vehicles', 'others'].map(e => apiFetch(`${API}/${e}`).then(rows).catch(() => [])),
+          Promise.all(dates.map(d => apiFetch(`${API}/shift-readings?date=${d}`).then(rows).catch(() => [])))
+        ]);
+        const tanks = {};
+        [...machines, ...vehicles, ...others].forEach(m => {
+          if (m._id && m.fuel_tank_capacity > 0) tanks[String(m._id)] = { tank: Number(m.fuel_tank_capacity), name: m.machine_number || m.vehicle_number || m.number_plate || m.machine_id || '' };
+        });
+        const pts = {}, hrs = {}, seen = new Set(), pushed = new Set();
+        days.flat().forEach(r => {
+          const id = dosReadingEquipmentId(r), h = (r.readings && r.readings.HMR) || {};
+          if (!id) return;
+          ['opening', 'closing'].forEach(k => { // every meter reading with the time it was entered
+            const v = h[k + '_value'] == null ? NaN : Number(h[k + '_value']), ts = ctlTs(h[k + '_ts'], true), key = `${id}|${ts}`;
+            if (Number.isFinite(v) && Number.isFinite(ts) && !pushed.has(key)) { pushed.add(key); (pts[id] = pts[id] || []).push({ ts, v }); }
+          });
+          const o = Number(h.opening_value), c = Number(h.closing_value), key = `${id}|${r.date}|${r.shift}`; // one hours-run figure per machine per shift
+          if (h.opening_value != null && h.closing_value != null && c - o > 0 && c - o < 12 && !seen.has(key)) { seen.add(key); (hrs[id] = hrs[id] || []).push(c - o); }
+        });
+        const shiftHrs = {};
+        Object.keys(pts).forEach(id => pts[id].sort((a, b) => a.ts - b.ts));
+        Object.keys(hrs).forEach(id => { shiftHrs[id] = hrs[id].reduce((a, b) => a + b, 0) / hrs[id].length; });
+        _ctl.fuel = fuelRisk({
+          logs: logs.map(l => ({ id: String(l.vehicle_id), type: String(l.vehicle_type || '').toLowerCase(), hmr: l.hmr_reading == null ? NaN : Number(l.hmr_reading), litres: Number(l.litres_filled), ts: ctlTs(l.created_at || l.refill_date, false) })),
+          tanks, readings: pts, shiftHrs, now: Date.now()
+        });
+      } catch (_) { _ctl.fuel = false; }
+      ctlRenderFuel();
+    }
+    function ctlRenderFuel() {
+      const el = document.getElementById('ctl-fuel');
+      if (!el) return;
+      if (_ctl.fuel === null) { el.innerHTML = '<div class="ctl-none">Loading fuel data…</div>'; return; }
+      if (_ctl.fuel === false) { el.innerHTML = '<div class="ctl-none">Could not load fuel data. Trying again in a few minutes.</div>'; return; }
+      const f = _ctl.fuel.slice(0, 5);
+      el.innerHTML = f.length ? f.map(x => {
+        const fill = new Date(x.lastTs).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        return `<div class="ctl-al${x.stale ? '' : ' warn'}" style="grid-template-columns:1fr"><span class="lvl">${x.stale ? 'FILL NOT LOGGED?' : 'LOW BEFORE NEXT SHIFT'}</span>
+          <span class="t">${ctlEsc(x.name)}${x.stale ? '' : ` · about ${x.hoursLeft.toFixed(1)} h of fuel left`}</span>
+          <span class="d">${x.stale ? `${x.since.toFixed(1)} h run since the last logged fill (${fill}), longer than any gap before it.` : `${x.since.toFixed(1)} h run since the ${fill} fill${x.est ? ' (its meter reading was worked out from the shift readings)' : ''}, about ${Math.round(x.fuelLeft)} L of ${Math.round(x.tank)} L left. A shift runs about ${x.next.toFixed(1)} h on average.`}${x.seenAge >= 1 ? ` Meter last read ${Math.round(x.seenAge)} h ago, so the hours are projected.` : ''}</span></div>`;
+      }).join('') : '<div class="ctl-none">No machine is expected to run short before the next shift.</div>';
+      const nm = _ctl.fuel.noMeter || [];
+      if (nm.length) el.innerHTML += `<div class="ctl-foot" style="border-top:0">Not checked, no meter reading in the last ${FUEL_AHEAD_H} h: ${nm.map(ctlEsc).join(', ')}</div>`;
     }
     async function ctlLoadHistory(date, shift, scope) {
       let curves;
@@ -26094,6 +26215,7 @@
         + (done.length ? `<details><summary>Acknowledged (${done.length})</summary>${done.map(a => row(a, true)).join('')}</details>` : '');
       const cnt = document.getElementById('ctl-cnt'); cnt.textContent = open.length; cnt.className = 'ctl-count' + (open.length ? '' : ' z');
 
+      ctlRenderFuel();
       ctlRenderPace(start, elapsed, shift);
       ovRollApply(document.getElementById('control-page'));
       if (_ctl.open) ctlFillPopup();
