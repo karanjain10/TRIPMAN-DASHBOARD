@@ -81,7 +81,7 @@ const events = fleetEvents(fleetPairLogs([
   log('T99', 'DEACTIVATED', '2026-09-12T09:00:00', { reason: 'Others', notes: 'RETURN', shift_id: 'A_2026-09-12' }),
   log('E1', 'DEACTIVATED', '2026-09-13T09:00:00', { reason: 'Hydraulic', shift_id: 'A_2026-09-13', entity_type: 'machine' }),
 ]), fleetInferSwitches(trips), '2026-09-01', '2026-09-30');
-const r = fleetRollup({ units, trips, fuel, readings, events, from: '2026-09-01', to: '2026-09-30' });
+const r = fleetRollup({ units, trips, fuel, readings, events, from: '2026-09-01', to: '2026-09-30', cumPerTrip: 10 });
 const t34 = r.tipper.units.find(u => u.id === 'T34');
 assert.deepStrictEqual([t34.trips, t34.fuelL, t34.hours, t34.kms, t34.bd, t34.reported, t34.inferred, t34.downtimeH], [2, 150, 7.5, 100, 1, 1, 0, 2]); // partial C shift skipped, Oct fuel left out
 assert.deepStrictEqual(t34.causes, { Tyre: 1 });
@@ -96,12 +96,31 @@ assert.deepStrictEqual([r.tipper.totals.trips, r.tipper.totals.fuelL, r.tipper.t
 assert.strictEqual(r.offDuty, 1);
 assert.deepStrictEqual(r.tipper.totals.byDay['2026-09-10'], { reported: 1, inferred: 0 });
 // a unit with nothing in the range is left out
-const quiet = fleetRollup({ units: [...units, { id: 'T1', name: '1', kind: 'tipper' }], trips, fuel, readings, events, from: '2026-09-01', to: '2026-09-30' });
+const quiet = fleetRollup({ units: [...units, { id: 'T1', name: '1', kind: 'tipper' }], trips, fuel, readings, events, from: '2026-09-01', to: '2026-09-30', cumPerTrip: 10 });
 assert.strictEqual(quiet.tipper.units.some(u => u.id === 'T1'), false);
 // the inferred breakdown shows up as inferred and counts once
 const sw = fleetEvents([], fleetInferSwitches([trip('T34', 'D1', '06:00:00'), trip('T35', 'D1', '07:00:00')]), '2026-09-01', '2026-09-30');
-const r2 = fleetRollup({ units, trips: [trip('T34', 'D1', '06:00:00'), trip('T35', 'D1', '07:00:00')], fuel: [], readings: [], events: sw, from: '2026-09-01', to: '2026-09-30' });
+const r2 = fleetRollup({ units, trips: [trip('T34', 'D1', '06:00:00'), trip('T35', 'D1', '07:00:00')], fuel: [], readings: [], events: sw, from: '2026-09-01', to: '2026-09-30', cumPerTrip: 10 });
 assert.deepStrictEqual([r2.tipper.totals.bd, r2.tipper.totals.inferred, r2.tipper.totals.reported, r2.inferred], [1, 1, 0, 1]);
 assert.deepStrictEqual(r2.tipper.totals.causes, { 'Not reported': 1 });
+
+
+// ── efficiency: trips per hour, km per trip, fuel factor (diesel issued / (trips x m3 per trip), as on the Daily Operations report) ──
+// T34 ran 2 trips in shift A (5 h, 80 km); shift B had 2.5 h and 20 km but no trips; shift C is partial. Only trips in a shift whose
+// meter reading is complete go against the hours and kms, so a half-recorded shift cannot inflate the rate.
+assert.strictEqual(t34.tripsPerHour, 2 / 7.5);
+assert.strictEqual(t34.kmPerTrip, 100 / 2);
+assert.strictEqual(t34.fuelFactor, 150 / (2 * 10));                                          // all fuel in the range over all trips
+assert.deepStrictEqual([t35.tripsPerHour, t35.kmPerTrip, t35.fuelFactor], [null, null, 0]); // no readings: no rate; no fuel: factor 0
+assert.deepStrictEqual([r.tipper.totals.tripsPerHour, r.tipper.totals.kmPerTrip, r.tipper.totals.fuelFactor], [2 / 7.5, 50, 150 / (3 * 10)]);
+assert.strictEqual(e1.tripsPerHour, 3 / 6);                                                  // excavators get the same rates (trips follow machine_id)
+// a trip on a shift with a partial reading is left out of the rate
+const partialTrips = [...trips, trip('T34', 'D1', '23:00:00', { shift: 'C', machine_id: 'E1' })];  // shift C: opening only
+const rp = fleetRollup({ units, trips: partialTrips, fuel, readings, events, from: '2026-09-01', to: '2026-09-30', cumPerTrip: 10 });
+assert.strictEqual(rp.tipper.units.find(u => u.id === 'T34').tripsPerHour, 2 / 7.5);
+assert.strictEqual(rp.tipper.units.find(u => u.id === 'T34').fuelFactor, 150 / (3 * 10));    // but it counts for fuel per m3
+// nothing run: no rate rather than a divide-by-zero
+const idle = fleetRollup({ units, trips: [], fuel: [], readings: [], events: [], from: '2026-09-01', to: '2026-09-30', cumPerTrip: 10 });
+assert.deepStrictEqual([idle.tipper.totals.tripsPerHour, idle.tipper.totals.kmPerTrip, idle.tipper.totals.fuelFactor], [null, null, null]);
 
 console.log('fleet-summary: all checks passed');

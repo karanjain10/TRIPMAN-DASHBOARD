@@ -5662,6 +5662,7 @@
     .fl-h { display:flex; align-items:baseline; gap:10px; margin:0 0 10px; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text-secondary); }
     .fl-h em { font-style:normal; font-weight:500; letter-spacing:0; text-transform:none; color:var(--text-muted); }
     .fl-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); margin-bottom:14px; }
+    .fl-kpis.c5 { grid-template-columns:repeat(5,1fr); } .fl-kpis.c5 .fl-k b { font-size:17px; }
     .fl-k { background:var(--surface); padding:8px 10px 9px; min-width:0; }
     .fl-k .l { display:block; font-size:10px; color:var(--text-secondary); }
     .fl-k b { display:block; margin-top:2px; font-size:19px; font-weight:600; font-family:var(--font-mono); color:var(--text-primary); line-height:1.15; }
@@ -5685,7 +5686,7 @@
     .fl-back { background:none; border:0; padding:0; margin-bottom:8px; font-size:12px; color:var(--text-secondary); cursor:pointer; }
     .fl-src { display:inline-block; padding:1px 6px; border:1px solid var(--border-strong,var(--border)); border-radius:3px; font-family:var(--font-main); font-size:10px; color:var(--text-secondary); }
     .fl-src.n { border-color:var(--fl-s2); color:var(--text-primary); }
-    @media (max-width:980px) { .fl-cols, .fl-charts { grid-template-columns:1fr; } .fl-col + .fl-col { border-left:0; padding-left:0; margin-top:22px; } .fl-kpis { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:980px) { .fl-cols, .fl-charts { grid-template-columns:1fr; } .fl-col + .fl-col { border-left:0; padding-left:0; margin-top:22px; } .fl-kpis, .fl-kpis.c5 { grid-template-columns:repeat(2,1fr); } }
     @media print {
       @page { size:A4 landscape; margin:8mm; }
       body.fl-printing > *:not(#fleet-summary-page) { display:none !important; }
@@ -26132,7 +26133,9 @@
     // Per-unit and per-kind totals. units = [{ id, name, kind: 'tipper'|'excavator' }]; trips follow vehicle_id for tippers and
     // machine_id for excavators, fuel follows the fill date, hours and kms are the meter movement in each shift's readings
     // (a shift with a missing opening or closing is skipped). Units with nothing in the range are left out.
-    function fleetRollup({ units, trips, fuel, readings, events, from, to }) {
+    // Rates: trips per hour and km per trip only count trips in shifts whose meter reading is complete (so they match the hours and kms);
+    // fuel factor is diesel issued over all trips x cumPerTrip m3 (the Daily Operations report's Fuel Factor, L per m3).
+    function fleetRollup({ units, trips, fuel, readings, events, from, to, cumPerTrip }) {
       const add = (o, k, n) => { o[k] = (o[k] || 0) + n; };
       const tripsBy = { tipper: {}, excavator: {} }, fuelBy = {}, slot = {}, evBy = {};
       trips.forEach(t => { if (t.vehicle_id) add(tripsBy.tipper, String(t.vehicle_id), 1); if (t.machine_id) add(tripsBy.excavator, String(t.machine_id), 1); });
@@ -26147,26 +26150,36 @@
           e.lo = Math.min(e.lo, Number(o)); e.hi = Math.max(e.hi, Number(c));
         });
       });
-      const meter = { HMR: {}, KMR: {} };
+      const meter = { HMR: {}, KMR: {} }, done = { HMR: new Set(), KMR: new Set() }, tripsOn = { tipper: { HMR: {}, KMR: {} }, excavator: { HMR: {}, KMR: {} } };
       Object.values(slot).forEach(e => add(meter[e.m], e.id, e.hi - e.lo));
+      Object.keys(slot).forEach(k => { const [m, id, date, shift] = k.split('|'); done[m].add(`${id}|${date}|${shift}`); });
+      trips.forEach(t => ['tipper', 'excavator'].forEach(kind => {
+        const id = kind === 'tipper' ? t.vehicle_id : t.machine_id, key = `${id}|${String(t.mining_date).slice(0, 10)}|${String(t.shift).toUpperCase()}`;
+        if (id) ['HMR', 'KMR'].forEach(m => { if (done[m].has(key)) add(tripsOn[kind][m], String(id), 1); });
+      }));
+      const rate = (n, d) => (d > 0 && n > 0 ? n / d : null);
+      const rates = x => ({ tripsPerHour: rate(x.tripsHmr, x.hours), kmPerTrip: rate(x.kms, x.tripsKmr), fuelFactor: x.trips > 0 && cumPerTrip > 0 ? x.fuelL / (x.trips * cumPerTrip) : null });
       events.forEach(e => (evBy[e.id] = evBy[e.id] || []).push(e));
       const out = { tipper: { units: [], totals: null }, excavator: { units: [], totals: null }, offDuty: 0, inferred: 0 };
       ['tipper', 'excavator'].forEach(kind => {
-        const totals = { units: 0, trips: 0, fuelL: 0, hours: 0, kms: 0, bd: 0, reported: 0, inferred: 0, downtimeH: 0, unitsWithBd: 0, causes: {}, byDay: {} };
+        const totals = { units: 0, trips: 0, fuelL: 0, hours: 0, kms: 0, tripsHmr: 0, tripsKmr: 0, bd: 0, reported: 0, inferred: 0, downtimeH: 0, unitsWithBd: 0, causes: {}, byDay: {} };
         units.filter(u => u.kind === kind).forEach(u => {
           const evs = evBy[u.id] || [], bds = evs.filter(e => !e.offDuty), row = {
             id: u.id, name: u.name, kind, trips: tripsBy[kind][u.id] || 0, fuelL: fuelBy[u.id] || 0, hours: meter.HMR[u.id] || 0, kms: kind === 'tipper' ? meter.KMR[u.id] || 0 : 0,
+            tripsHmr: tripsOn[kind].HMR[u.id] || 0, tripsKmr: tripsOn[kind].KMR[u.id] || 0,
             bd: bds.length, reported: bds.filter(e => e.reported).length, inferred: bds.filter(e => !e.reported).length,
             downtimeH: bds.reduce((a, e) => a + (e.hours || 0), 0), openNow: bds.filter(e => e.openNow).length, offDuty: evs.length - bds.length, causes: {}, events: evs
           };
           bds.forEach(e => add(row.causes, e.cause, 1));
+          Object.assign(row, rates(row));
           if (!(row.trips || row.fuelL || row.hours || row.kms || evs.length)) return;
           out[kind].units.push(row);
-          totals.units++; ['trips', 'fuelL', 'hours', 'kms', 'bd', 'reported', 'inferred', 'downtimeH'].forEach(k => { totals[k] += row[k]; });
+          totals.units++; ['trips', 'fuelL', 'hours', 'kms', 'tripsHmr', 'tripsKmr', 'bd', 'reported', 'inferred', 'downtimeH'].forEach(k => { totals[k] += row[k]; });
           if (row.bd) totals.unitsWithBd++;
           bds.forEach(e => { add(totals.causes, e.cause, 1); const d = totals.byDay[e.date] || (totals.byDay[e.date] = { reported: 0, inferred: 0 }); d[e.reported ? 'reported' : 'inferred']++; });
           out.offDuty += row.offDuty; out.inferred += row.inferred;
         });
+        Object.assign(totals, rates(totals));
         out[kind].totals = totals;
       });
       return out;
@@ -26245,7 +26258,7 @@
         ];
         const events = fleetEvents(fleetPairLogs(logs.filter(l => l.entity_type === 'vehicle' || l.entity_type === 'machine')), fleetInferSwitches(trips), from, to);
         const qty = purchases.reduce((a, p) => a + (Number(p.quantity_litres) || 0), 0), cost = purchases.reduce((a, p) => a + (Number(p.total_price) || 0), 0);
-        _fl = { ..._fl, from, to, trips, price: qty > 0 ? cost / qty : null, unit: null, data: fleetRollup({ units, trips, fuel, readings: readings.rows, events, from, to }) };
+        _fl = { ..._fl, from, to, trips, price: qty > 0 ? cost / qty : null, unit: null, data: fleetRollup({ units, trips, fuel, readings: readings.rows, events, from, to, cumPerTrip: DOS_CUM_PER_TRIP }) };
         if (readings.failed) banner.innerHTML = `<div class="fl-banner">Shift readings failed to load for ${readings.failed} of ${days} days, so engine hours and kms are too low.</div>`;
         const pick = document.getElementById('fl-pick');
         pick.innerHTML = '<option value="">Choose a unit</option>' + ['tipper', 'excavator'].map(k => `<optgroup label="${FL_KIND[k]}">${_fl.data[k].units.map(u => `<option value="${k}|${flEsc(u.id)}">${flEsc(u.name)}</option>`).join('')}</optgroup>`).join('');
@@ -26299,27 +26312,39 @@
     const flMainCause = u => Object.entries(u.causes).sort((a, b) => b[1] - a[1])[0];
     const flTile = (label, value, unit, sub) => `<div class="fl-k"><span class="l">${label}</span><b>${value}${unit ? `<small>${unit}</small>` : ''}</b>${sub ? `<span class="s">${sub}</span>` : ''}</div>`;
 
-    function flKpis(kind, t) {
-      const price = _fl.price, tiles = [
-        flTile('Fuel issued', flNum(t.fuelL), 'L', price && t.fuelL ? `${fuelRupee(t.fuelL * price)} at ₹${price.toFixed(0)}/L` : ''),
-        flTile('Trips', flNum(t.trips), '', t.units > 1 ? `${flNum(t.trips / t.units, 0)} per unit` : ''),
-        flTile('Engine hours', flNum(t.hours, 0), 'h', ''),
-        kind === 'tipper' ? flTile('Kms driven', flNum(t.kms), 'km', '') : flTile('Fuel per hour', t.hours > 0 ? flNum(t.fuelL / t.hours, 1) : '—', t.hours > 0 ? 'L/h' : '', 'fills ÷ engine hours'),
-        flTile('Breakdowns', flNum(t.bd), '', t.bd ? `${t.reported} reported, ${t.inferred} not reported` : 'none in range'),
-        flTile('Downtime', flNum(t.downtimeH, 0), 'h', t.bd ? 'closed breakdowns only' : ''),
+    // Tiles for one half. Tippers get the three efficiency rates, laid out as work (row 1) and fuel + reliability (row 2) in 5 columns.
+    // unit = true for the single-unit page: "Units broken down" has no meaning for one unit, so it becomes fuel per trip.
+    function flKpis(kind, t, unit) {
+      const price = _fl.price, dash = (v, d) => (v == null ? '—' : flNum(v, d));
+      const fuel = flTile('Fuel issued', flNum(t.fuelL), 'L', price && t.fuelL ? `${fuelRupee(t.fuelL * price)} at ₹${price.toFixed(0)}/L` : '');
+      const trips = flTile('Trips', flNum(t.trips), '', t.units > 1 ? `${flNum(t.trips / t.units, 0)} per unit` : '');
+      const hours = flTile('Engine hours', flNum(t.hours, 0), 'h', '');
+      const bd = flTile('Breakdowns', flNum(t.bd), '', t.bd ? `${t.reported} reported, ${t.inferred} not reported` : 'none in range');
+      const down = flTile('Downtime', flNum(t.downtimeH, 0), 'h', t.bd ? 'closed breakdowns only' : '');
+      if (kind === 'tipper') return [
+        trips, hours, flTile('Kms driven', flNum(t.kms), 'km', ''),
+        flTile('Trips per hour', dash(t.tripsPerHour, 2), t.tripsPerHour == null ? '' : 'trips/h', 'trips ÷ hours'),
+        flTile('Km per trip', dash(t.kmPerTrip, 1), t.kmPerTrip == null ? '' : 'km', 'kms ÷ trips'),
+        fuel, flTile('Fuel factor', dash(t.fuelFactor, 3), t.fuelFactor == null ? '' : 'L/m³', `at ${DOS_CUM_PER_TRIP} m³/trip`),
+        bd, down,
+        unit ? flTile('Fuel per trip', t.trips ? flNum(t.fuelL / t.trips, 1) : '—', t.trips ? 'L' : '', '') : flTile('Units broken down', `${t.unitsWithBd} <small>of ${t.units}</small>`, '', '')
+      ];
+      return [
+        fuel, trips, hours,
+        flTile('Fuel per hour', t.hours > 0 ? flNum(t.fuelL / t.hours, 1) : '—', t.hours > 0 ? 'L/h' : '', 'fills ÷ engine hours'),
+        bd, down,
         flTile('Units broken down', `${t.unitsWithBd} <small>of ${t.units}</small>`, '', ''),
         flTile('Per breakdown', t.bd ? flNum(t.trips / t.bd, 0) : '—', t.bd ? 'trips' : '', t.bd ? 'trips between breakdowns' : '')
       ];
-      return tiles;
     }
-    function flUnitRows(kind, list) {
+    function flUnitRows(kind, list, wide) {
       return list.map(u => { const mc = flMainCause(u), id = flEsc(u.id); return `<tr>
         <td><button class="fl-link" onclick="flOpenUnit('${kind}','${id}')">${flEsc(u.name)}</button></td>
         <td>${u.bd}${u.inferred ? ` <span class="fl-src n" title="breakdowns inferred from a driver switch, not reported">${u.inferred} not rep.</span>` : ''}</td>
         <td>${u.bd ? flNum(u.downtimeH, 1) + (u.openNow ? '+' : '') : '—'}</td><td class="t">${mc ? flEsc(mc[0]) + (mc[1] > 1 ? ' ×' + mc[1] : '') : '—'}</td>
-        <td>${flNum(u.fuelL)}</td><td>${flNum(u.trips)}</td><td>${flNum(u.hours, 1)}</td></tr>`; }).join('');
+        <td>${flNum(u.fuelL)}</td><td>${flNum(u.trips)}</td><td>${flNum(u.hours, 1)}</td>${wide ? `<td>${u.tripsPerHour == null ? '—' : flNum(u.tripsPerHour, 2)}</td><td>${u.kmPerTrip == null ? '—' : flNum(u.kmPerTrip, 1)}</td><td>${u.fuelFactor == null ? '—' : flNum(u.fuelFactor, 3)}</td>` : ''}</tr>`; }).join('');
     }
-    const flTblHead = '<thead><tr><th>Unit</th><th>Breakdowns</th><th>Down h</th><th class="t">Main cause</th><th>Fuel L</th><th>Trips</th><th>Hours</th></tr></thead>';
+    const flTblHead = wide => `<thead><tr><th>Unit</th><th>Breakdowns</th><th>Down h</th><th class="t">Main cause</th><th>Fuel L</th><th>Trips</th><th>Hours</th>${wide ? '<th>Trips/h</th><th>Km/trip</th><th>L/m³</th>' : ''}</tr></thead>`;
 
     function flRender() {
       flKillCharts();
@@ -26330,14 +26355,14 @@
         const t = d[kind].totals, units = d[kind].units, worst = units.filter(u => u.bd).sort((a, b) => b.bd - a.bd || b.downtimeH - a.downtimeH).slice(0, 5);
         return `<section class="fl-col" aria-label="${FL_KIND[kind]}">
           <h2 class="fl-h"><span>${FL_KIND[kind]}</span><em>${t.units} active in range</em></h2>
-          <div class="fl-kpis">${flKpis(kind, t).join('')}</div>
+          <div class="fl-kpis${kind === 'tipper' ? ' c5' : ''}">${flKpis(kind, t).join('')}</div>
           <div class="fl-charts">
             <figure><figcaption>Fuel issued, top 10 (L)</figcaption><div class="fl-cv"><canvas id="fl-${kind}-fuel" role="img" aria-label="Fuel issued by ${kind}, top 10"></canvas></div></figure>
             <figure><figcaption>Trips, top 10</figcaption><div class="fl-cv"><canvas id="fl-${kind}-trips" role="img" aria-label="Trips by ${kind}, top 10"></canvas></div></figure>
             <figure><figcaption>Breakdowns by cause</figcaption><div class="fl-cv"><canvas id="fl-${kind}-cause" role="img" aria-label="Breakdowns by cause"></canvas></div></figure>
             <figure><figcaption>Breakdowns per day</figcaption><div class="fl-cv"><canvas id="fl-${kind}-day" role="img" aria-label="Breakdowns per day, reported and not reported"></canvas></div></figure>
           </div>
-          ${worst.length ? `<table class="fl-tbl">${flTblHead}<tbody>${flUnitRows(kind, worst)}</tbody></table>` : '<div class="fl-empty">No breakdowns in this range.</div>'}
+          ${worst.length ? `<table class="fl-tbl">${flTblHead(false)}<tbody>${flUnitRows(kind, worst, false)}</tbody></table>` : '<div class="fl-empty">No breakdowns in this range.</div>'}
           <button class="fl-more" onclick="flToggleAll('${kind}')" aria-expanded="${_fl.open[kind]}">${_fl.open[kind] ? 'Hide' : 'Show'} all ${units.length} units as a table</button>
           <div id="fl-all-${kind}">${_fl.open[kind] ? flAllTable(kind) : ''}</div>
         </section>`;
@@ -26360,7 +26385,7 @@
     }
     function flAllTable(kind) {
       const list = [..._fl.data[kind].units].sort((a, b) => b.bd - a.bd || b.fuelL - a.fuelL);
-      return `<table class="fl-tbl" style="margin-top:6px">${flTblHead}<tbody>${flUnitRows(kind, list)}</tbody></table>`;
+      return `<table class="fl-tbl" style="margin-top:6px">${flTblHead(kind === 'tipper')}<tbody>${flUnitRows(kind, list, kind === 'tipper')}</tbody></table>`;
     }
     function flToggleAll(kind) { _fl.open[kind] = !_fl.open[kind]; flRender(); }
     function flPickUnit(v) { if (!v) return; const [kind, id] = v.split('|'); flOpenUnit(kind, id); document.getElementById('fl-pick').value = ''; }
@@ -26377,7 +26402,7 @@
       const t = { units: 1, ...u, downtimeH: u.downtimeH };
       document.getElementById('fl-main').innerHTML = `<button class="fl-back" onclick="flBackToFleet()">← Fleet summary</button>
         <div class="fl-head"><h1>${kind === 'tipper' ? 'Tipper' : 'Excavator'} ${flEsc(u.name)}</h1><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)}</div></div>
-        <div class="fl-kpis" style="grid-template-columns:repeat(6,1fr)">${flKpis(kind, { ...t, unitsWithBd: u.bd ? 1 : 0 }).slice(0, 6).join('')}</div>
+        <div class="fl-kpis${kind === 'tipper' ? ' c5' : ''}"${kind === 'tipper' ? '' : ' style="grid-template-columns:repeat(6,1fr)"'}>${flKpis(kind, { ...t, unitsWithBd: u.bd ? 1 : 0 }, true).slice(0, kind === 'tipper' ? 10 : 6).join('')}</div>
         <div class="fl-charts" style="grid-template-columns:2fr 1fr">
           <figure><figcaption>Trips per day. Orange days had a breakdown</figcaption><div class="fl-cv"><canvas id="fl-unit-day" role="img" aria-label="Trips per day for this unit"></canvas></div></figure>
           <figure><figcaption>Breakdowns by cause</figcaption><div class="fl-cv"><canvas id="fl-unit-cause" role="img" aria-label="Breakdowns by cause for this unit"></canvas></div></figure>
