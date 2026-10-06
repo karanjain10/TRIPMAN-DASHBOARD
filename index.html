@@ -8760,14 +8760,14 @@
           <div class="fuel-card-sub">records</div>
         </div>
         <div class="fuel-card">
-          <div class="fuel-card-label">Avg Efficiency (Excavators)</div>
+          <div class="fuel-card-label" id="fc-lbl-3">Avg Efficiency (Excavators)</div>
           <div class="fuel-card-value" id="fc-card-exc-eff">—</div>
-          <div class="fuel-card-sub">L/hr</div>
+          <div class="fuel-card-sub" id="fc-sub-3">L/hr</div>
         </div>
         <div class="fuel-card">
-          <div class="fuel-card-label">Avg Efficiency (Tippers)</div>
+          <div class="fuel-card-label" id="fc-lbl-4">Avg Efficiency (Tippers)</div>
           <div class="fuel-card-value" id="fc-card-tip-eff">—</div>
-          <div class="fuel-card-sub">L/hr</div>
+          <div class="fuel-card-sub" id="fc-sub-4">L/hr</div>
         </div>
       </div>
 
@@ -18884,6 +18884,90 @@
       '#e67e22', '#c0392b', '#16a085', '#d35400'
     ];
 
+
+    // fuel:pure:start
+    // Efficiency for every equipment type. A refill's rate is the litres put in at that refill divided by the meter distance since the
+    // previous refill of the same vehicle (engine hours; kilometres for light vehicles). The tank is topped up at each refill, so those
+    // litres are what was burned over that distance. Totals are litres over hours (not an average of ratios).
+    const FUEL_TYPE_LABELS = { excavator: 'Excavators', tipper: 'Tippers', dozer: 'Dozers', grader: 'Graders', lmv: 'LMVs', diesel_tanker: 'Diesel Tankers',
+      water_tanker: 'Water Tankers', drill_equipment: 'Drill Equipment', crane: 'Cranes', roller: 'Rollers', loader: 'Loaders', generator: 'Generators', others: 'Others' };
+    const fuelTypeLabel = t => FUEL_TYPE_LABELS[t] || (t.charAt(0).toUpperCase() + t.slice(1).replace(/_/g, ' ') + 's');
+    const fuelMetric = t => (t === 'lmv' ? 'kpl' : 'lph');   // light vehicles have no engine hours
+    const fuelMedian = a => { const s = [...a].sort((x, y) => x - y), i = s.length >> 1; return s.length % 2 ? s[i] : (s[i - 1] + s[i]) / 2; };
+
+    // Pass every refill you have, including ones before the chosen dates: the first refill in range needs the one before it.
+    // Sets on each record: hmr_diff (shown in the table), _h / _k (usable meter gaps), _lph / _kpl, efficiency and _eff_unit (main figure).
+    // Left out as unmeasurable: under 5 L, a gap under 0.5 h or over 40 h (a refill was missed) or a meter that went backwards, and a rate
+    // under 0.25x or over 4x the median of its own type (a top-up after minutes of work).
+    function fuelRefillRates(records) {
+      const when = r => new Date(r.created_at || r.refill_date || 0).getTime(), by = {};
+      records.forEach(r => { const k = r.vehicle_id || r.vehicle_name || r.remarks || '__unknown__'; (by[k] = by[k] || []).push(r); });
+      Object.values(by).forEach(xs => {
+        xs.sort((a, b) => when(a) - when(b));
+        xs.forEach((r, i) => {
+          const p = xs[i - 1], ok = (r.litres_filled || 0) >= 5;
+          const h = p && r.hmr_reading != null && p.hmr_reading != null ? r.hmr_reading - p.hmr_reading : null;
+          const k = p && r.kmr_reading != null && p.kmr_reading != null ? r.kmr_reading - p.kmr_reading : null;
+          r.hmr_diff = h != null && h > 0 ? parseFloat(h.toFixed(2)) : null;
+          r._h = ok && h > 0.5 && h < 40 ? h : null;
+          r._k = ok && k > 5 && k < 1500 ? k : null;
+          r._lph = r._h ? r.litres_filled / r._h : null;
+          r._kpl = r._k ? r._k / r.litres_filled : null;
+        });
+      });
+      const med = {};
+      ['_lph', '_kpl'].forEach(m => {
+        const g = {};
+        records.forEach(r => { if (r[m] != null) (g[r.vehicle_type] = g[r.vehicle_type] || []).push(r[m]); });
+        Object.keys(g).forEach(t => { if (g[t].length >= 5) med[m + t] = fuelMedian(g[t]); });
+      });
+      records.forEach(r => {
+        [['_lph', '_h'], ['_kpl', '_k']].forEach(([m, gap]) => {
+          const md = med[m + r.vehicle_type];
+          if (r[m] != null && md && (r[m] < md * 0.25 || r[m] > md * 4)) { r[m] = null; r[gap] = null; }
+        });
+        const metric = fuelMetric(r.vehicle_type), v = metric === 'kpl' ? r._kpl : r._lph;
+        r.efficiency = v == null ? null : parseFloat(v.toFixed(2));
+        r._eff_unit = metric === 'kpl' ? 'km/L' : 'L/hr';
+      });
+    }
+
+    // L/hr = litres / hours, km/L = km / litres, over the refills that could be measured. null when none could.
+    function fuelAggregate(rows, metric) {
+      let num = 0, den = 0;
+      rows.forEach(r => {
+        if (metric === 'kpl') { if (r._kpl != null) { num += r._k; den += r.litres_filled; } }
+        else if (r._lph != null) { num += r.litres_filled; den += r._h; }
+      });
+      return den > 0 ? num / den : null;
+    }
+    // Lowest and highest unit average, counting only units with 3+ measurable refills.
+    function fuelUnitSpread(rows, metric) {
+      const by = {}, vals = [];
+      rows.forEach(r => { const k = r.vehicle_id || r.vehicle_name; if (k && (metric === 'kpl' ? r._kpl : r._lph) != null) (by[k] = by[k] || []).push(r); });
+      Object.values(by).forEach(xs => { if (xs.length >= 3) vals.push(fuelAggregate(xs, metric)); });
+      return vals.length ? { min: Math.min(...vals), max: Math.max(...vals), units: vals.length } : null;
+    }
+    // One point per day that has a refill; value is null when none of that day's refills could be measured.
+    function fuelDaily(rows, metric) {
+      const by = {};
+      rows.forEach(r => { const d = (r.created_at || r.refill_date || '').slice(0, 10); if (d) (by[d] = by[d] || []).push(r); });
+      return Object.keys(by).sort().map(date => ({ date, value: fuelAggregate(by[date], metric) }));
+    }
+    // The third and fourth summary cards. With no type chosen they are Excavators and Tippers, as before.
+    function fuelCards(rows, vtype) {
+      const f = x => (x == null ? '—' : x.toFixed(2)), of = t => rows.filter(r => (r.vehicle_type || '').toLowerCase() === t);
+      if (!vtype) return { c3: { label: 'Avg Efficiency (Excavators)', value: f(fuelAggregate(of('excavator'), 'lph')), unit: 'L/hr' },
+        c4: { label: 'Avg Efficiency (Tippers)', value: f(fuelAggregate(of('tipper'), 'lph')), unit: 'L/hr' } };
+      const m = fuelMetric(vtype), u = m === 'kpl' ? 'km/L' : 'L/hr', a = fuelAggregate(rows, m);
+      const c3 = { label: `Avg Efficiency (${fuelTypeLabel(vtype)})`, value: f(a), unit: a == null ? 'not enough usable refills with meter readings' : u };
+      if (vtype === 'tipper') return { c3, c4: { label: 'Avg Distance (Tippers)', value: f(fuelAggregate(rows, 'kpl')), unit: 'km per litre' } };
+      const s = fuelUnitSpread(rows, m);
+      return { c3, c4: { label: 'Spread Across Units', value: s ? `${s.min.toFixed(1)} – ${s.max.toFixed(1)}` : '—',
+        unit: s ? `${u} · ${s.units} unit${s.units === 1 ? '' : 's'} with 3+ refills` : 'needs 3 refills per unit' } };
+    }
+    // fuel:pure:end
+
     // ── Shared state ───────────────────────────────────────────────────────────
     let _fuelActiveSubTab = 'consumed';
 
@@ -19027,6 +19111,37 @@
       fcFetch();
     }
 
+    // Any record without a recognized vehicle type is classified as "others"; diesel_issued is copied to litres_filled if missing.
+    function fcNormalizeRecords(list) {
+      const KNOWN_TYPES = new Set([
+        'excavator', 'tipper', 'dozer', 'grader', 'lmv',
+        'diesel_tanker', 'water_tanker', 'drill', 'crane',
+        'roller', 'loader', 'drill_equipment', 'generator'
+      ]);
+      list.forEach(r => {
+        const vt = (r.vehicle_type || '').toLowerCase().trim();
+        // Drill machine and compressor share one 'drill_equipment' type (the API may send
+        // them as 'drill', 'drill_machine', 'others' or untyped); other unrecognised = 'others'.
+        const nm = `${r.vehicle_name || ''} ${r.remarks || ''}`.toLowerCase();
+        if (vt === 'drill' || vt.startsWith('drill_') || vt === 'others' || vt === 'other' || !KNOWN_TYPES.has(vt)) {
+          r.vehicle_type = (vt === 'drill' || vt.startsWith('drill_') || /drill|compressor/.test(nm)) ? 'drill_equipment'
+            : KNOWN_TYPES.has(vt) ? vt : 'others';
+        }
+        if (r.litres_filled == null && r.diesel_issued != null) r.litres_filled = r.diesel_issued;
+      });
+    }
+    async function fcFetchAll(baseUrl) {
+      const PAGE = 500; let skip = 0, all = [];
+      while (true) {
+        const res = await apiFetch(`${baseUrl}skip=${skip}&limit=${PAGE}`);
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        const data = await res.json(), page = Array.isArray(data) ? data : (data.results || data.items || []);
+        all = all.concat(page);
+        if (page.length < PAGE || (data.total != null && all.length >= data.total)) return all;
+        skip += PAGE;
+      }
+    }
+
     async function fcFetch() {
       const start = document.getElementById('fc-start').value;
       const end = document.getElementById('fc-end').value;
@@ -19089,28 +19204,18 @@
 
         _fcRaw = allRecords;
 
-        // Normalize entries: any record without a recognized vehicle type
-        // is classified as "others"; copy diesel_issued → litres_filled if missing
-        const KNOWN_TYPES = new Set([
-          'excavator', 'tipper', 'dozer', 'grader', 'lmv',
-          'diesel_tanker', 'water_tanker', 'drill', 'crane',
-          'roller', 'loader', 'drill_equipment', 'generator'
-        ]);
-        _fcRaw.forEach(r => {
-          const vt = (r.vehicle_type || '').toLowerCase().trim();
-          // Drill machine and compressor share one 'drill_equipment' type (the API may send
-          // them as 'drill', 'drill_machine', 'others' or untyped); other unrecognised = 'others'.
-          const nm = `${r.vehicle_name || ''} ${r.remarks || ''}`.toLowerCase();
-          if (vt === 'drill' || vt.startsWith('drill_') || vt === 'others' || vt === 'other' || !KNOWN_TYPES.has(vt)) {
-            r.vehicle_type = (vt === 'drill' || vt.startsWith('drill_') || /drill|compressor/.test(nm)) ? 'drill_equipment'
-              : KNOWN_TYPES.has(vt) ? vt : 'others';
-          }
-          if (r.litres_filled == null && r.diesel_issued != null) {
-            r.litres_filled = r.diesel_issued;
-          }
-        });
+        fcNormalizeRecords(_fcRaw);
 
-        fcRecalcEfficiencyAndHmrDiff(_fcRaw);
+        // The refills just before the chosen dates give the first refill in range its "previous refill" (rates need two meter readings).
+        // They only feed the calculation: they are not part of the totals, charts or table.
+        let before = [];
+        if (start) {
+          try {
+            before = await fcFetchAll(`${API}/fuel-logs?start_date=${dosShiftDate(start, -45)}&end_date=${dosShiftDate(start, -1)}&`);
+            fcNormalizeRecords(before);
+          } catch (_) { /* non-fatal: the first refill of each vehicle just has no rate */ }
+        }
+        fuelRefillRates([...before, ..._fcRaw]);
         fcPopulateVehicleTypeDropdown();
         fcPopulateVehicleDropdown();
         fcApplyClientFilters();
@@ -19118,62 +19223,6 @@
         fuelShowError('fc-error', `Failed to load fuel logs: ${e.message}`);
         document.getElementById('fc-tbody').innerHTML = '<tr><td colspan="10" class="fuel-empty">Error loading data.</td></tr>';
       }
-    }
-
-    // ── Recalculate hmr_diff and efficiency client-side ────────────────────────
-    // For each vehicle, sort entries chronologically by full timestamp.
-    // hmr_diff  = current hmr_reading − previous hmr_reading (consecutive entries)
-    // efficiency = previous entry's litres_filled ÷ hmr_diff  (L/hr for both types)
-    // This fixes two backend issues:
-    //   1. hmr_diff was using first entry of day instead of last when multiple
-    //      refills occur on the same day.
-    //   2. efficiency label was L/km for tippers; it should be L/hr.
-    function fcRecalcEfficiencyAndHmrDiff(records) {
-      // Group by vehicle (use vehicle_id as primary key, fall back to vehicle_name)
-      const byVehicle = {};
-      records.forEach(r => {
-        const key = r.vehicle_id || r.vehicle_name || r.remarks || '__unknown__';
-        if (!byVehicle[key]) byVehicle[key] = [];
-        byVehicle[key].push(r);
-      });
-
-      Object.values(byVehicle).forEach(entries => {
-        // Sort ascending by full timestamp (so multiple same-day entries are in true order)
-        entries.sort((a, b) => {
-          const ta = new Date(a.created_at || a.refill_date || 0).getTime();
-          const tb = new Date(b.created_at || b.refill_date || 0).getTime();
-          return ta - tb;
-        });
-
-        for (let i = 0; i < entries.length; i++) {
-          const cur = entries[i];
-          const prev = i > 0 ? entries[i - 1] : null;
-
-          // Recalculate hmr_diff: current hmr_reading minus previous hmr_reading
-          if (prev && cur.hmr_reading != null && prev.hmr_reading != null) {
-            const diff = cur.hmr_reading - prev.hmr_reading;
-            cur._hmr_diff_calc = diff > 0 ? parseFloat(diff.toFixed(2)) : null;
-          } else {
-            cur._hmr_diff_calc = null;
-          }
-
-          // Recalculate efficiency: PREVIOUS entry's litres_filled ÷ hmr_diff
-          // This gives consumption rate for the hours/km between the two refills
-          const hmrDiff = cur._hmr_diff_calc;
-          const prevLitres = prev ? (prev.litres_filled ?? null) : null;
-          if (hmrDiff != null && hmrDiff > 0 && prevLitres != null && prevLitres > 0) {
-            cur._efficiency_calc = parseFloat((prevLitres / hmrDiff).toFixed(2));
-          } else {
-            cur._efficiency_calc = null;
-          }
-        }
-      });
-
-      // Write back the recalculated values so the rest of the UI picks them up
-      records.forEach(r => {
-        if (r._hmr_diff_calc !== undefined) r.hmr_diff = r._hmr_diff_calc;
-        if (r._efficiency_calc !== undefined) r.efficiency = r._efficiency_calc;
-      });
     }
 
     // Dynamically populate Vehicle Type dropdown from actual data
@@ -19313,14 +19362,13 @@
       document.getElementById('fc-card-total').textContent = total.toLocaleString('en-IN', { maximumFractionDigits: 1 });
       document.getElementById('fc-card-refills').textContent = _fcFiltered.length;
 
-      const excRows = _fcFiltered.filter(r => (r.vehicle_type || '').toLowerCase() === 'excavator' && r.efficiency != null);
-      const tipRows = _fcFiltered.filter(r => (r.vehicle_type || '').toLowerCase() === 'tipper' && r.efficiency != null);
-
-      const excAvg = excRows.length ? (excRows.reduce((s, r) => s + r.efficiency, 0) / excRows.length) : null;
-      const tipAvg = tipRows.length ? (tipRows.reduce((s, r) => s + r.efficiency, 0) / tipRows.length) : null;
-
-      document.getElementById('fc-card-exc-eff').textContent = excAvg != null ? excAvg.toFixed(2) : '—';
-      document.getElementById('fc-card-tip-eff').textContent = tipAvg != null ? tipAvg.toFixed(2) : '—';
+      // The third and fourth cards follow the Vehicle Type dropdown: Excavators and Tippers when it is on All, otherwise that type.
+      const c = fuelCards(_fcFiltered, (document.getElementById('fc-vtype').value || '').toLowerCase());
+      [[3, 'fc-card-exc-eff', c.c3], [4, 'fc-card-tip-eff', c.c4]].forEach(([n, valueId, card]) => {
+        document.getElementById(`fc-lbl-${n}`).textContent = card.label;
+        document.getElementById(valueId).textContent = card.value;
+        document.getElementById(`fc-sub-${n}`).textContent = card.unit;
+      });
     }
 
     function fcUpdateCharts() {
@@ -19389,10 +19437,14 @@
       const wrap = document.getElementById('fc-eff-wrap');
       const emptyEl = document.getElementById('fc-eff-empty');
 
-      const excRows = _fcFiltered.filter(r => (r.vehicle_type || '').toLowerCase() === 'excavator' && r.efficiency != null);
-      const tipRows = _fcFiltered.filter(r => (r.vehicle_type || '').toLowerCase() === 'tipper' && r.efficiency != null);
+      // One line per equipment type: Excavators and Tippers when the dropdown is on All, otherwise the chosen type.
+      const vtype = (document.getElementById('fc-vtype').value || '').toLowerCase();
+      const lines = (vtype ? [vtype] : ['excavator', 'tipper']).map(t => {
+        const metric = fuelMetric(t);
+        return { label: `${fuelTypeLabel(t)} (${metric === 'kpl' ? 'km/L' : 'L/hr'})`, points: fuelDaily(_fcFiltered.filter(r => (r.vehicle_type || '').toLowerCase() === t), metric) };
+      }).filter(l => l.points.some(p => p.value != null));
 
-      if (!excRows.length && !tipRows.length) {
+      if (!lines.length) {
         wrap.style.display = 'none';
         emptyEl.style.display = 'block';
         return;
@@ -19401,42 +19453,11 @@
       wrap.style.display = 'block';
       emptyEl.style.display = 'none';
 
-      // Collect all dates that have efficiency data
-      const allDates = [...new Set([
-        ...excRows.map(r => (r.created_at || r.refill_date || '').slice(0, 10)),
-        ...tipRows.map(r => (r.created_at || r.refill_date || '').slice(0, 10))
-      ])].filter(Boolean).sort();
-
-      // Build per-date averages
-      function avgByDate(rows) {
-        const m = {};
-        rows.forEach(r => {
-          const d = (r.created_at || r.refill_date || '').slice(0, 10);
-          if (!d) return;
-          if (!m[d]) m[d] = { sum: 0, n: 0 };
-          m[d].sum += r.efficiency;
-          m[d].n++;
-        });
-        return m;
-      }
-
-      const excMap = avgByDate(excRows);
-      const tipMap = avgByDate(tipRows);
-
-      const datasets = [];
-      if (excRows.length) datasets.push({
-        label: 'Excavators (L/hr)',
-        data: allDates.map(d => excMap[d] ? excMap[d].sum / excMap[d].n : null),
-        borderColor: FUEL_COLORS[0],
-        backgroundColor: FUEL_COLORS[0] + '22',
-        tension: 0.3, pointRadius: 3, fill: false, spanGaps: true
-      });
-      if (tipRows.length) datasets.push({
-        label: 'Tippers (L/hr)',
-        data: allDates.map(d => tipMap[d] ? tipMap[d].sum / tipMap[d].n : null),
-        borderColor: FUEL_COLORS[2],
-        backgroundColor: FUEL_COLORS[2] + '22',
-        tension: 0.3, pointRadius: 3, fill: false, spanGaps: true
+      const allDates = [...new Set(lines.flatMap(l => l.points.map(p => p.date)))].sort();
+      const datasets = lines.map((l, i) => {
+        const byDate = Object.fromEntries(l.points.map(p => [p.date, p.value]));
+        const color = FUEL_COLORS[(vtype ? 0 : i * 2) % FUEL_COLORS.length];
+        return { label: l.label, data: allDates.map(d => byDate[d] ?? null), borderColor: color, backgroundColor: color + '22', tension: 0.3, pointRadius: 3, fill: false, spanGaps: true };
       });
 
       _fcChartEff = new Chart(document.getElementById('fc-eff-chart'), {
@@ -19483,7 +19504,6 @@
         const vtype = (r.vehicle_type || '').toLowerCase();
         const isOthers = (vtype === 'others' || vtype === 'other');
         const isExc = vtype === 'excavator';
-        const isTip = vtype === 'tipper';
 
         const rawDate = r.created_at || r.refill_date || '';
         const dateObj = rawDate ? new Date(rawDate) : null;
@@ -19508,8 +19528,7 @@
           </tr>`;
         }
 
-        const effUnit = isExc ? 'L/hr' : (isTip ? 'L/hr' : '');
-        const effVal = r.efficiency != null ? `${r.efficiency} ${effUnit}` : '—';
+        const effVal = r.efficiency != null ? `${r.efficiency} ${r._eff_unit || 'L/hr'}` : '—';
         const kmrVal = isExc ? '—' : (r.kmr_reading ?? '—');
         const vtypeDisplay = vtype ? vtype.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—';
 
