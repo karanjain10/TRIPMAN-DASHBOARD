@@ -5688,20 +5688,24 @@
     .fl-back { background:none; border:0; padding:0; margin-bottom:8px; font-size:12px; color:var(--text-secondary); cursor:pointer; }
     .fl-src { display:inline-block; padding:1px 6px; border:1px solid var(--border-strong,var(--border)); border-radius:3px; font-family:var(--font-main); font-size:10px; color:var(--text-secondary); }
     .fl-src.n { border-color:var(--fl-s2); color:var(--text-primary); }
-    @media (max-width:980px) { .fl-cols, .fl-charts { grid-template-columns:1fr; } .fl-col + .fl-col { border-left:0; padding-left:0; margin-top:22px; } .fl-kpis, .fl-kpis.c5 { grid-template-columns:repeat(2,1fr); } }
-    @media print {
-      @page { size:A4 landscape; margin:8mm; }
-      body.fl-printing > *:not(#fleet-summary-page) { display:none !important; }
-      body.fl-printing #fleet-summary-page .topbar, body.fl-printing .fl-controls, body.fl-printing .fl-more, body.fl-printing .fl-banner { display:none !important; }
-      body.fl-printing #fleet-summary-page { background:#fff; min-height:0; }
-      body.fl-printing .fl-body { padding:0; max-width:none; }
-      body.fl-printing .fl-print-logo { display:inline-flex; margin-right:12px; }
-      body.fl-printing .fl-sheet { border:0; padding:0; }
-      body.fl-printing .fl-cv { height:124px; }
-      body.fl-printing .fl-kpis { margin-bottom:8px; } body.fl-printing .fl-charts { margin-bottom:8px; gap:8px 14px; }
-      body.fl-printing .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
-      body.fl-printing .fl-tbl { font-size:10px; } body.fl-printing .fl-tbl td { padding:3px 5px; }
-    }
+    @media screen and (max-width:980px) { .fl-cols, .fl-charts { grid-template-columns:1fr; } .fl-col + .fl-col { border-left:0; padding-left:0; margin-top:22px; } .fl-kpis, .fl-kpis.c5 { grid-template-columns:repeat(2,1fr); } }
+    @media print { @page { size:A4 landscape; margin:8mm; } }
+    /* Print layout. Scoped by body.fl-printing and NOT wrapped in @media print: flPrint adds the class, so the screen already has the
+       print layout when the charts are resized, and the sheet is a fixed 1062px (A4 landscape less margins) so print and screen agree.
+       A print viewport can be narrower than 980px, which used to trigger the stacked mobile layout. */
+    body.fl-printing > *:not(#fleet-summary-page) { display:none !important; }
+    body.fl-printing #fleet-summary-page .topbar, body.fl-printing .fl-controls, body.fl-printing .fl-more, body.fl-printing .fl-banner, body.fl-printing .fl-back { display:none !important; }
+    body.fl-printing #fleet-summary-page { background:#fff; min-height:0; }
+    body.fl-printing .fl-body { padding:0; width:1062px; max-width:none; margin:0; }
+    body.fl-printing .fl-print-logo { display:inline-flex; margin-right:12px; }
+    body.fl-printing .fl-sheet { border:0; padding:0; }
+    body.fl-printing .fl-cols { grid-template-columns:1fr 1fr; }
+    body.fl-printing .fl-col + .fl-col { border-left:1px solid var(--border); padding-left:26px; margin-top:0; }
+    body.fl-printing .fl-charts { grid-template-columns:1fr 1fr; margin-bottom:8px; gap:8px 14px; }
+    body.fl-printing .fl-kpis { grid-template-columns:repeat(4,1fr); margin-bottom:8px; } body.fl-printing .fl-kpis.c5 { grid-template-columns:repeat(5,1fr); }
+    body.fl-printing .fl-cv { height:124px; }
+    body.fl-printing .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
+    body.fl-printing .fl-tbl { font-size:10px; } body.fl-printing .fl-tbl td { padding:3px 5px; }
 
     #daily-operations-page { display:none; min-height:100vh; background:var(--bg); }
     .dos-body { max-width:1440px; margin:0 auto; padding:24px; }
@@ -26432,8 +26436,8 @@
       document.body.classList.add('fl-printing');
       const done = () => { document.body.classList.remove('fl-printing'); document.title = title; window.removeEventListener('afterprint', done); };
       window.addEventListener('afterprint', done);
-      _fl.charts.forEach(c => c.resize());
-      setTimeout(() => window.print(), 100);
+      _fl.charts.forEach(c => c.resize());   // the class gave the page its print width, so the charts are measured at the printed size
+      setTimeout(() => window.print(), 250);
     }
     /* ═══════════════════════ END FLEET SUMMARY ═══════════════════════ */
 
