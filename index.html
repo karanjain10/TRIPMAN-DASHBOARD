@@ -5654,6 +5654,8 @@
     .fl-sheet { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:18px 22px 16px; transition:opacity .15s; }
     .fl-sheet.loading { opacity:.55; }
     .fl-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; padding-bottom:10px; margin-bottom:14px; border-bottom:2px solid var(--text-primary); }
+    .fl-head .l { display:flex; align-items:center; }
+    .fl-print-logo { display:none; }
     .fl-head h1 { margin:0; font-size:20px; font-weight:700; letter-spacing:-.01em; color:var(--text-primary); }
     .fl-head .m { font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); text-align:right; }
     .fl-cols { display:grid; grid-template-columns:1fr 1fr; gap:0 26px; }
@@ -5693,6 +5695,7 @@
       body.fl-printing #fleet-summary-page .topbar, body.fl-printing .fl-controls, body.fl-printing .fl-more, body.fl-printing .fl-banner { display:none !important; }
       body.fl-printing #fleet-summary-page { background:#fff; min-height:0; }
       body.fl-printing .fl-body { padding:0; max-width:none; }
+      body.fl-printing .fl-print-logo { display:inline-flex; margin-right:12px; }
       body.fl-printing .fl-sheet { border:0; padding:0; }
       body.fl-printing .fl-cv { height:124px; }
       body.fl-printing .fl-kpis { margin-bottom:8px; } body.fl-printing .fl-charts { margin-bottom:8px; gap:8px 14px; }
@@ -26184,6 +26187,13 @@
       });
       return out;
     }
+    // The name a saved PDF gets: browsers take it from the page title while printing.
+    function fleetFileName(kind, unitName, from, to) {
+      const range = from === to ? from : `${from}_to_${to}`;
+      if (!kind) return `Tripman_FleetSummary_${range}`;
+      const unit = String(unitName).trim().replace(/[^A-Za-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+      return `Tripman_${kind === 'tipper' ? 'Tipper' : 'Excavator'}-${unit}_${range}`;
+    }
     // fleet:pure:end
 
     // ── page: loading ──
@@ -26368,7 +26378,7 @@
         </section>`;
       };
       const tb = d.tipper.totals, eb = d.excavator.totals;
-      main.innerHTML = `<div class="fl-head"><h1>Fleet summary</h1><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)} · ${days.length} ${days.length === 1 ? 'day' : 'days'}${_fl.price ? ` · diesel ₹${_fl.price.toFixed(0)}/L average purchase` : ''}</div></div>
+      main.innerHTML = `<div class="fl-head"><div class="l"><span class="topbar-tripman-logo fl-print-logo"><span class="topbar-tripman-text">Tripman</span></span><h1>Fleet summary</h1></div><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)} · ${days.length} ${days.length === 1 ? 'day' : 'days'}${_fl.price ? ` · diesel ₹${_fl.price.toFixed(0)}/L average purchase` : ''}</div></div>
         <div class="fl-cols">${col('tipper')}${col('excavator')}</div>
         <p class="fl-foot"><b>${tb.bd + eb.bd} breakdowns</b> in the range (${tb.reported + eb.reported} reported in Equipment Health, ${tb.inferred + eb.inferred} not reported). A breakdown is <b>not reported</b> when a driver ran one tipper and later in the same shift ran a different one: the first tipper is counted, the one the driver ended on is not. A driver who goes back to the first tipper is left out, and so is a tipper someone else drove afterwards. Not inferred for excavators.
         ${d.offDuty ? `<b>${d.offDuty}</b> deactivations were idle, returned, transferred, trial or service entries and are not counted as breakdowns. ` : ''}Fuel is what was issued in the range, not what was burned. Hours and kms are meter movement from shift readings; a shift with a missing opening or closing reading is skipped.</p>`;
@@ -26401,7 +26411,7 @@
       const hrs = e => e.offDuty ? 'off duty' : e.openNow ? 'still down' : e.hours == null ? '—' : flNum(e.hours, 1) + ' h';
       const t = { units: 1, ...u, downtimeH: u.downtimeH };
       document.getElementById('fl-main').innerHTML = `<button class="fl-back" onclick="flBackToFleet()">← Fleet summary</button>
-        <div class="fl-head"><h1>${kind === 'tipper' ? 'Tipper' : 'Excavator'} ${flEsc(u.name)}</h1><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)}</div></div>
+        <div class="fl-head"><div class="l"><span class="topbar-tripman-logo fl-print-logo"><span class="topbar-tripman-text">Tripman</span></span><h1>${kind === 'tipper' ? 'Tipper' : 'Excavator'} ${flEsc(u.name)}</h1></div><div class="m">${flDate(_fl.from)} to ${flDate(_fl.to)}</div></div>
         <div class="fl-kpis${kind === 'tipper' ? ' c5' : ''}"${kind === 'tipper' ? '' : ' style="grid-template-columns:repeat(6,1fr)"'}>${flKpis(kind, { ...t, unitsWithBd: u.bd ? 1 : 0 }, true).slice(0, kind === 'tipper' ? 10 : 6).join('')}</div>
         <div class="fl-charts" style="grid-template-columns:2fr 1fr">
           <figure><figcaption>Trips per day. Orange days had a breakdown</figcaption><div class="fl-cv"><canvas id="fl-unit-day" role="img" aria-label="Trips per day for this unit"></canvas></div></figure>
@@ -26417,8 +26427,10 @@
     function flBackToFleet() { _fl.unit = null; flRender(); }
 
     function flPrint() {
+      const u = _fl.unit && _fl.data[_fl.unit.kind].units.find(x => x.id === _fl.unit.id), title = document.title;
+      document.title = fleetFileName(u ? u.kind : null, u ? u.name : '', _fl.from, _fl.to); // becomes the saved file's name
       document.body.classList.add('fl-printing');
-      const done = () => { document.body.classList.remove('fl-printing'); window.removeEventListener('afterprint', done); };
+      const done = () => { document.body.classList.remove('fl-printing'); document.title = title; window.removeEventListener('afterprint', done); };
       window.addEventListener('afterprint', done);
       _fl.charts.forEach(c => c.resize());
       setTimeout(() => window.print(), 100);

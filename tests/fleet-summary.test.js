@@ -4,8 +4,8 @@ const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/\/\/ fleet:pure:start([\s\S]*?)\/\/ fleet:pure:end/);
 assert(m, 'fleet:pure markers not found in index.html');
-const { fleetClassify, fleetPairLogs, fleetInferSwitches, fleetEvents, fleetRollup } =
-  new Function(m[1] + '; return { fleetClassify, fleetPairLogs, fleetInferSwitches, fleetEvents, fleetRollup };')();
+const { fleetClassify, fleetPairLogs, fleetInferSwitches, fleetEvents, fleetRollup, fleetFileName } =
+  new Function(m[1] + '; return { fleetClassify, fleetPairLogs, fleetInferSwitches, fleetEvents, fleetRollup, fleetFileName };')();
 
 // ── reasons: structured ones win; "Others" is read from the note; idle / returned / transferred is not a breakdown ──
 const c = (reason, notes) => fleetClassify(reason, notes);
@@ -122,5 +122,12 @@ assert.strictEqual(rp.tipper.units.find(u => u.id === 'T34').fuelFactor, 150 / (
 // nothing run: no rate rather than a divide-by-zero
 const idle = fleetRollup({ units, trips: [], fuel: [], readings: [], events: [], from: '2026-09-01', to: '2026-09-30', cumPerTrip: 10 });
 assert.deepStrictEqual([idle.tipper.totals.tripsPerHour, idle.tipper.totals.kmPerTrip, idle.tipper.totals.fuelFactor], [null, null, null]);
+
+// ── the name a saved PDF gets (the browser uses the page title) ──
+assert.strictEqual(fleetFileName(null, null, '2026-09-01', '2026-09-30'), 'Tripman_FleetSummary_2026-09-01_to_2026-09-30');
+assert.strictEqual(fleetFileName(null, null, '2026-09-10', '2026-09-10'), 'Tripman_FleetSummary_2026-09-10');
+assert.strictEqual(fleetFileName('tipper', '47', '2026-09-01', '2026-09-30'), 'Tripman_Tipper-47_2026-09-01_to_2026-09-30');
+assert.strictEqual(fleetFileName('excavator', 'EX-07', '2026-09-01', '2026-09-30'), 'Tripman_Excavator-EX-07_2026-09-01_to_2026-09-30');
+assert.strictEqual(fleetFileName('tipper', 'MH 31/FE 4739', '2026-09-10', '2026-09-10'), 'Tripman_Tipper-MH-31-FE-4739_2026-09-10');
 
 console.log('fleet-summary: all checks passed');
