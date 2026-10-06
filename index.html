@@ -19215,6 +19215,7 @@
         if (start) {
           try {
             before = await fcFetchAll(`${API}/fuel-logs?start_date=${dosShiftDate(start, -45)}&end_date=${dosShiftDate(start, -1)}&`);
+            before = before.filter(r => (r.refill_date || (r.created_at || '').slice(0, 10)) < start);   // the server ignores dates, so this is what keeps the lookback to before the range
             fcNormalizeRecords(before);
           } catch (_) { /* non-fatal: the first refill of each vehicle just has no rate */ }
         }
@@ -25087,6 +25088,7 @@
     // Pull {latitude, longitude} out of a record, checking a couple of
     // plausible field-name variants since fuel/shift-reading GPS isn't
     // shipped by the backend yet — trips confirmed to use `location.{latitude,longitude}`.
+    // lmfuel:pure:start
     function lmExtractLatLng(obj) {
       if (!obj) return null;
       const candidates = [obj.location, obj.gps, obj.coords, obj];
@@ -25098,6 +25100,27 @@
       }
       return null;
     }
+    const lmEsc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // One map pin for a fuel log (a refill), or null when the log has no coordinates. Fuel logs keep them in location { latitude, longitude, accuracy }
+    // (saved with the log since 22 Sep). The name comes from the log: for excavators and dozers vehicle_id is a machine id, no use on a popup.
+    function lmFuelPin(f) {
+      const pos = lmExtractLatLng(f);
+      if (!pos) return null;
+      const acc = f.location && Number.isFinite(f.location.accuracy) ? `<br/>GPS accuracy: ±${Math.round(f.location.accuracy)} m` : '';
+      const t = f.created_at ? new Date(f.created_at) : null;
+      const when = t && !isNaN(t) ? t.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '—';
+      const type = String(f.vehicle_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return { lat: pos.lat, lng: pos.lng, html: `<div style="font-size:12px;line-height:1.5;">
+        <b>Fuel Log</b><br/>
+        Vehicle: ${lmEsc(f.vehicle_name || f.remarks || '—')}${type ? ' (' + lmEsc(type) + ')' : ''}<br/>
+        Litres: ${lmEsc(f.litres_filled ?? '—')}<br/>
+        Logged by: ${lmEsc(f.logged_by || '—')}<br/>
+        When: ${lmEsc(when)}${acc}
+      </div>` };
+    }
+    // The fuel-logs endpoint accepts start_date / end_date but returns every log, so filter here (same rule as the Fuel Reports page).
+    const lmFuelInRange = (logs, from, to) => logs.filter(r => { const d = r.refill_date || (r.created_at || '').slice(0, 10); return (!from || d >= from) && (!to || d <= to); });
+    // lmfuel:pure:end
 
     function lmFmtTime(iso) {
       if (!iso) return '—';
@@ -25170,31 +25193,22 @@
       }
     }
 
+    // "Fuel Entries" are the fuel logs (refills), which carry GPS since 22 Sep. This used to read /fuel-purchases (vendor deliveries),
+    // which have no coordinates, so the layer could never show a pin.
     async function lmLoadFuel(dateFrom, dateTo) {
       try {
-        const url = `${API}/fuel-purchases?start_date=${dateFrom}&end_date=${dateTo}`;
-        const res = await apiFetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const entries = (Array.isArray(data) ? data : (data.items || data.results || [])).filter(lmFuelMatches);
+        const logs = await dosFetchPaged('fuel-logs', `?start_date=${dateFrom}&end_date=${dateTo}`);
+        const entries = lmFuelInRange(logs, dateFrom, dateTo).filter(lmFuelMatches);
         let geo = 0;
         entries.forEach(f => {
-          const pos = lmExtractLatLng(f);
-          if (!pos) return;
+          const pin = lmFuelPin(f);
+          if (!pin) return;
           geo++;
-          const vehicle = getVehicleNum(f.vehicle_id) || f.vehicle_name || getMachineLabel(f.vehicle_id) || '—';
-          const popup = `<div style="font-size:12px;line-height:1.5;">
-            <b>Fuel Entry</b><br/>
-            Vehicle: ${vehicle}<br/>
-            Vendor: ${f.vendor_name || '—'}<br/>
-            Litres: ${f.quantity_litres ?? '—'}<br/>
-            Date: ${f.date || '—'}
-          </div>`;
-          LiveMap.addMarker({ lat: pos.lat, lng: pos.lng, type: 'fuel', popupHtml: popup });
+          LiveMap.addMarker({ lat: pin.lat, lng: pin.lng, type: 'fuel', popupHtml: pin.html });
         });
         _lmCounts.fuel = [geo, entries.length];
       } catch (e) {
-        console.error('Live Map: failed to load fuel entries', e);
+        console.error('Live Map: failed to load fuel logs', e);
       }
     }
 
