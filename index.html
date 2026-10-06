@@ -5422,6 +5422,8 @@
     }
     .dep-history-table tbody tr.dep-expand-row { cursor: default; }
     .dep-history-table tbody tr:last-child { border-bottom: none; }
+    .dep-by-none { color: var(--text-muted); font-style: italic; }
+    .dep-code { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-left: 6px; }
     .dep-history-table tbody tr:hover:not(.dep-expand-row) { background: var(--bg); }
     .dep-history-table tbody td { padding: 10px 14px; white-space: nowrap; }
 
@@ -9583,9 +9585,9 @@
           </select>
         </div>
         <div class="dep-filter-field" style="flex:1;min-width:190px;">
-          <div class="dep-filter-label">Search Truck / Driver</div>
+          <div class="dep-filter-label">Search Unit / Driver / Deployed By</div>
           <input type="text" id="dep-filter-search" class="dep-search"
-            placeholder="Truck no. or driver name…" oninput="depClientFilter()" />
+            placeholder="Unit no., driver or who deployed…" oninput="depClientFilter()" />
         </div>
       </div>
 
@@ -9618,10 +9620,11 @@
                 <tr>
                   <th onclick="depSort('date')">Date <span id="dep-sort-date"></span></th>
                   <th onclick="depSort('shift')">Shift <span id="dep-sort-shift"></span></th>
-                  <th onclick="depSort('truck_number')">Truck No. <span id="dep-sort-truck"></span></th>
+                  <th onclick="depSort('truck_number')">Unit <span id="dep-sort-truck"></span></th>
                   <th onclick="depSort('equipment_type')">Type <span id="dep-sort-type"></span></th>
-                  <th onclick="depSort('driver_name')">Driver <span id="dep-sort-driver"></span></th>
-                  <th onclick="depSort('material')">Material <span id="dep-sort-material"></span></th>
+                  <th onclick="depSort('driver_name')">Driver / Operator <span id="dep-sort-driver"></span></th>
+                  <th onclick="depSort('material')">Material / Location <span id="dep-sort-material"></span></th>
+                  <th onclick="depSort('deployed_by')">Deployed By <span id="dep-sort-by"></span></th>
                   <th onclick="depSort('distance_km')">Dist. <span id="dep-sort-dist"></span></th>
                   <th onclick="depSort('duration')">Duration <span id="dep-sort-dur"></span></th>
                   <th onclick="depSort('status')">Status <span id="dep-sort-status"></span></th>
@@ -9629,7 +9632,7 @@
               </thead>
               <tbody id="dep-history-tbody">
                 <tr>
-                  <td colspan="9"
+                  <td colspan="10"
                     style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">
                     Loading…</td>
                 </tr>
@@ -9734,9 +9737,9 @@
     </div>
 
     <div style="margin-bottom:14px;">
-      <div class="dep-filter-label" style="margin-bottom:6px;">Search Truck / Driver</div>
+      <div class="dep-filter-label" style="margin-bottom:6px;">Search Unit / Driver / Deployed By</div>
       <input type="text" id="dep-filter-search-mobile" class="dep-search" style="width:100%;"
-        placeholder="Truck no. or driver name…"
+        placeholder="Unit no., driver or who deployed…"
         oninput="document.getElementById('dep-filter-search').value=this.value;depClientFilter();" />
     </div>
 
@@ -20786,7 +20789,7 @@
       // Fetch vehicle map first so truck_ids can be resolved to tippers
       depFetchVehicleMap().then(() => depFetch());
       clearInterval(_depAutoRefreshTimer);
-      _depAutoRefreshTimer = setInterval(depSilentRefresh, 60000);
+      _depAutoRefreshTimer = setInterval(() => depSilentRefresh(true), 60000);
     }
 
     function closeDeploymentsPage() {
@@ -20922,7 +20925,7 @@
     function depSkeletonRows(n) {
       return Array.from({ length: n }, () => `
         <tr>
-          <td colspan="9" style="padding:2px 14px;">
+          <td colspan="10" style="padding:2px 14px;">
             <div class="dep-skeleton" style="height:32px;border-radius:4px;"></div>
           </td>
         </tr>`).join('');
@@ -20975,6 +20978,39 @@
       } catch (e) { console.warn('[depTripCounts] failed:', e); }
     }
 
+    // Everything the summary leaves out: deployments of the other equipment types (if the server does not send them) and who deployed
+    // each one. Failures are swallowed: the table then shows what the summary gave it, with "Not recorded" for the deployer.
+    // The per-shift /equipment-assignments requests are cached for 5 minutes (they change rarely); the rest are two small requests.
+    let _depOtherUnits = null;
+    let _depGenericCache = { key: '', at: 0, records: [] };
+    const DEP_GENERIC_TTL_MS = 5 * 60000;
+    async function depLoadExtras() {
+      const date = document.getElementById('dep-filter-date').value, shift = _depCurrentShift, type = document.getElementById('dep-filter-type').value;
+      if (!date) return { generic: [], who: {} };   // "all dates" would pull every assignment ever made
+      const one = shift && shift !== 'all';
+      const json = async path => { try { const r = await apiFetch(`${API}/${path}`); return r.ok ? await r.json() : []; } catch (_) { return []; } };
+      if (!_depOtherUnits || !_depOtherUnits.length) _depOtherUnits = await json('others');
+      const types = depGenericTypesToFetch(_depOtherUnits, type), shifts = one ? [shift] : ['A', 'B', 'C'], key = [date, shifts.join(''), types.join(',')].join('|');
+      const fresh = _depGenericCache.key === key && Date.now() - _depGenericCache.at < DEP_GENERIC_TTL_MS;
+      const [tippers, excavators, records] = await Promise.all([
+        !type || type === 'tipper' ? json(`shift-assignments?date=${date}${one ? '&shift=' + shift : ''}`) : [],
+        !type || type === 'excavator' ? json(`machine-shift-assignments?start_date=${date}&end_date=${date}`) : [],
+        fresh ? _depGenericCache.records
+          : Promise.all(types.flatMap(t => shifts.map(sh => json(`equipment-assignments?equipment_type=${t}&date=${date}&shift=${sh}`)))).then(r => r.flat())
+      ]);
+      if (!fresh) _depGenericCache = { key, at: Date.now(), records };
+      const unitNo = Object.fromEntries(_depOtherUnits.map(o => [o._id, o.number_plate || o.model]));
+      const now = new Date(), cur = { date: ovMiningDate(now), shift: ovShiftOfHour(now.getHours()) };
+      const workerName = code => { const w = code && allWorkers.find(x => x.worker_id === code); return w ? w.name : null; };
+      return { generic: records.map(a => depGenericRow(a, unitNo[a.unit_id], cur)), who: depWhoIndex({ tippers, excavators, generic: records }, workerName) };
+    }
+    async function depApplyExtras() {
+      const extra = await depLoadExtras();
+      _depHistoryData = depMergeRows(_depHistoryData, extra.generic);
+      depApplyWho(_depHistoryData, extra.who);
+      depApplyWho(_depLiveData, extra.who);
+    }
+
     async function depFetch() {
       clearTimeout(_depRetryTimer);
       depHideError();
@@ -20992,6 +21028,7 @@
         const data = await res.json();
         _depLiveData    = Array.isArray(data.live)    ? data.live    : [];
         _depHistoryData = Array.isArray(data.history) ? data.history : [];
+        await depApplyExtras();
         depPopulateTypeDropdown([..._depLiveData, ..._depHistoryData]);
         depClientFilter(false);
         depUpdateSyncLabel();
@@ -21008,10 +21045,10 @@
       clearInterval(_depAutoRefreshTimer);
       _depCountUpDone = false;
       await depFetch();
-      _depAutoRefreshTimer = setInterval(depSilentRefresh, 60000);
+      _depAutoRefreshTimer = setInterval(() => depSilentRefresh(true), 60000);
     }
 
-    async function depSilentRefresh() {
+    async function depSilentRefresh(withExtras) {
       // Silent: no spinner, no skeleton — just update values in place
       try {
         const [res] = await Promise.all([
@@ -21022,10 +21059,57 @@
         const data = await res.json();
         _depLiveData    = Array.isArray(data.live)    ? data.live    : [];
         _depHistoryData = Array.isArray(data.history) ? data.history : [];
+        if (withExtras === true) await depApplyExtras();   // true only from the Deployments page's own timer; the Control Room calls this with no argument
         depPopulateTypeDropdown([..._depLiveData, ..._depHistoryData]);
         depClientFilter(true /* silent */);
         depUpdateSyncLabel();
       } catch (e) { /* silent */ }
+    }
+
+    // dephist:pure:start
+    // Equipment types deployed through /equipment-assignments (the server's deployable list; a drill compressor rides on a drill machine record).
+    // Tippers and excavators come with /deployments/summary. A server older than 21 Sep leaves the rest out of that summary, so they are
+    // requested directly and merged in; a newer server sends them and the merge adds nothing.
+    const DEP_GENERIC_TYPES = ['dozer', 'grader', 'drill_machine', 'loader', 'lmv', 'water_tanker', 'diesel_tanker'];
+    function depGenericTypesToFetch(others, typeFilter) {
+      const have = new Set((others || []).map(o => o.vehicle_type));
+      return DEP_GENERIC_TYPES.filter(t => have.has(t) && (!typeFilter || typeFilter === t));
+    }
+    // An /equipment-assignments record shaped like a summary row. cur = { date, shift } of the shift running now.
+    function depGenericRow(a, unitNo, cur) {
+      return { _id: a._id, vehicle_id: a.unit_id, driver_id: a.person_id, truck_number: unitNo || null, equipment_type: a.equipment_type, shift: a.shift, date: a.date,
+        driver_name: a.person_name, material: null, location: a.location, distance_km: null, deployed_since: a.created_at,
+        status: a.date === cur.date && a.shift === cur.shift ? 'active' : 'completed', compressor_number: a.compressor_number || null, edited_by_name: null, edited_at: null };
+    }
+    const depMergeRows = (summary, generic) => { const ids = new Set(summary.map(r => r._id)); return [...summary, ...generic.filter(g => !ids.has(g._id))]; };
+    // Who deployed each assignment, by the assignment's _id. The summary rows carry no deployer, so it comes from the assignment records:
+    // tippers (/shift-assignments, names resolved by the server), excavators (/machine-shift-assignments, a worker code), the rest
+    // (/equipment-assignments). A worker code is turned into a name from the worker list so one person has one spelling.
+    function depWhoIndex({ tippers, excavators, generic }, workerName) {
+      const real = s => (s && s !== 'Unknown' ? s : null), out = {};
+      (tippers || []).forEach(a => { out[a._id] = { by: workerName(a.assigned_by) || real(a.assigned_by_name) || real(a.created_by_name) || a.assigned_by || null, code: a.assigned_by || '',
+        editedBy: real(a.updated_by_name), editedAt: a.updated_at || null, version: a.version ?? null }; });
+      (excavators || []).forEach(a => { out[a._id] = { by: workerName(a.assigned_by) || a.assigned_by || null, code: a.assigned_by || '', editedBy: real(a.edited_by_name), editedAt: a.edited_at || null, version: a.version ?? null }; });
+      (generic || []).forEach(a => { out[a._id] = { by: workerName(a.assigned_by) || real(a.assigned_by_name) || a.assigned_by || null, code: a.assigned_by || '', editedBy: null, editedAt: null, version: null }; });
+      return out;
+    }
+    // '' (not undefined) when nobody is known, so sorting and searching never trip on it; the table shows "Not recorded".
+    function depApplyWho(rows, who) {
+      rows.forEach(r => {
+        const w = who[r._id];
+        r.deployed_by = w && w.by ? w.by : (r.deployed_by || '');
+        r.deployed_by_code = w ? w.code : (r.deployed_by_code || '');
+        r.last_edited_by = (w && w.editedBy) || r.edited_by_name || '';
+        r.last_edited_at = (w && w.editedAt) || r.edited_at || '';
+        if (w && w.version != null) r.version = w.version;
+      });
+    }
+    // dephist:pure:end
+    const depEsc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // Who deployed, or "Not recorded" (dozers and drill machines saved so far carry no deployer; see depLoadExtras).
+    function depByHtml(d, withCode) {
+      if (!d.deployed_by) return '<span class="dep-by-none" title="The server did not save who assigned this deployment">Not recorded</span>';
+      return depEsc(d.deployed_by) + (withCode && d.deployed_by_code ? ` <span class="dep-code">${depEsc(d.deployed_by_code)}</span>` : '');
     }
 
     // ── Type dropdown ─────────────────────────────────────────────────────────────
@@ -21068,6 +21152,7 @@
         !q ||
         (r.truck_number  || '').toLowerCase().includes(q) ||
         (r.driver_name   || '').toLowerCase().includes(q) ||
+        (r.deployed_by   || '').toLowerCase().includes(q) ||
         matchingExcTruckNums.has(String(r.truck_number));
 
       _depFilteredLive = _depLiveData.filter(match);
@@ -21823,7 +21908,7 @@
       const colMap = {
         date:'date', shift:'shift', truck_number:'truck',
         equipment_type:'type', driver_name:'driver', material:'material',
-        distance_km:'dist', duration:'dur', status:'status'
+        deployed_by:'by', distance_km:'dist', duration:'dur', status:'status'
       };
       Object.entries(colMap).forEach(([f, k]) => {
         const el = document.getElementById('dep-sort-' + k);
@@ -21855,7 +21940,7 @@
       const tbody = document.getElementById('dep-history-tbody');
 
       if (!sorted.length) {
-        tbody.innerHTML = `<tr><td colspan="9"
+        tbody.innerHTML = `<tr><td colspan="10"
           style="padding:44px;text-align:center;color:var(--text-muted);font-size:13px;">
           No deployments match your filters</td></tr>`;
         return;
@@ -21933,11 +22018,16 @@
 
         // key-value pairs for the drawer
         const kvPairs = [
-          { k: 'Truck No.',      v: d.truck_number || '—' },
+          { k: 'Unit',           v: d.truck_number || '—' },
           { k: 'Equipment Type', v: depFmtType(d.equipment_type) },
           { k: 'Shift',          v: d.shift || '—' },
-          { k: 'Driver',         v: (d.driver_name || '—') + histMultiBadge(d) },
+          { k: 'Driver / Operator', v: (d.driver_name || '—') + histMultiBadge(d) },
           { k: 'Material',       v: d.material || '—' },
+          ...(d.location ? [{ k: 'Location', v: depEsc(d.location) }] : []),
+          ...(d.compressor_number ? [{ k: 'Compressor', v: depEsc(d.compressor_number) }] : []),
+          { k: 'Deployed By',    v: depByHtml(d, true) },
+          ...(d.last_edited_by ? [{ k: 'Last Edited By', v: depEsc(d.last_edited_by) + (d.last_edited_at ? ` <span class="dep-code">${depFmtDate(d.last_edited_at)}</span>` : '') }] : []),
+          ...(d.version > 1 ? [{ k: 'Version', v: `${d.version} (changed after the first deployment)` }] : []),
           { k: 'Distance',       v: d.distance_km != null ? d.distance_km + ' km' : '—' },
           { k: 'Status',         v: d.status ? (d.status.charAt(0).toUpperCase() + d.status.slice(1)) : '—' },
           { k: 'Deployed Since', v: depFmtDate(d.deployed_since) },
@@ -21981,7 +22071,7 @@
 
         const drawerRow = `
           <tr class="dep-expand-row" id="${rowId}-drawer">
-            <td colspan="9" class="dep-expand-cell">
+            <td colspan="10" class="dep-expand-cell">
               <div class="dep-expand-inner" id="${rowId}-inner">
                 <div class="dep-expand-content">
                   ${kvPairs.map(p =>
@@ -22001,7 +22091,8 @@
           <td style="font-family:var(--font-mono);font-weight:500;">${d.truck_number || '—'}</td>
           <td>${depTypeBadgeHtml(d.equipment_type)}</td>
           <td>${d.driver_name || '—'}${histMultiBadge(d)}</td>
-          <td>${d.material || '—'}</td>
+          <td>${d.material || depEsc(d.location) || '—'}</td>
+          <td>${depByHtml(d, false)}</td>
           <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${d.distance_km != null ? d.distance_km + ' km' : '—'}</td>
           <td>${durationHtml}</td>
           <td>${statusBadge}</td>
@@ -22058,7 +22149,7 @@
     function depShowError() {
       document.getElementById('dep-error-banner').classList.add('visible');
       document.getElementById('dep-live-grid').innerHTML    = '';
-      document.getElementById('dep-history-tbody').innerHTML = `<tr><td colspan="9"
+      document.getElementById('dep-history-tbody').innerHTML = `<tr><td colspan="10"
         style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">
         Failed to load data</td></tr>`;
     }
