@@ -4,7 +4,7 @@ const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/\/\/ trips-bulk:pure:start([\s\S]*?)\/\/ trips-bulk:pure:end/);
 assert(m, 'trips-bulk:pure markers not found in index.html');
-const { tbParse, tbDate } = new Function(m[1] + '; return { tbParse, tbDate };')();
+const { tbParse, tbDate, tbTemplateFiles } = new Function(m[1] + '; return { tbParse, tbDate, tbTemplateFiles };')();
 
 const H = ['Truck', 'Date', 'Shift', 'Material', 'Trips', 'Times'];
 const NOW = Date.parse('2026-10-08T12:00:00+05:30');
@@ -58,5 +58,18 @@ assert(/Trips column, a Times column/.test(tbParse([['Truck', 'Date', 'Shift', '
 const sk = tbParse([H, [], ['T', '2026-10-07', 'A', 'Coal', '2', '']], NOW).groups;
 assert.strictEqual(sk.length, 1);
 assert.strictEqual(sk[0].rowNo, 3);
+
+// "Truck Number" works as the header too
+assert.deepStrictEqual(tbParse([['Truck Number', 'Date', 'Shift', 'Material', 'Trips'], ['T-5', '2026-10-07', 'A', 'Coal', '3']], NOW).groups[0].errors, []);
+
+// Excel template: dropdowns, trip-count check, and a Times formula under Excel's 8192-char limit
+const files = tbTemplateFiles(['T-1', 'A&B']);
+const sheet = files['xl/worksheets/sheet1.xml'];
+const formula = sheet.match(/<f t="shared" ref="F2[^>]*>([^<]*)<\/f>/)[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+assert(formula.length < 8192, 'Times formula too long for Excel: ' + formula.length);
+assert(/type="list"[^>]*sqref="A2:A301"[^>]*><formula1>Lists!\$A\$2:\$A\$3</.test(sheet));        // trucks come from the Lists sheet
+assert(sheet.includes('<formula1>&quot;A,B,C&quot;</formula1>') && sheet.includes('Coal,Soft OB,Hard OB,Rehandling'));
+assert(/type="whole"[^>]*sqref="E2:E301"/.test(sheet));
+assert(files['xl/worksheets/sheet2.xml'].includes('A&amp;B'));                                       // truck names are XML-escaped
 
 console.log('bulk-trips: all passed');

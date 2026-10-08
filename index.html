@@ -8487,7 +8487,7 @@
       <details style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:16px;">
         <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);">Bulk upload from Excel — many trucks at once</summary>
         <div style="margin-top:14px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
-          One row per truck per shift: <strong>Truck, Date, Shift, Material</strong>, then either <strong>Trips</strong> (a number, spread evenly across the shift) or <strong>Times</strong> (e.g. <em>22:15, 22:40</em>). Date is the mining date. Driver and excavator must already be deployed. Same rules as the form below.
+          One row per truck per shift: <strong>Truck</strong> (the truck number, not the number plate), <strong>Date</strong> (the mining date), <strong>Shift</strong> and <strong>Material</strong> (dropdowns), then <strong>Trips</strong>. The <strong>Times</strong> column fills itself with evenly spread times; overwrite it with real times if you have them, or clear it and the site spreads them for you. Driver and excavator must already be deployed. Same rules as the form below.
         </div>
         <div style="display:flex;gap:10px;margin:12px 0;flex-wrap:wrap;">
           <button onclick="tbTemplate()" style="height:36px;padding:0 16px;border:1.5px solid var(--border-strong);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-secondary);background:var(--surface);font-family:var(--font-main);">Download template</button>
@@ -18329,7 +18329,7 @@
       if (!rows || !rows.length) return { error: 'The file is empty.' };
       const head = rows[0].map(tbNorm);
       const col = n => head.indexOf(n);
-      const ix = { truck: col('truck'), date: col('date'), shift: col('shift'), material: col('material'), trips: col('trips'), times: col('times') };
+      const ix = { truck: Math.max(col('truck'), col('trucknumber')), date: col('date'), shift: col('shift'), material: col('material'), trips: col('trips'), times: col('times') };
       const missing = ['truck', 'date', 'shift', 'material'].filter(k => ix[k] < 0);
       if (missing.length) return { error: 'Missing column: ' + missing.join(', ') + '. Download the template to see the layout.' };
       if (ix.trips < 0 && ix.times < 0) return { error: 'Need a Trips column, a Times column, or both.' };
@@ -18383,23 +18383,75 @@
       }
       return groups.length ? { groups } : { error: 'No data rows found.' };
     }
+
+    // The Excel template: dropdowns for Truck / Shift / Material, a whole-number check on Trips, and a Times
+    // formula that fills the evenly spread times as soon as Shift and Trips are entered (same maths as tbParse;
+    // if the formula is cleared or the file is saved without calculating, the site spreads them itself).
+    // Returns { 'path/in/zip': 'xml' }.
+    function tbTemplateFiles(trucks) {
+      const X = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const MAXN = Math.floor(480 / TB_MIN_GAP), ROWS = TB_MAX_ROWS + 1, last = Math.max(trucks.length, 1) + 1;
+      const term = k => `IF($E2>=${k},${k > 1 ? '", "&' : ''}TEXT(MOD($G2+ROUND((${k}-0.5)*480/$E2,0),1440)/1440,"hh:mm"),"")`;
+      const times = `IF(OR($G2="",NOT(ISNUMBER($E2))),"",IF(OR($E2<1,$E2>${MAXN}),"",${Array.from({ length: MAXN }, (_, i) => term(i + 1)).join('&')}))`;
+      const start = 'IFERROR(INDEX({360,840,1320},MATCH($C2,{"A","B","C"},0)),"")';
+      const str = (ref, t, st) => `<c r="${ref}" t="inlineStr"${st ? ` s="${st}"` : ''}><is><t>${X(t)}</t></is></c>`;
+      const head = ['Truck', 'Date', 'Shift', 'Material', 'Trips', 'Times', 'Shift start (min)'].map((h, i) => str('ABCDEFG'[i] + '1', h, 1)).join('');
+      let rows = `<row r="1">${head}</row>`;
+      for (let r = 2; r <= ROWS; r++) {
+        const f = (col, body) => r === 2
+          ? `<c r="${col}2"><f t="shared" ref="${col}2:${col}${ROWS}" si="${col === 'F' ? 0 : 1}">${X(body)}</f></c>`
+          : `<c r="${col}${r}"><f t="shared" si="${col === 'F' ? 0 : 1}"/></c>`;
+        rows += `<row r="${r}">${f('F', times)}${f('G', start)}</row>`;
+      }
+      const dv = (sqref, type, f1, extra, msg) => `<dataValidation type="${type}" ${extra || ''} allowBlank="1" showErrorMessage="1" errorTitle="Not allowed" error="${X(msg)}" sqref="${sqref}"><formula1>${X(f1)}</formula1>${type === 'whole' ? `<formula2>${MAXN}</formula2>` : ''}</dataValidation>`;
+      const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="2" width="13" style="2" customWidth="1"/><col min="3" max="3" width="8" customWidth="1"/><col min="4" max="4" width="13" customWidth="1"/><col min="5" max="5" width="8" customWidth="1"/><col min="6" max="6" width="60" customWidth="1"/><col min="7" max="7" width="12" hidden="1" customWidth="1"/></cols>
+<sheetData>${rows}</sheetData>
+<dataValidations count="4">${[
+        dv(`A2:A${ROWS}`, 'list', `Lists!$A$2:$A$${last}`, '', 'Pick a truck number from the list'),
+        dv(`C2:C${ROWS}`, 'list', '"A,B,C"', '', 'Shift must be A, B or C'),
+        dv(`D2:D${ROWS}`, 'list', '"' + TB_MATERIALS.join(',') + '"', '', 'Pick a material from the list'),
+        dv(`E2:E${ROWS}`, 'whole', '1', 'operator="between"', `Trips must be a whole number from 1 to ${MAXN}`),
+      ].join('')}</dataValidations>
+</worksheet>`;
+      const lists = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${
+        [str('A1', 'Truck numbers', 1)].concat(trucks.map((t, i) => str('A' + (i + 2), t))).map((c, i) => `<row r="${i + 1}">${c}</row>`).join('')}</sheetData></worksheet>`;
+      return {
+        '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`,
+        '_rels/.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+        'xl/workbook.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Trips" sheetId="1" r:id="rId1"/><sheet name="Lists" sheetId="2" r:id="rId2"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>`,
+        'xl/_rels/workbook.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`,
+        // style 0 normal, 1 bold header, 2 text ("@") so typed dates stay as typed
+        'xl/styles.xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs></styleSheet>`,
+        'xl/worksheets/sheet1.xml': sheet,
+        'xl/worksheets/sheet2.xml': lists,
+      };
+    }
     // trips-bulk:pure:end
 
     let tbGroups = [];   // parsed rows plus live check results
     let tbBusy = false;
     let tbLabel = 'Saving…';
 
-    function tbTemplate() {
-      if (typeof XLSX === 'undefined') { showToast('Excel is unavailable. Check your connection and try again.'); return; }
-      const ws = XLSX.utils.aoa_to_sheet([
-        ['Truck', 'Date', 'Shift', 'Material', 'Trips', 'Times'],
-        ['MH40-1234', '2026-10-07', 'C', 'Coal', 12, ''],
-        ['MH40-5678', '2026-10-07', 'C', 'Soft OB', '', '22:15, 22:40, 23:05, 00:30'],
-      ]);
-      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 7 }, { wch: 12 }, { wch: 8 }, { wch: 44 }];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Trips');
-      XLSX.writeFile(wb, 'bulk_trips_template.xlsx');
+    async function tbTemplate() {
+      const trucks = [...new Set(allVehicles.map(v => v.vehicle_number).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      if (!trucks.length) { showToast('Trucks are not loaded yet. Try again in a moment.'); return; }
+      const zip = new JSZip();
+      Object.entries(tbTemplateFiles(trucks)).forEach(([p, x]) => zip.file(p, x));
+      const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'bulk_trips_template.xlsx';
+      a.click();
     }
 
     async function tbFile(input) {
@@ -18428,7 +18480,11 @@
         .then(r => r.ok ? r.json() : []).then(j => Array.isArray(j) ? j : (j.assignments || [])).catch(() => []));
       const one = async g => {
         const v = allVehicles.find(x => tbNorm(x.vehicle_number) === tbNorm(g.truck));
-        if (!v) { g.errors.push('Truck not found'); return; }
+        if (!v) {
+          const byPlate = allVehicles.find(x => x.number_plate && tbNorm(x.number_plate) === tbNorm(g.truck));
+          g.errors.push(byPlate ? `"${g.truck}" is a number plate. Use the truck number ${byPlate.vehicle_number}` : 'Truck not found. Use the truck number, not the number plate');
+          return;
+        }
         g.vehicleId = v._id; g.truckName = v.vehicle_number;
         const [dr, ms, ex] = await Promise.all([
           apiFetch(`${API}/shift-assignments?truck_id=${v._id}&shift=${g.shift}&date=${g.date}`).then(r => r.ok ? r.json() : []).catch(() => []),
