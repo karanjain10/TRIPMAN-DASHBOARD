@@ -8483,6 +8483,20 @@
 
     <div style="padding:24px;max-width:760px;margin:0 auto;">
 
+      <!-- BULK UPLOAD -->
+      <details style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:16px;">
+        <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);">Bulk upload from Excel — many trucks at once</summary>
+        <div style="margin-top:14px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+          One row per truck per shift: <strong>Truck, Date, Shift, Material</strong>, then either <strong>Trips</strong> (a number, spread evenly across the shift) or <strong>Times</strong> (e.g. <em>22:15, 22:40</em>). Date is the mining date. Driver and excavator must already be deployed. Same rules as the form below.
+        </div>
+        <div style="display:flex;gap:10px;margin:12px 0;flex-wrap:wrap;">
+          <button onclick="tbTemplate()" style="height:36px;padding:0 16px;border:1.5px solid var(--border-strong);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-secondary);background:var(--surface);font-family:var(--font-main);">Download template</button>
+          <label style="height:36px;padding:0 16px;display:inline-flex;align-items:center;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-main);">Choose file…
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="tbFile(this)" style="display:none;"></label>
+        </div>
+        <div id="tb-out"></div>
+      </details>
+
       <!-- STEP 1: TRUCK + CONTEXT -->
       <div
         style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;">
@@ -18276,6 +18290,216 @@
         btn.textContent = 'Submit Trips →';
         showLoading(false);
       }
+    }
+
+    // ─── BULK TRIP UPLOAD (spreadsheet → /trips/manual-entry in batches of 10) ───
+    // One sheet row = one truck for one shift: Truck | Date | Shift | Material | Trips | Times.
+    // Times (optional, "22:15, 22:40, …") are used as given; without it, `Trips` trips are spread
+    // evenly across the shift window (estimated times, flagged in the preview).
+    // trips-bulk:pure:start
+    const TB_MATERIALS = ['Coal', 'Soft OB', 'Hard OB', 'Rehandling'];
+    const TB_SHIFT_START = { A: 360, B: 840, C: 1320 };   // minutes after midnight IST; every shift is 8 h
+    const TB_MIN_GAP = 7;                                  // minutes, same rule as the single-truck form
+    const TB_MAX_ROWS = 300;
+
+    function tbNorm(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+    function tbDate(v) {   // 2026-10-07, 07/10/2026 or 07-10-2026 -> '2026-10-07' (or null)
+      const s = String(v == null ? '' : v).trim();
+      let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!m) { const d = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/); if (d) m = [0, d[3], d[2], d[1]]; }
+      if (!m) return null;
+      const iso = `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+      const t = new Date(iso + 'T00:00:00Z');
+      return isNaN(t) || t.toISOString().slice(0, 10) !== iso ? null : iso;
+    }
+
+    function tbNextDay(iso) { return new Date(Date.parse(iso + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10); }
+
+    // minutes-after-midnight for `date` + shift -> ISO string with the IST offset
+    function tbStamp(date, shift, minutes) {
+      const m = minutes % 1440;
+      const day = shift === 'C' && m < 360 ? tbNextDay(date) : date;   // C shift's small hours belong to the next calendar day
+      return `${day}T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:00+05:30`;
+    }
+
+    // rows: array of arrays (header row first), as XLSX sheet_to_json({header:1}) gives.
+    // Returns { error } or { groups: [{rowNo, truck, date, shift, material, stamps[], estimated, errors[]}] }.
+    function tbParse(rows, nowMs) {
+      if (!rows || !rows.length) return { error: 'The file is empty.' };
+      const head = rows[0].map(tbNorm);
+      const col = n => head.indexOf(n);
+      const ix = { truck: col('truck'), date: col('date'), shift: col('shift'), material: col('material'), trips: col('trips'), times: col('times') };
+      const missing = ['truck', 'date', 'shift', 'material'].filter(k => ix[k] < 0);
+      if (missing.length) return { error: 'Missing column: ' + missing.join(', ') + '. Download the template to see the layout.' };
+      if (ix.trips < 0 && ix.times < 0) return { error: 'Need a Trips column, a Times column, or both.' };
+      const cell = (r, k) => (ix[k] < 0 || r[ix[k]] == null) ? '' : String(r[ix[k]]).trim();
+      const groups = [], seen = new Set();
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i] || [];
+        if (r.every(c => c == null || String(c).trim() === '')) continue;
+        if (groups.length >= TB_MAX_ROWS) return { error: `Too many rows. Maximum ${TB_MAX_ROWS} per upload.` };
+        const g = { rowNo: i + 1, truck: cell(r, 'truck'), date: tbDate(cell(r, 'date')), shift: cell(r, 'shift').toUpperCase(), material: '', stamps: [], estimated: false, errors: [] };
+        const mat = TB_MATERIALS.find(x => tbNorm(x) === tbNorm(cell(r, 'material')));
+        if (!g.truck) g.errors.push('Truck is blank');
+        if (!g.date) g.errors.push('Date must look like 2026-10-07 or 07/10/2026');
+        if (!TB_SHIFT_START[g.shift]) g.errors.push('Shift must be A, B or C');
+        if (!mat) g.errors.push('Material must be one of ' + TB_MATERIALS.join(', ')); else g.material = mat;
+        const key = [tbNorm(g.truck), g.date, g.shift].join('|');
+        if (!g.errors.length && seen.has(key)) g.errors.push('This truck, date and shift is already on an earlier row');
+        seen.add(key);
+
+        if (!g.errors.length) {
+          const times = cell(r, 'times'), count = parseInt(cell(r, 'trips'), 10);
+          let mins = [];
+          if (times) {
+            const hits = [...times.matchAll(/(\d{1,2}):(\d{2})/g)];
+            const leftover = times.replace(/(\d{1,2}):(\d{2})/g, '').replace(/[\s,;|]/g, '');
+            if (!hits.length || leftover) g.errors.push('Times must be HH:MM separated by commas, e.g. 22:15, 22:40');
+            mins = hits.map(h => +h[1] * 60 + +h[2]);
+            if (mins.some(m => m > 1439 || m % 60 > 59)) g.errors.push('A time is not a valid HH:MM');
+            if (!g.errors.length && ix.trips >= 0 && cell(r, 'trips') && count !== mins.length) g.errors.push(`Trips says ${count} but Times lists ${mins.length}`);
+          } else if (count >= 1) {
+            if (count > 480 / TB_MIN_GAP) g.errors.push(`${count} trips will not fit in an 8 h shift with ${TB_MIN_GAP} min gaps (max ${Math.floor(480 / TB_MIN_GAP)})`);
+            else { g.estimated = true; mins = Array.from({ length: count }, (_, k) => TB_SHIFT_START[g.shift] + Math.round((k + 0.5) * 480 / count)); }
+          } else g.errors.push('Give a Trips number or a Times list');
+
+          if (!g.errors.length) {
+            // keep shift order: C runs 22:00 -> 06:00, so after-midnight times sort after 22:xx
+            const shiftMin = m => (m - TB_SHIFT_START[g.shift] + 1440) % 1440;
+            mins.sort((a, b) => shiftMin(a) - shiftMin(b));
+            const outside = mins.filter(m => shiftMin(m) >= 480);
+            if (outside.length) g.errors.push(`Time ${String(Math.floor(outside[0] / 60)).padStart(2, '0')}:${String(outside[0] % 60).padStart(2, '0')} is outside Shift ${g.shift}`);
+            for (let k = 1; k < mins.length && !g.errors.length; k++) {
+              if (shiftMin(mins[k]) - shiftMin(mins[k - 1]) < TB_MIN_GAP) g.errors.push(mins[k] === mins[k - 1] ? 'Duplicate time' : `Two trips are less than ${TB_MIN_GAP} min apart`);
+            }
+            if (!g.errors.length) {
+              g.stamps = mins.map(m => tbStamp(g.date, g.shift, m));
+              if (nowMs != null && g.stamps.some(s => Date.parse(s) > nowMs)) g.errors.push('Some trips are in the future');
+            }
+          }
+        }
+        groups.push(g);
+      }
+      return groups.length ? { groups } : { error: 'No data rows found.' };
+    }
+    // trips-bulk:pure:end
+
+    let tbGroups = [];   // parsed rows plus live check results
+    let tbBusy = false;
+    let tbLabel = 'Saving…';
+
+    function tbTemplate() {
+      if (typeof XLSX === 'undefined') { showToast('Excel is unavailable. Check your connection and try again.'); return; }
+      const ws = XLSX.utils.aoa_to_sheet([
+        ['Truck', 'Date', 'Shift', 'Material', 'Trips', 'Times'],
+        ['MH40-1234', '2026-10-07', 'C', 'Coal', 12, ''],
+        ['MH40-5678', '2026-10-07', 'C', 'Soft OB', '', '22:15, 22:40, 23:05, 00:30'],
+      ]);
+      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 7 }, { wch: 12 }, { wch: 8 }, { wch: 44 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Trips');
+      XLSX.writeFile(wb, 'bulk_trips_template.xlsx');
+    }
+
+    async function tbFile(input) {
+      const f = input.files && input.files[0];
+      input.value = '';
+      if (!f || tbBusy) return;
+      const out = document.getElementById('tb-out');
+      try {
+        const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, blankrows: false, dateNF: 'yyyy-mm-dd' });
+        const p = tbParse(rows, Date.now());
+        if (p.error) { tbGroups = []; out.innerHTML = `<div style="color:#c0392b;font-size:13px;">❌ ${tbEsc(p.error)}</div>`; return; }
+        tbGroups = p.groups;
+      } catch (e) { tbGroups = []; out.innerHTML = '<div style="color:#c0392b;font-size:13px;">❌ Could not read that file. Use the template (.xlsx or .csv).</div>'; return; }
+      tbBusy = true; tbLabel = 'Checking…'; tbRender();
+      try { await tbCheckLive(); } finally { tbBusy = false; tbLabel = 'Saving…'; }
+      tbRender();
+    }
+
+    const tbEsc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    // Look up truck, driver, excavator and already-saved trips for every clean row (6 rows at a time).
+    async function tbCheckLive() {
+      const machCache = {};
+      const machines = d => machCache[d] || (machCache[d] = apiFetch(`${API}/machine-shift-assignments?start_date=${d}&end_date=${d}`)
+        .then(r => r.ok ? r.json() : []).then(j => Array.isArray(j) ? j : (j.assignments || [])).catch(() => []));
+      const one = async g => {
+        const v = allVehicles.find(x => tbNorm(x.vehicle_number) === tbNorm(g.truck));
+        if (!v) { g.errors.push('Truck not found'); return; }
+        g.vehicleId = v._id; g.truckName = v.vehicle_number;
+        const [dr, ms, ex] = await Promise.all([
+          apiFetch(`${API}/shift-assignments?truck_id=${v._id}&shift=${g.shift}&date=${g.date}`).then(r => r.ok ? r.json() : []).catch(() => []),
+          machines(g.date),
+          apiFetch(`${API}/trips?vehicle_id=${v._id}&shift=${g.shift}&date=${g.date}&limit=500`).then(r => r.json()).catch(() => null),
+        ]);
+        const asg = (Array.isArray(dr) ? dr : (dr ? [dr] : [])).find(a => a.truck_id === v._id || a.vehicle_id === v._id);
+        if (!asg) g.errors.push(`No driver deployed for Shift ${g.shift} on ${g.date}. Deploy one first`);
+        else g.driver = asg.driver_name || getDriverName(asg.driver_id || asg.driver) || '';
+        if (!ms.find(a => (!a.shift || a.shift === g.shift) && (a.truck_ids || a.trucks || []).includes(v._id)))
+          g.errors.push(`No excavator deployed to this truck for Shift ${g.shift} on ${g.date}. Deploy one first`);
+        const have = ex ? (Array.isArray(ex) ? ex : (ex.trips || [])).filter(t => (t.mining_date || '') === g.date).length : 0;
+        if (have) g.warn = `${have} trip${have > 1 ? 's' : ''} already saved for this truck and shift. These will be added on top`;
+      };
+      const todo = tbGroups.filter(g => !g.errors.length);
+      for (let i = 0; i < todo.length; i += 6) await Promise.all(todo.slice(i, i + 6).map(one));
+    }
+
+    function tbRender() {
+      const out = document.getElementById('tb-out');
+      const ok = tbGroups.filter(g => !g.errors.length && !g.done && !g.fail);
+      const total = ok.reduce((n, g) => n + g.stamps.length, 0);
+      const est = ok.filter(g => g.estimated).length;
+      const th = 'text-align:left;padding:6px 8px;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);';
+      const td = 'padding:6px 8px;font-size:12px;border-top:1px solid var(--border);vertical-align:top;';
+      out.innerHTML = `
+        <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+          <tr><th style="${th}">Row</th><th style="${th}">Truck</th><th style="${th}">Date</th><th style="${th}">Shift</th><th style="${th}">Material</th><th style="${th}">Trips</th><th style="${th}">Driver</th><th style="${th}">Status</th></tr>
+          ${tbGroups.map(g => {
+            const st = g.done ? `<span style="color:#27ae60;">✔ Saved</span>`
+              : g.fail ? `<span style="color:#c0392b;">❌ ${tbEsc(g.fail)}</span>`
+              : g.errors.length ? `<span style="color:#c0392b;">❌ ${g.errors.map(tbEsc).join('<br>')}</span>`
+              : `<span style="color:#27ae60;">✔ Ready</span>${g.estimated ? ' <span style="color:#b9770e;">· times estimated</span>' : ''}${g.warn ? `<br><span style="color:#b9770e;">⚠ ${tbEsc(g.warn)}</span>` : ''}`;
+            return `<tr><td style="${td}">${g.rowNo}</td><td style="${td}">${tbEsc(g.truckName || g.truck)}</td><td style="${td}">${tbEsc(g.date || '—')}</td><td style="${td}">${tbEsc(g.shift)}</td><td style="${td}">${tbEsc(g.material || '—')}</td><td style="${td}">${g.stamps.length || '—'}</td><td style="${td}">${tbEsc(g.driver || '—')}</td><td style="${td}">${st}</td></tr>`;
+          }).join('')}
+        </table></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;">
+          <div style="font-size:12px;color:var(--text-secondary);">${ok.length} of ${tbGroups.length} rows ready · ${total} trips${est ? ` · ${est} row${est > 1 ? 's use' : ' uses'} estimated times` : ''}${tbGroups.some(g => g.errors.length || g.fail) ? ' · rows with ❌ are skipped' : ''}</div>
+          <button id="tb-go" onclick="tbSubmit()" ${ok.length && !tbBusy ? '' : 'disabled'} style="height:36px;padding:0 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-main);${ok.length && !tbBusy ? '' : 'opacity:0.5;cursor:default;'}">${tbBusy ? tbLabel : `Save ${total} trips →`}</button>
+        </div>`;
+    }
+
+    // Per row, 10 trips per request in time order (the server numbers trips from what is already saved,
+    // so requests must go one after another). A failed request stops that row only.
+    async function tbSubmit() {
+      const ok = tbGroups.filter(g => !g.errors.length && !g.done && !g.fail);
+      const total = ok.reduce((n, g) => n + g.stamps.length, 0);
+      if (tbBusy || !ok.length) return;
+      if (!confirm(`Save ${total} trips for ${ok.length} truck-shifts? This cannot be undone from here.`)) return;
+      tbBusy = true; tbLabel = 'Saving…'; tbRender();
+      const workerId = document.getElementById('mt-worker-id').value;
+      for (const g of ok) {
+        g.saved = 0; g.fail = '';
+        for (let i = 0; i < g.stamps.length; i += MT_MAX_TRIPS) {
+          try {
+            const res = await apiFetch(`${API}/trips/manual-entry`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ vehicle_id: g.vehicleId, material_type: g.material, worker_id: workerId, shift: g.shift,
+                trips: g.stamps.slice(i, i + MT_MAX_TRIPS).map(timestamp => ({ timestamp })) })
+            });
+            if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(typeof j.detail === 'string' ? j.detail : `HTTP ${res.status}`); }
+            g.saved += Math.min(MT_MAX_TRIPS, g.stamps.length - i);
+          } catch (e) { g.fail = `${g.saved} of ${g.stamps.length} saved, then: ${e.message}`; break; }
+        }
+        if (!g.fail) g.done = true;
+        tbRender();
+      }
+      tbBusy = false;
+      tbRender();
+      const bad = tbGroups.filter(g => g.fail).length;
+      showToast(bad ? `Finished with ${bad} row${bad > 1 ? 's' : ''} not fully saved. Check the table` : '✔ All trips saved');
     }
 
     // ─── END MANUAL TRIP ENTRY ────────────────────────────────────────────────────
