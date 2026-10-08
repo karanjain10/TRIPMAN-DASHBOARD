@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintenance mockup</title>
+<link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f5f4f0; --surface:#fff; --border:#e2e0d8; --border-strong:#c8c5bb;
+    --text:#1a1917; --text2:#6b6860; --text3:#9b9890; --accent:#1a3a5c; --accent-light:#e8eef5;
+    --ok:#1f7a45; --ok-bg:#e6f4ec; --warn:#8a5a00; --warn-bg:#fdf1d6; --warn-line:#e8a020;
+    --bad:#a32d2d; --bad-bg:#fbe7e5; --bad-line:#c0392b; --idle-bg:#eeede8;
+    --sans:'DM Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  [data-theme="dark"] {
+    --bg:#0d0f12; --surface:#16191f; --border:#262a33; --border-strong:#363b45;
+    --text:#e6e9ee; --text2:#9aa0a6; --text3:#646a73; --accent:#10b981; --accent-light:#064e3b;
+    --ok:#5fd493; --ok-bg:#12301f; --warn:#f5c04a; --warn-bg:#3a2d0c; --warn-line:#f59e0b;
+    --bad:#ff8a84; --bad-bg:#431a18; --bad-line:#ef4444; --idle-bg:#1d2129;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font:14px/1.45 var(--sans); background:var(--bg); color:var(--text); padding:0 0 40px; }
+  .num { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+  button { font:inherit; color:inherit; background:var(--surface); border:1px solid var(--border-strong); border-radius:6px; padding:6px 12px; cursor:pointer; }
+  button:hover { border-color:var(--text2); }
+  button:focus-visible, .un:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button.primary { background:var(--bad-line); border-color:var(--bad-line); color:#fff; font-weight:600; }
+  a { color:var(--accent); }
+
+  .mock { background:var(--accent-light); border-bottom:1px dashed var(--border-strong); padding:10px 24px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; color:var(--text2); }
+  .mock b { color:var(--text); font-weight:500; margin-right:4px; }
+  .wrap { max-width:1280px; margin:0 auto; padding:0 24px; }
+
+  .top { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:18px 0 14px; }
+  .logo { background:#1e1e1e; color:#e8a24c; font-weight:700; font-size:18px; padding:6px 12px; border-radius:6px; }
+  .top h1 { font-size:18px; font-weight:600; }
+  .top .when { color:var(--text2); }
+  .top .sp { flex:1; }
+  .live { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+  .live i { width:8px; height:8px; border-radius:50%; background:var(--ok); }
+  .sound { display:inline-flex; align-items:center; gap:8px; } .sound i { font-size:16px; line-height:1; display:inline-flex; }
+  .sound.off { border-color:var(--warn-line); background:var(--warn-bg); color:var(--warn); }
+  .sound.on { border-color:var(--ok); color:var(--ok); }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--text2); }
+
+  .kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi { padding:14px 16px; }
+  .kpi .big { font-size:32px; font-weight:500; line-height:1; margin:8px 0 6px; }
+  .kpi .big small { font-size:13px; color:var(--text2); font-family:var(--sans); letter-spacing:0; margin-left:6px; }
+  .kpi .sub { font-size:12px; color:var(--text2); }
+  .kpi.hot { border-color:var(--bad-line); background:var(--bad-bg); } .kpi.hot .big { color:var(--bad); }
+
+  .grid { display:grid; grid-template-columns:minmax(0,1fr) 440px; gap:16px; align-items:start; }
+  .sec-head { display:flex; align-items:center; justify-content:space-between; padding:0 2px 8px; }
+  .count { font-family:var(--mono); font-size:12px; padding:1px 7px; border-radius:10px; background:var(--bad-bg); color:var(--bad); margin-left:8px; }
+  .count.z { background:var(--ok-bg); color:var(--ok); }
+
+  .un { padding:14px 16px; border-left:4px solid var(--bad-line); margin-bottom:12px; cursor:pointer; transition:border-color .12s; }
+  .un:hover { border-color:var(--border-strong); border-left-color:var(--bad-line); }
+  .un.sel { border-color:var(--bad-line); box-shadow:0 0 0 1px var(--bad-line); }
+  .un.new { background:var(--bad-bg); }
+  .un-h { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .un-id { font-family:var(--mono); font-size:20px; font-weight:500; }
+  .ty { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; background:var(--idle-bg); color:var(--text2); }
+  .tag { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.04em; }
+  .tag.new { background:var(--bad-line); color:#fff; }
+  .tag.rep { background:var(--warn-bg); color:var(--warn); }
+  .un-h .sp { flex:1; }
+  .down { font-size:18px; font-weight:500; color:var(--bad); }
+  .reason { font-weight:600; margin-top:8px; }
+  .notes { color:var(--text2); font-size:13px; margin-top:2px; }
+  .meta { font-size:12px; color:var(--text2); margin-top:8px; }
+  .meta b { color:var(--text); font-weight:500; }
+  .locrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12px; }
+  .acc { font-family:var(--mono); font-size:12px; font-weight:500; padding:2px 8px; border-radius:5px; }
+  .acc.good { background:var(--ok-bg); color:var(--ok); } .acc.rough { background:var(--warn-bg); color:var(--warn); } .acc.poor { background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-line); }
+  .acc.none { background:var(--idle-bg); color:var(--text2); }
+  .acc.wait { background:var(--idle-bg); color:var(--text2); animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
+  .locrow .sp { flex:1; }
+  .locrow button { font-size:12px; padding:4px 10px; }
+  .locnote { color:var(--text2); }
+
+  .mapc { position:sticky; top:12px; overflow:hidden; }
+  .mapc-h { padding:12px 16px; display:flex; align-items:center; border-bottom:1px solid var(--border); }
+  #map { height:420px; background:var(--idle-bg); }
+  .foot { padding:10px 16px; font-size:12px; color:var(--text2); background:var(--bg); border-top:1px solid var(--border); }
+  .foot b { color:var(--text); font-weight:500; }
+
+  .tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  .tbl th { text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); padding:8px 14px; border-bottom:1px solid var(--border); }
+  .tbl td { padding:9px 14px; border-bottom:1px solid var(--border); }
+  .tbl tr:last-child td { border-bottom:0; }
+  .tbl td:first-child { font-family:var(--mono); font-weight:500; }
+  details.off { margin-top:12px; } details.off summary { cursor:pointer; padding:10px 16px; font-size:12px; color:var(--text2); }
+  details.off .tbl { border-top:1px solid var(--border); }
+  .none { padding:22px 16px; color:var(--text2); }
+
+  .ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; align-items:flex-start; justify-content:center; padding:56px 16px; overflow:auto; }
+  .ov.show { display:flex; }
+  .dlg { position:relative; width:min(520px,100%); border:2px solid var(--bad-line); box-shadow:0 20px 60px rgba(0,0,0,.4); outline:none; padding:0; overflow:hidden; }
+  .dlg-top { background:var(--bad-line); color:#fff; padding:10px 18px; font-size:12px; font-weight:700; letter-spacing:.1em; display:flex; align-items:center; gap:8px; }
+  .dlg-top i { font-size:16px; display:inline-flex; }
+  .dlg-b { padding:16px 18px 18px; }
+  .dlg .un-id { font-size:30px; }
+  .dlg .reason { font-size:18px; }
+  .dlg .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .dlg .locrow { font-size:13px; }
+  @media (max-width:980px) { .grid { grid-template-columns:1fr; } .kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } .mapc { position:static; } }
+</style>
+</head>
+<body>
+
+<div class="mock">
+  <b>Mockup, sample data.</b>
+  <button id="rep">Report a breakdown ▸</button>
+  <button id="rep0">Report one with no GPS ▸</button>
+  <button id="step">Wait 5 min ▸</button>
+  <button id="reset">Reset</button>
+  <button id="theme">Light / dark</button>
+  <span>Click "Sound off" once first, as a real browser needs. The new report pops up at once; its GPS arrives a few seconds later, like the app's second call.</span>
+</div>
+
+<div class="wrap">
+  <div class="top">
+    <span class="logo">Tripman</span>
+    <h1>Maintenance</h1>
+    <span class="when" id="when"></span>
+    <span class="sp"></span>
+    <span class="live"><i></i>Checked 8s ago · every 20s</span>
+    <button class="sound off" id="sound" aria-pressed="false"><i id="sound-ic" class="fi fi-rr-volume-mute" aria-hidden="true"></i><span id="sound-t">Sound off, click to enable</span></button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <section>
+      <div class="sec-head"><span class="eyebrow">Down now<span class="count" id="cnt"></span></span><span class="eyebrow" style="text-transform:none;letter-spacing:0;font-weight:400">new reports first, then longest down</span></div>
+      <div id="list"></div>
+
+      <div class="sec-head" style="padding-top:8px"><span class="eyebrow">Back in service, 24 h</span></div>
+      <div class="card"><table class="tbl" id="fixed"></table></div>
+
+      <details class="card off"><summary id="off-s"></summary><table class="tbl" id="off"></table></details>
+    </section>
+
+    <aside class="card mapc">
+      <div class="mapc-h"><span class="eyebrow">Where they stopped</span></div>
+      <div id="map" role="img" aria-label="Satellite map of breakdown locations"></div>
+      <div class="foot">Pin = where the phone was when the driver pressed Breakdown. The ring is the GPS accuracy. A wide ring means "somewhere in here", not an exact spot. Same satellite imagery as the Live Map.</div>
+    </aside>
+  </div>
+</div>
+
+<div class="ov" id="ov" aria-hidden="true">
+  <div class="card dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" tabindex="-1" id="dlg"></div>
+</div>
+
+<script>
+const NOW0 = 17 * 60 + 42;           // Fri 09 Oct 2026, 17:42, Shift B
+let now, units, fixed, sel, popId, soundOn = false, ctx, master, seq = 0;
+const MOCK = [  // x,y are map pixels; lat/lng derive from them
+  { id:'TP-34', type:'Tipper',    reason:'Tyre puncture',   notes:'Rear left outer. Driver is fitting the spare.', ago:372, by:'Ramesh Yadav', shift:'A', loc:{ x:210, y:150, acc:8 },   acked:true,  rep:0 },
+  { id:'EX-04', type:'Excavator', reason:'Hydraulic leak',  notes:'Boom cylinder, oil on the ground under it.',   ago:95,  by:'Ramkumar Nag', shift:'B', loc:{ x:330, y:235, acc:22 },  acked:false, rep:2 },
+  { id:'TP-52', type:'Tipper',    reason:'Others',          notes:'Starter not engaging, tried three times.',      ago:41,  by:'Dinesh Kori',  shift:'B', loc:{ x:455, y:120, acc:135 }, acked:false, rep:0 },
+  { id:'WT-02', type:'Other',     reason:'Engine overheating', notes:'Water tanker. Parked near the dump.',        ago:1700, by:'Mukesh Jha',  shift:'C', loc:null,                       acked:true,  rep:0 },
+];
+const FIXED = [
+  { id:'TP-11', reason:'Brake issue',     from:NOW0 - 480, to:NOW0 - 330 },
+  { id:'TP-27', reason:'Tyre puncture',   from:NOW0 - 330, to:NOW0 - 262 },
+  { id:'EX-02', reason:'Electrical',      from:NOW0 - 250, to:NOW0 - 155 },
+  { id:'TP-45', reason:'Others',          from:NOW0 - 140, to:NOW0 - 118 },
+];
+const OFF = [ ['TP-08','Idle, no operator'], ['TP-19','Service due'], ['TP-60','Other site'] ];
+
+const clock = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const dur = m => m < 60 ? m + 'm' : m < 1440 ? Math.floor(m/60) + 'h ' + String(m%60).padStart(2,'0') + 'm' : Math.floor(m/1440) + 'd ' + Math.floor(m%1440/60) + 'h';
+const since = u => { const t = now - (now - u.at); const dayDiff = Math.floor(now/1440) - Math.floor(u.at/1440); return (dayDiff ? 'yesterday ' : 'since ') + clock(u.at); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' })[c]);
+const lat = y => (23.7550 - y / 420 * 0.0200).toFixed(5), lng = x => (86.3950 + x / 640 * 0.0300).toFixed(5);
+
+function reset() {
+  now = NOW0; sel = null; popId = null; seq = 0;
+  units = MOCK.map((m, i) => ({ ...m, n:i, at: NOW0 - m.ago }));
+  fixed = FIXED; closePop(); render();
+}
+
+function accBadge(u) {
+  if (u.loc === 'wait') return `<span class="acc wait">Waiting for GPS…</span>`;
+  if (!u.loc) return `<span class="acc none">No location</span>`;
+  const a = u.loc.acc;
+  return `<span class="acc ${a <= 25 ? 'good' : a <= 100 ? 'rough' : 'poor'}">±${a} m</span>`;
+}
+function locNote(u) {
+  if (u.loc === 'wait') return `<span class="locnote">The app sends the position a few seconds after the report.</span>`;
+  if (!u.loc) return `<span class="locnote">The phone gave no fix. Ask ${esc(u.by)} where it stopped.</span>`;
+  const a = u.loc.acc;
+  return `<span class="locnote num">${lat(u.loc.y)}, ${lng(u.loc.x)}</span>${a > 100 ? '<span class="locnote">· rough, treat as the area only</span>' : ''}`;
+}
+function locBtns(u) {
+  return u.loc && u.loc !== 'wait' ? `<span class="sp"></span><button data-copy="${u.id}">Copy</button><a href="https://www.google.com/maps?q=${lat(u.loc.y)},${lng(u.loc.x)}" target="_blank" rel="noopener"><button type="button">Open in Maps ↗</button></a>` : '';
+}
+
+function render() {
+  document.getElementById('when').textContent = `Fri 09 Oct 2026 · Shift B · ${clock(now)}`;
+  const list = [...units].sort((a, b) => (a.acked - b.acked) || a.at - b.at);
+  const newN = units.filter(u => !u.acked).length;
+  document.title = (newN ? `(${newN}) ` : '') + 'Maintenance mockup';
+
+  const by = t => units.filter(u => u.type === t).length;
+  const longest = list.reduce((m, u) => (!m || u.at < m.at) ? u : m, null);
+  const avg = fixed.length ? Math.round(fixed.reduce((s, f) => s + f.to - f.from, 0) / fixed.length) : 0;
+  document.getElementById('kpis').innerHTML = `
+    <div class="card kpi${units.length ? ' hot' : ''}"><div class="eyebrow">Down now</div><div class="big num">${units.length}</div><div class="sub">${by('Tipper')} tippers · ${by('Excavator')} excavators · ${by('Other')} other</div></div>
+    <div class="card kpi"><div class="eyebrow">Waiting to be acknowledged</div><div class="big num">${newN}</div><div class="sub">${newN ? 'Someone should say they have seen it' : 'All seen'}</div></div>
+    <div class="card kpi"><div class="eyebrow">Longest down</div><div class="big num">${longest ? dur(now - longest.at) : '—'}</div><div class="sub">${longest ? `${longest.id} · ${esc(longest.reason)}` : 'Nothing down'}</div></div>
+    <div class="card kpi"><div class="eyebrow">Back in service, 24 h</div><div class="big num">${fixed.length}<small>avg ${dur(avg)} down</small></div><div class="sub">Time from Breakdown to Back in service</div></div>`;
+
+  const c = document.getElementById('cnt'); c.textContent = units.length; c.className = 'count' + (units.length ? '' : ' z');
+  document.getElementById('list').innerHTML = list.length ? list.map(u => `
+    <div class="card un${u.acked ? '' : ' new'}${sel === u.id ? ' sel' : ''}" data-id="${u.id}" tabindex="0" role="button" aria-label="Show ${u.id} on the map">
+      <div class="un-h"><span class="un-id">${u.id}</span><span class="ty">${u.type}</span>${u.acked ? '' : '<span class="tag new">NEW</span>'}${u.rep ? `<span class="tag rep">${u.rep === 2 ? '2nd' : '3rd'} breakdown in 7 days</span>` : ''}<span class="sp"></span><span class="down num">${dur(now - u.at)}</span></div>
+      <div class="reason">${esc(u.reason)}</div>${u.notes ? `<div class="notes">${esc(u.notes)}</div>` : ''}
+      <div class="meta">Reported by <b>${esc(u.by)}</b> · ${since(u)} · Shift ${u.shift}</div>
+      <div class="locrow">${accBadge(u)}${locNote(u)}${locBtns(u)}</div>
+      ${u.acked ? '' : '<div style="margin-top:10px"><button data-ack="' + u.id + '">Acknowledge</button></div>'}
+    </div>`).join('') : '<div class="card none">Nothing is down. Every machine reported Back in service.</div>';
+
+  document.getElementById('fixed').innerHTML = `<thead><tr><th>Unit</th><th>Reason</th><th>Down</th><th>Back</th><th>Downtime</th></tr></thead><tbody>` +
+    fixed.map(f => `<tr><td>${f.id}</td><td>${esc(f.reason)}</td><td class="num">${clock(f.from)}</td><td class="num">${clock(f.to)}</td><td class="num">${dur(f.to - f.from)}</td></tr>`).join('') + '</tbody>';
+  document.getElementById('off-s').textContent = `Off duty, no alert (${OFF.length}): idle, service, other site`;
+  document.getElementById('off').innerHTML = OFF.map(([id, r]) => `<tr><td>${id}</td><td>${r}</td></tr>`).join('');
+  drawMap();
+  if (popId) fillPop();
+}
+
+let map, layer, fitKey = '';
+function drawMap() {
+  if (!map) {
+    map = L.map('map', { maxZoom: 19 }).setView([23.7455, 86.4150], 15);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, maxNativeZoom: 17, attribution: 'Tiles &copy; Esri' }).addTo(map);
+    layer = L.layerGroup().addTo(map);
+  }
+  layer.clearLayers();
+  const at = units.filter(u => u.loc && u.loc !== 'wait');
+  at.forEach(u => {
+    const ll = [+lat(u.loc.y), +lng(u.loc.x)];
+    L.circle(ll, { radius: u.loc.acc, color: '#ef4444', weight: 1.5, dashArray: u.loc.acc > 100 ? '4 3' : null, fillColor: '#ef4444', fillOpacity: .15, interactive: false }).addTo(layer);
+    L.circleMarker(ll, { radius: sel === u.id ? 10 : 7, color: '#fff', weight: 2, fillColor: '#c0392b', fillOpacity: 1 })
+      .bindTooltip(`${u.id} ±${u.loc.acc} m`, { permanent: true, direction: 'right', offset: [10, 0] })
+      .on('click', () => { sel = u.id; render(); document.querySelector(`.un[data-id="${u.id}"]`)?.scrollIntoView({ block:'nearest', behavior:'smooth' }); }).addTo(layer);
+  });
+  const k = at.map(u => u.id).join();
+  if (k !== fitKey) { fitKey = k; if (at.length) map.fitBounds(L.latLngBounds(at.map(u => [+lat(u.loc.y), +lng(u.loc.x)])), { padding:[50,50], maxZoom:17 }); }
+  setTimeout(() => map.invalidateSize(), 0);
+}
+
+function fillPop() {
+  const u = units.find(x => x.id === popId); if (!u) return;
+  document.getElementById('dlg').innerHTML = `
+    <div class="dlg-top"><i class="fi fi-rr-siren" aria-hidden="true"></i>NEW BREAKDOWN · ${clock(u.at)}</div>
+    <div class="dlg-b">
+      <div class="un-h"><span class="un-id" id="dlg-t">${u.id}</span><span class="ty">${u.type}</span>${u.rep ? `<span class="tag rep">${u.rep === 2 ? '2nd' : '3rd'} in 7 days</span>` : ''}</div>
+      <div class="reason">${esc(u.reason)}</div>${u.notes ? `<div class="notes">${esc(u.notes)}</div>` : ''}
+      <div class="meta">Reported by <b>${esc(u.by)}</b> · Shift ${u.shift}</div>
+      <div class="locrow">${accBadge(u)}${locNote(u)}${locBtns(u)}</div>
+      <div class="btns"><button class="primary" id="d-ack">Acknowledge</button><button id="d-map">Show on map</button><button id="d-x">Close</button></div>
+    </div>`;
+  document.getElementById('d-ack').onclick = () => { ack(u.id); closePop(); };
+  document.getElementById('d-map').onclick = () => { sel = u.id; closePop(); render(); };
+  document.getElementById('d-x').onclick = closePop;
+}
+function openPop(id) { popId = id; fillPop(); const o = document.getElementById('ov'); o.classList.add('show'); o.setAttribute('aria-hidden', 'false'); document.getElementById('d-ack')?.focus(); }
+function closePop() { popId = null; const o = document.getElementById('ov'); o.classList.remove('show'); o.setAttribute('aria-hidden', 'true'); }
+const ack = id => { const u = units.find(x => x.id === id); if (u) u.acked = true; render(); };
+
+const NEW = [
+  ['TP-38','Tipper','Engine overheating','Temperature gauge in red, pulled over.','Imran Khan',{ x:270, y:120, acc:9 }],
+  ['EX-01','Excavator','Others','Swing motor making a grinding noise.','Hari Om Sahu',{ x:150, y:175, acc:60 }],
+];
+function report(noGps) {
+  const [id, type, reason, notes, by, loc] = NEW[seq++ % NEW.length];
+  if (units.some(u => u.id === id)) return;
+  const u = { id, type, reason, notes, by, shift:'B', at: now, loc:'wait', acked:false, rep:0 };
+  units.push(u); render(); openPop(id); alarm();
+  setTimeout(() => { u.loc = noGps ? null : loc; render(); }, noGps ? 6000 : 4000);
+}
+
+function tone(f, at, dur) {
+  const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + at;
+  o.type = 'square'; o.frequency.value = f; o.connect(g); g.connect(master);
+  g.gain.setValueAtTime(.2, t); g.gain.setValueAtTime(.2, t + dur - .02); g.gain.linearRampToValueAtTime(0, t + dur);
+  o.start(t); o.stop(t + dur + .05);
+}
+function alarm() { if (!soundOn) return; master = ctx.createGain(); master.connect(ctx.destination); for (let i = 0; i < 8; i++) tone(i % 2 ? 370 : 440, i * .5, .48); }
+function setSound(on) {
+  if (on && !ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (on) ctx.resume(); soundOn = on;
+  const b = document.getElementById('sound'); b.className = 'sound ' + (on ? 'on' : 'off'); b.setAttribute('aria-pressed', on);
+  document.getElementById('sound-ic').className = 'fi ' + (on ? 'fi-rr-volume' : 'fi-rr-volume-mute');
+  document.getElementById('sound-t').textContent = on ? 'Sound on' : 'Sound off, click to enable';
+  if (on) alarm();
+}
+
+document.getElementById('sound').onclick = () => setSound(!soundOn);
+document.getElementById('rep').onclick = () => report(false);
+document.getElementById('rep0').onclick = () => report(true);
+document.getElementById('step').onclick = () => { now += 5; render(); };
+document.getElementById('reset').onclick = reset;
+document.getElementById('theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; render(); };
+document.getElementById('list').addEventListener('click', e => {
+  const a = e.target.closest('[data-ack]'); if (a) { e.stopPropagation(); return ack(a.dataset.ack); }
+  const cp = e.target.closest('[data-copy]'); if (cp) { e.stopPropagation(); const u = units.find(x => x.id === cp.dataset.copy); navigator.clipboard?.writeText(`${lat(u.loc.y)}, ${lng(u.loc.x)}`); cp.textContent = 'Copied'; return; }
+  if (e.target.closest('a')) return;
+  const c = e.target.closest('.un'); if (c) { sel = c.dataset.id; render(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && popId) closePop(); });
+
+reset();
+</script>
+</body>
+</html>

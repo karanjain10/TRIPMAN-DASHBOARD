@@ -6290,6 +6290,64 @@
     body.ld-printing .ld-table { min-width: 0; }
     body.ld-printing tr.ld-m { cursor: default; }
 
+    /* ── MAINTENANCE ────────────────────────────────────────────────────── */
+    #maintenance-page { --c-ok-bg:#e6f4ec; --c-warn-bg:#fdf1d6; --c-warn-line:#e8a020; --c-bad-bg:#fbe7e5; --c-bad-line:#c0392b; --c-idle-bg:#eeede8; }
+    :root[data-theme="dark"] #maintenance-page { --c-ok-bg:#12301f; --c-warn-bg:#3a2d0c; --c-warn-line:#f59e0b; --c-bad-bg:#431a18; --c-bad-line:#ef4444; --c-idle-bg:#1d2129; }
+    .mt-body { max-width:1280px; margin:0 auto; padding:16px 24px 40px; }
+    .mt-when { color:var(--text-secondary); margin-bottom:12px; }
+    .mt-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+    .mt-eyebrow { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--text-secondary); }
+    .mt-live { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; font-size:12px; color:var(--text-secondary); }
+    .mt-live i { width:8px; height:8px; border-radius:50%; background:var(--ok); } .mt-live.off i { background:var(--bad); } .mt-live.off { color:var(--bad); }
+    .mt-sound { display:inline-flex; align-items:center; gap:8px; height:30px; font-size:12px; white-space:nowrap; } .mt-sound i { font-size:16px; line-height:1; display:inline-flex; }
+    .mt-sound.off { border-color:var(--c-warn-line); background:var(--c-warn-bg); color:var(--warn); } .mt-sound.on { border-color:var(--ok); color:var(--ok); }
+    .mt-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+    .mt-kpi { padding:14px 16px; }
+    .mt-kpi .big { font-family:var(--font-mono); font-size:32px; font-weight:500; line-height:1; margin:8px 0 6px; letter-spacing:-.04em; }
+    .mt-kpi .big small { font-family:var(--font-main); font-size:13px; color:var(--text-secondary); letter-spacing:0; margin-left:6px; }
+    .mt-kpi .sub { font-size:12px; color:var(--text-secondary); }
+    .mt-kpi.hot { border-color:var(--c-bad-line); background:var(--c-bad-bg); } .mt-kpi.hot .big { color:var(--bad); }
+    .mt-grid { display:grid; grid-template-columns:minmax(0,1fr) 440px; gap:16px; align-items:start; }
+    .mt-sec-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 2px 8px; flex-wrap:wrap; }
+    .mt-count { font-family:var(--font-mono); font-size:12px; padding:1px 7px; border-radius:10px; background:var(--c-bad-bg); color:var(--bad); margin-left:8px; } .mt-count.z { background:var(--c-ok-bg); color:var(--ok); }
+    .mt-un { padding:14px 16px; border-left:4px solid var(--c-bad-line); margin-bottom:12px; cursor:pointer; transition:border-color .12s; }
+    .mt-un:hover { border-color:var(--border-strong); border-left-color:var(--c-bad-line); }
+    .mt-un.sel { border-color:var(--c-bad-line); box-shadow:0 0 0 1px var(--c-bad-line); }
+    .mt-un.new { background:var(--c-bad-bg); }
+    .mt-un:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    .mt-un-h { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; } .mt-un-h .sp { flex:1; }
+    .mt-id { font-family:var(--font-mono); font-size:20px; font-weight:500; }
+    .mt-ty { padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; background:var(--c-idle-bg); color:var(--text-secondary); }
+    .mt-tag { padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; letter-spacing:.04em; }
+    .mt-tag.new { background:var(--c-bad-line); color:#fff; } .mt-tag.rep { background:var(--c-warn-bg); color:var(--warn); }
+    .mt-down { font-family:var(--font-mono); font-size:18px; font-weight:500; color:var(--bad); }
+    .mt-reason { font-weight:600; margin-top:8px; } .mt-notes { color:var(--text-secondary); font-size:13px; margin-top:2px; }
+    .mt-meta { font-size:12px; color:var(--text-secondary); margin-top:8px; } .mt-meta b { color:var(--text-primary); font-weight:500; }
+    .mt-loc { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12px; }
+    .mt-loc .sp { flex:1; } .mt-loc .action-btn { font-size:12px; height:28px; padding:0 10px; }
+    .mt-acc { font-family:var(--font-mono); font-size:12px; font-weight:500; padding:2px 8px; border-radius:5px; }
+    .mt-acc.good { background:var(--c-ok-bg); color:var(--ok); } .mt-acc.rough { background:var(--c-warn-bg); color:var(--warn); } .mt-acc.poor { background:var(--c-bad-bg); color:var(--bad); border:1px solid var(--c-bad-line); }
+    .mt-acc.none, .mt-acc.wait { background:var(--c-idle-bg); color:var(--text-secondary); } .mt-acc.wait { animation:mtpulse 1.2s infinite; }
+    @keyframes mtpulse { 50% { opacity:.45; } }
+    .mt-note { color:var(--text-secondary); }
+    .mt-mapc { position:sticky; top:12px; overflow:hidden; }
+    .mt-mapc-h { padding:12px 16px; border-bottom:1px solid var(--border); }
+    #mt-map { height:420px; background:var(--c-idle-bg); }
+    .mt-foot { padding:10px 16px; font-size:12px; color:var(--text-secondary); background:var(--bg); border-top:1px solid var(--border); } .mt-foot b { color:var(--text-primary); font-weight:500; }
+    .mt-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+    .mt-tbl th { text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); padding:8px 14px; border-bottom:1px solid var(--border); }
+    .mt-tbl td { padding:9px 14px; border-bottom:1px solid var(--border); } .mt-tbl tr:last-child td { border-bottom:0; } .mt-tbl td:first-child { font-family:var(--font-mono); font-weight:500; }
+    .mt-off { margin-top:12px; } .mt-off summary { cursor:pointer; padding:10px 16px; font-size:12px; color:var(--text-secondary); } .mt-off .mt-tbl { border-top:1px solid var(--border); }
+    .mt-none { padding:22px 16px; color:var(--text-secondary); }
+    .mt-ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9100; align-items:flex-start; justify-content:center; padding:56px 16px; overflow:auto; } .mt-ov.show { display:flex; }
+    .mt-dlg { width:min(520px,100%); border:2px solid var(--c-bad-line); box-shadow:0 20px 60px rgba(0,0,0,.4); outline:none; overflow:hidden; }
+    .mt-dlg-top { background:var(--c-bad-line); color:#fff; padding:10px 18px; font-size:12px; font-weight:700; letter-spacing:.1em; display:flex; justify-content:space-between; }
+    .mt-dlg-b { padding:16px 18px 18px; } .mt-dlg .mt-id { font-size:30px; } .mt-dlg .mt-reason { font-size:18px; }
+    .mt-dlg .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+    .action-btn.mt-primary { background:var(--c-bad-line); border-color:var(--c-bad-line); color:#fff; font-weight:600; }
+    @media (max-width:700px) { #mt-live-t, #mt-sound-t { display:none; } }
+    @media (max-width:980px) { .mt-grid { grid-template-columns:1fr; } .mt-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } .mt-mapc { position:static; } }
+
     /* ── CONTROL ROOM ───────────────────────────────────────────────────── */
     #control-page { --c-ok-bg:#e6f4ec; --c-warn-bg:#fdf1d6; --c-warn-line:#e8a020; --c-bad-bg:#fbe7e5; --c-bad-line:#c0392b; --c-idle-bg:#eeede8; }
     :root[data-theme="dark"] #control-page { --c-ok-bg:#12301f; --c-warn-bg:#3a2d0c; --c-warn-line:#f59e0b; --c-bad-bg:#431a18; --c-bad-line:#ef4444; --c-idle-bg:#1d2129; }
@@ -6428,6 +6486,7 @@
         <div class="nav-group">Fleet</div>
         <button class="nav-item" data-nav="deployments" onclick="navGo('deployments')"><i class="fi fi-rr-truck-loading" aria-hidden="true"></i><span>Deployments</span></button>
         <button class="nav-item" data-nav="eqhealth" onclick="navGo('eqhealth')"><i class="fi fi-rr-engine" aria-hidden="true"></i><span>Equipment health</span></button>
+        <button class="nav-item" data-nav="maintenance" onclick="navGo('maintenance')"><i class="fi fi-rr-triangle-warning" aria-hidden="true"></i><span>Maintenance</span></button>
         <button class="nav-item" data-nav="livemap" onclick="navGo('livemap')"><i class="fi fi-rr-map-marker" aria-hidden="true"></i><span>Live map</span></button>
         <button class="nav-item" data-nav="drilling" onclick="navGo('drilling')"><i class="fi fi-rr-hammer-crash" aria-hidden="true"></i><span>Drilling</span></button>
 
@@ -7396,6 +7455,41 @@
     </div>
   </div>
 
+  <!-- MAINTENANCE PAGE (under Equipment health). A "maintenance" login sees only this page. -->
+  <div id="maintenance-page" style="display:none; min-height:100vh; background:var(--bg);">
+    <div class="topbar">
+      <button class="action-btn" id="mt-back" onclick="closeMaintenancePage()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Maintenance</div>
+      <div class="topbar-user">
+        <span class="mt-live" id="mt-live"><i></i><span id="mt-live-t">Waiting for data</span></span>
+        <button class="action-btn mt-sound off" id="mt-sound" onclick="mtToggleSound()" aria-pressed="false"><i id="mt-sound-ic" class="fi fi-rr-volume-mute" aria-hidden="true"></i><span id="mt-sound-t">Sound off, click to enable</span></button>
+        <span class="topbar-logout" id="mt-out" onclick="doLogout()" style="display:none;">Sign out</span>
+      </div>
+    </div>
+    <div class="mt-body">
+      <div class="mt-when" id="mt-when"></div>
+      <div class="mt-kpis" id="mt-kpis"></div>
+      <div class="mt-grid">
+        <section>
+          <div class="mt-sec-head"><span class="mt-eyebrow">Down now<span class="mt-count" id="mt-cnt"></span></span><span class="mt-note">new reports first, then longest down</span></div>
+          <div id="mt-list"></div>
+          <div class="mt-sec-head" style="padding-top:8px"><span class="mt-eyebrow">Back in service, last 24 hours</span></div>
+          <div class="mt-card"><table class="mt-tbl" id="mt-fixed"></table></div>
+          <details class="mt-card mt-off"><summary id="mt-off-s"></summary><table class="mt-tbl" id="mt-off"></table></details>
+        </section>
+        <aside class="mt-card mt-mapc">
+          <div class="mt-mapc-h"><span class="mt-eyebrow">Where they stopped</span></div>
+          <div id="mt-map" role="img" aria-label="Satellite map of breakdown locations"></div>
+          <div class="mt-foot" id="mt-mapnote"></div>
+        </aside>
+      </div>
+    </div>
+    <div class="mt-ov" id="mt-ov" aria-hidden="true">
+      <div class="mt-card mt-dlg" role="alertdialog" aria-modal="true" aria-labelledby="mt-dlg-t" tabindex="-1" id="mt-dlg"></div>
+    </div>
+  </div>
+
   <!-- CONTROL ROOM PAGE -->
   <div id="control-page" style="display:none; min-height:100vh; background:var(--bg);">
     <div class="topbar">
@@ -8124,6 +8218,7 @@
       <div class="topbar-title">🔧 Equipment Health</div>
       <div class="topbar-user" style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:12px;color:var(--text-muted);" id="eqh-date-label"></span>
+        <button class="action-btn" onclick="closeEqHealthPage(); openMaintenancePage()" style="height:30px;font-size:12px;">Maintenance screen</button>
         <button class="action-btn" onclick="eqhRefresh()" style="height:30px;font-size:12px;">↻ Refresh</button>
         <span id="eqh-auto-refresh-indicator" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;"></span>
       </div>
@@ -9998,6 +10093,7 @@
     if (currentCompanyCode) document.getElementById('login-company').value = currentCompanyCode;
 
     function doLogout() {
+      mtStop(); document.getElementById('maintenance-page').style.display = 'none';
       currentUser = null;
       authToken = null;
       currentSiteId = null;
@@ -10018,6 +10114,7 @@
     }
 
     async function initApp() {
+      if (mtOnly()) return openMaintenancePage(); // skip the dashboard's own data load
       ovSkeleton();
       await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
       await loadTrips(true);
@@ -16361,11 +16458,12 @@
 
     // ── navigation ──
     function navGo(key) {
+      if (mtOnly() && key !== 'maintenance') return; // a maintenance login sees the Maintenance page only
       closeNav();
       if (key === 'overview') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       const targets = {
         reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
-        deployments: openDeploymentsPage, eqhealth: openEqHealthPage, livemap: openLiveMapPage,
+        deployments: openDeploymentsPage, eqhealth: openEqHealthPage, maintenance: openMaintenancePage, livemap: openLiveMapPage,
         compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
         manual: openManualTripPage, workers: openWorkersPage, manage: openManagePage, bulk: openBulkPage, drilling: openDrillPage, control: openControlPage
       };
@@ -16377,7 +16475,7 @@
     // and shared links land on the same page and dates.
     const _navPages = {
       'reports-hub-page': 'reports', 'lf-page': 'loadfactor', 'haul-page': 'haul', 'deployments-page': 'deployments',
-      'eq-health-page': 'eqhealth', 'livemap-page': 'livemap', 'drill-page': 'drilling', 'compliance-page': 'compliance',
+      'eq-health-page': 'eqhealth', 'maintenance-page': 'maintenance', 'livemap-page': 'livemap', 'drill-page': 'drilling', 'compliance-page': 'compliance',
       'changeover-page': 'changeover', 'handover-page': 'handover', 'manual-trip-page': 'manual', 'workers-page': 'workers', 'bulk-page': 'bulk', 'manage-page': 'manage', 'control-page': 'control'
     };
     const _navDates = { compliance: ['src-date-from', 'src-date-to'], changeover: ['co-date-from', 'co-date-to'] };
@@ -16388,6 +16486,7 @@
       return '#' + key + (from ? `?from=${from}&to=${document.getElementById(ids[1]).value || from}` : '');
     }
     function navFromHash() {
+      if (mtOnly()) return;
       const [key, qs] = location.hash.slice(1).split('?');
       const q = new URLSearchParams(qs), ids = _navDates[key];
       if (ids && /^\d{4}-\d{2}-\d{2}$/.test(q.get('from'))) {
@@ -17563,6 +17662,7 @@
     // ── command palette (⌘K / Ctrl+K) ──
     let _cmdk = { items: [], shown: [], sel: 0 };
     function ovCmdkOpen() {
+      if (mtOnly()) return;
       const nav = [...document.querySelectorAll('#app-nav .nav-item')].filter(b => b.style.display !== 'none').map(b => ({
         label: b.textContent.trim(), icon: (b.querySelector('.fi') || {}).className || 'fi fi-rr-apps', run: () => navGo(b.dataset.nav)
       }));
@@ -25169,16 +25269,19 @@
         shiftOpen:  { color: '#16a34a' },
         shiftClose: { color: '#dc2626' },
       },
+      // Esri World Imagery — free satellite tiles, no API key required. The Maintenance map uses it too.
+      satellite() {
+        return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: this._mapMaxZoom,
+          maxNativeZoom: this._satelliteMaxNativeZoom,
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+        });
+      },
       init(containerId) {
         if (this._map) return this._map;
         this._map = L.map(containerId, { maxZoom: this._mapMaxZoom }).setView([21.15, 79.09], 6); // rough central-India default
 
-        // Esri World Imagery — free satellite tiles, no API key required.
-        this._baseLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          maxZoom: this._mapMaxZoom,
-          maxNativeZoom: this._satelliteMaxNativeZoom,
-          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
-        }).addTo(this._map);
+        this._baseLayer = this.satellite().addTo(this._map);
 
         ['trip', 'fuel', 'shiftOpen', 'shiftClose'].forEach(type => {
           this._clusterGroups[type] = L.markerClusterGroup({ maxClusterRadius: 45 });
@@ -27195,6 +27298,274 @@
       ctlAudio().then(ok => { _ctl.sound = ok; ctlRenderSound(); if (ok) ctlPlay(kind); }).catch(() => { });
     }
     /* ═══════════════════════ END CONTROL ROOM ═══════════════════════ */
+
+    /* ═══════════════════════ MAINTENANCE ═══════════════════════ */
+    // Breakdown screen for the maintenance team, under Equipment health. Polls the status logs, pops up when a new
+    // breakdown is reported and shows where it stopped on the satellite map. The rules sit in the mt:pure block
+    // (tests/maintenance.test.js). A worker whose role contains "maintenance" (and is not admin) sees only this page.
+    // mt:pure:start
+    const MT_GPS_WAIT_MS = 2 * 60000, MT_REPEAT_MS = 7 * 864e5, MT_FIXED_MS = 864e5;
+    // The live API sends IST with an offset. A bare string is read as UTC, which is how the Mongo dump stores it.
+    const mtMs = ts => Date.parse(/(Z|[+-]\d\d:?\d\d)$/.test(String(ts)) ? ts : ts + 'Z');
+    const mtReason = l => l.reason || l.deactivation_reason || '', mtNotes = l => l.notes || l.deactivation_notes || '';
+    const mtBreakdown = l => l.action === 'DEACTIVATED' && !fleetClassify(mtReason(l), mtNotes(l)).offDuty;
+    // { lat, lng, acc } from a log's location, or null. No coordinates and 0,0 are "no fix".
+    function mtLoc(l) {
+      if (!l) return null;
+      const lat = Number(l.latitude), lng = Number(l.longitude), acc = Number(l.accuracy);
+      if (l.latitude == null || l.longitude == null || !Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+      return { lat, lng, acc: l.accuracy != null && Number.isFinite(acc) && acc >= 0 ? acc : null };
+    }
+    // 25 m is where the app stops retrying for a better fix
+    const mtAccLevel = acc => acc == null ? 'rough' : acc <= 25 ? 'good' : acc <= 100 ? 'rough' : 'poor';
+
+    // items = vehicles + machines + others, each with _id, _label, _source and is_active. logs = equipment status logs.
+    // Down now follows the unit's own is_active flag (as Equipment Health does); the logs add who, when, where and why.
+    // Off-duty entries (idle, service, other site) are kept apart: no alert, not counted as down.
+    function mtState(items, logs, now) {
+      const by = {}, down = [], off = [], fixed = [];
+      [...logs].sort((a, b) => mtMs(a.timestamp) - mtMs(b.timestamp)).forEach(l => (by[String(l.entity_id)] = by[String(l.entity_id)] || []).push(l));
+      items.forEach(it => {
+        const xs = by[String(it._id)] || [];
+        let open = null;
+        xs.forEach(l => {
+          if (l.action === 'DEACTIVATED') open = l;
+          else if (l.action === 'ACTIVATED' && open) {
+            if (mtBreakdown(open) && now - mtMs(l.timestamp) < MT_FIXED_MS) fixed.push({ id: it._id, name: it._label, reason: mtReason(open), from: mtMs(open.timestamp), to: mtMs(l.timestamp) });
+            open = null;
+          }
+        });
+        if (it.is_active !== false) return;
+        const log = [...xs].reverse().find(l => l.action === 'DEACTIVATED') || null;
+        const reason = (log && mtReason(log)) || it.deactivation_reason || '', notes = (log && mtNotes(log)) || it.deactivation_notes || '';
+        const at = log ? mtMs(log.timestamp) : NaN, loc = log ? mtLoc(log.location) : null;
+        const u = { key: `${it._id}:${log ? (log._id || log.timestamp) : 'x'}`, id: String(it._id), name: it._label, type: it._type, source: it._source, reason, notes, at,
+          by: (log && log.performed_by_name) || '', shift: String((log && log.shift_id) || '').split('_')[0], loc, gpsWait: !loc && !!log && now - at < MT_GPS_WAIT_MS, repeat: 0 };
+        if (fleetClassify(reason, notes).offDuty) return off.push(u);
+        u.repeat = xs.filter(l => mtBreakdown(l) && mtMs(l.timestamp) <= at && mtMs(l.timestamp) > at - MT_REPEAT_MS).length;
+        down.push(u);
+      });
+      down.sort((a, b) => (a.at || Infinity) - (b.at || Infinity));
+      fixed.sort((a, b) => b.to - a.to);
+      return { down, off, fixed };
+    }
+    // mt:pure:end
+
+    const MT_FETCH_MS = 20000, MT_TICK_MS = 15000, MT_LOG_DAYS = 30, MT_ACK_KEY = 'tripman_mt_ack', MT_SOUND_KEY = 'tripman_mt_sound';
+    const MT_SRC = [['vehicles', 'vehicle', v => `Truck #${v.vehicle_number}`], ['machines', 'machine', m => m.machine_number || m.machine_id], ['others', 'other', o => o.vehicle_number]];
+    let _mt = { fetchTimer: 0, tickTimer: 0, items: [], logs: [], st: null, seen: null, acked: new Set(), pop: '', extra: 0, sel: '', lastOk: 0, error: false, map: null, layer: null, fitKey: '', title: '', ctx: null, master: null, sound: false };
+    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && /maintenance/.test(userRoleKey());
+    const mtClock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const mtSince = ms => isNaN(ms) ? 'time not recorded' : (new Date(ms).toDateString() === new Date().toDateString() ? 'since ' : 'since ' + new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ') + mtClock(ms);
+    const mtAge = ms => isNaN(ms) ? '—' : eqhFmtDuration(Date.now() - ms);
+
+    function openMaintenancePage() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('maintenance-page').style.display = 'block';
+      document.getElementById('mt-back').style.display = mtOnly() ? 'none' : '';
+      document.getElementById('mt-out').style.display = mtOnly() ? '' : 'none';
+      try { _mt.acked = new Set(JSON.parse(localStorage.getItem(MT_ACK_KEY) || '[]')); } catch (_) { _mt.acked = new Set(); }
+      _mt.seen = null; _mt.st = null; _mt.pop = ''; _mt.sel = ''; _mt.fitKey = ''; _mt.title = document.title;
+      mtSoundInit(); mtMap();
+      clearInterval(_mt.fetchTimer); clearInterval(_mt.tickTimer);
+      _mt.fetchTimer = setInterval(mtRefresh, MT_FETCH_MS); _mt.tickTimer = setInterval(mtRender, MT_TICK_MS);
+      document.addEventListener('keydown', mtKey);
+      mtRender(); mtRefresh();
+    }
+    function mtStop() {
+      clearInterval(_mt.fetchTimer); clearInterval(_mt.tickTimer);
+      document.removeEventListener('keydown', mtKey);
+      mtClosePop(); mtStopSound();
+      if (_mt.title) document.title = _mt.title;
+    }
+    function closeMaintenancePage() {
+      mtStop();
+      document.getElementById('maintenance-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+    }
+
+    async function mtRefresh() {
+      if (document.getElementById('maintenance-page').style.display !== 'block') return mtStop(); // left by another route
+      try {
+        const from = new Date(Date.now() - MT_LOG_DAYS * 864e5).toISOString().slice(0, 10);
+        // The backend filters on from_date / to_date. Any failure keeps the last good data on screen rather than showing "nothing down".
+        const [lists, res] = await Promise.all([
+          Promise.all(MT_SRC.map(async ([path, src, label]) => {
+            const r = await apiFetch(`${API}/${path}`); if (!r.ok) throw new Error(`${path} ${r.status}`);
+            const a = await r.json();
+            return (Array.isArray(a) ? a : []).map(x => ({ ...x, _source: src, _label: label(x), _type: x.vehicle_type || x.machine_type || x.equipment_type || src }));
+          })),
+          apiFetch(`${API}/equipment-status-logs?from_date=${from}&limit=1000`)
+        ]);
+        if (!res.ok) throw new Error(`logs ${res.status}`);
+        const d = await res.json();
+        _mt.items = lists.flat(); _mt.logs = Array.isArray(d) ? d : (d.logs || []);
+        _mt.error = false; _mt.lastOk = Date.now();
+      } catch (_) { _mt.error = true; return mtRender(); }
+      _mt.st = mtState(_mt.items, _mt.logs, Date.now());
+      // The first load only records what is already down. Anything after that is a new report: pop up and sound.
+      const fresh = _mt.seen ? _mt.st.down.filter(u => !_mt.seen.has(u.key)).sort((a, b) => b.at - a.at) : [];
+      _mt.seen = new Set([...(_mt.seen || []), ..._mt.st.down.map(u => u.key)]);
+      if (fresh.length) { _mt.extra = fresh.length - 1; mtOpenPop(fresh[0].key); mtPlay(); }
+      mtRender();
+    }
+
+    function mtLocHtml(u) {
+      const E = ctlEsc;
+      if (u.loc) {
+        const a = mtAccLevel(u.loc.acc), { lat, lng } = u.loc;
+        return `<span class="mt-acc ${a}">${u.loc.acc == null ? 'accuracy unknown' : '±' + Math.round(u.loc.acc) + ' m'}</span><span class="mt-note" style="font-family:var(--font-mono)">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>${a === 'poor' ? '<span class="mt-note">· rough, treat as the area only</span>' : ''}<span class="sp"></span>`
+          + `<button class="action-btn" data-copy="${E(u.key)}">Copy</button><a class="action-btn" style="display:inline-flex;align-items:center;text-decoration:none" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener">Open in Maps ↗</a>`;
+      }
+      if (u.gpsWait) return `<span class="mt-acc wait">Waiting for GPS…</span><span class="mt-note">The app sends the position a few seconds after the report.</span>`;
+      return `<span class="mt-acc none">No location</span><span class="mt-note">${u.by ? 'The phone gave no fix. Ask ' + E(u.by) + ' where it stopped.' : 'No position was recorded.'}</span>`;
+    }
+
+    function mtRender() {
+      const st = _mt.st, now = Date.now(), E = ctlEsc;
+      document.getElementById('mt-live').className = 'mt-live' + (_mt.error ? ' off' : '');
+      document.getElementById('mt-live-t').textContent = _mt.error ? (_mt.lastOk ? `No connection. Showing ${mtClock(_mt.lastOk)}` : 'Cannot reach the server')
+        : _mt.lastOk ? `Updated ${Math.round((now - _mt.lastOk) / 1000)}s ago · every ${MT_FETCH_MS / 1000} s` : 'Waiting for data';
+      document.getElementById('mt-when').textContent = new Date().toLocaleString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+      if (!st) { document.getElementById('mt-list').innerHTML = `<div class="mt-card mt-none">${_mt.error ? 'Cannot reach the server. Trying again every 20 seconds.' : 'Loading…'}</div>`; return; }
+
+      const list = st.down.map((u, i) => [u, i]).sort((a, b) => (_mt.acked.has(a[0].key) - _mt.acked.has(b[0].key)) || a[1] - b[1]).map(x => x[0]);
+      const unacked = st.down.filter(u => !_mt.acked.has(u.key)).length;
+      document.title = (unacked ? `(${unacked}) ` : '') + (_mt.title || 'Maintenance');
+      const n = s => st.down.filter(u => u.source === s).length, longest = st.down.find(u => !isNaN(u.at));
+      const avg = st.fixed.length ? st.fixed.reduce((s, f) => s + f.to - f.from, 0) / st.fixed.length : 0;
+      document.getElementById('mt-kpis').innerHTML = `
+        <div class="mt-card mt-kpi${st.down.length ? ' hot' : ''}"><div class="mt-eyebrow">Down now</div><div class="big">${st.down.length}</div><div class="sub">${n('vehicle')} truck${n('vehicle') === 1 ? '' : 's'} · ${n('machine')} excavator${n('machine') === 1 ? '' : 's'} · ${n('other')} other${n('other') === 1 ? '' : 's'}</div></div>
+        <div class="mt-card mt-kpi"><div class="mt-eyebrow">Not yet acknowledged</div><div class="big">${unacked}</div><div class="sub">${unacked ? 'Someone should say they have seen it' : 'All seen'}</div></div>
+        <div class="mt-card mt-kpi"><div class="mt-eyebrow">Longest down</div><div class="big">${longest ? mtAge(longest.at) : '—'}</div><div class="sub">${longest ? `${E(longest.name)} · ${E(longest.reason || 'no reason given')}` : 'Nothing down'}</div></div>
+        <div class="mt-card mt-kpi"><div class="mt-eyebrow">Back in service, 24 h</div><div class="big">${st.fixed.length}<small>${st.fixed.length ? 'avg ' + eqhFmtDuration(avg) + ' down' : ''}</small></div><div class="sub">Time from Breakdown to Back in service</div></div>`;
+
+      const c = document.getElementById('mt-cnt'); c.textContent = st.down.length; c.className = 'mt-count' + (st.down.length ? '' : ' z');
+      document.getElementById('mt-list').innerHTML = list.length ? list.map(u => { const isNew = !_mt.acked.has(u.key); return `
+        <div class="mt-card mt-un${isNew ? ' new' : ''}${_mt.sel === u.key ? ' sel' : ''}" data-key="${E(u.key)}" tabindex="0" role="button" aria-label="Show ${E(u.name)} on the map">
+          <div class="mt-un-h"><span class="mt-id">${E(u.name)}</span><span class="mt-ty">${E(eqhFmtType(u.type))}</span>${isNew ? '<span class="mt-tag new">NEW</span>' : ''}${u.repeat > 1 ? `<span class="mt-tag rep">${u.repeat === 2 ? '2nd' : u.repeat + 'th'} breakdown in 7 days</span>` : ''}<span class="sp"></span><span class="mt-down">${mtAge(u.at)}</span></div>
+          <div class="mt-reason">${E(u.reason || 'No reason given')}</div>${u.notes ? `<div class="mt-notes">${E(u.notes)}</div>` : ''}
+          <div class="mt-meta">${u.by ? `Reported by <b>${E(u.by)}</b> · ` : ''}${mtSince(u.at)}${u.shift ? ' · Shift ' + E(u.shift) : ''}</div>
+          <div class="mt-loc">${mtLocHtml(u)}</div>
+          ${isNew ? `<div style="margin-top:10px"><button class="action-btn" data-ack="${E(u.key)}">Acknowledge</button></div>` : ''}
+        </div>`; }).join('') : '<div class="mt-card mt-none">Nothing is down. Every unit is in service.</div>';
+
+      document.getElementById('mt-fixed').innerHTML = `<thead><tr><th>Unit</th><th>Reason</th><th>Down</th><th>Back</th><th>Downtime</th></tr></thead><tbody>` + (st.fixed.length
+        ? st.fixed.map(f => `<tr><td>${E(f.name)}</td><td>${E(f.reason || '—')}</td><td>${mtClock(f.from)}</td><td>${mtClock(f.to)}</td><td>${eqhFmtDuration(f.to - f.from)}</td></tr>`).join('')
+        : '<tr><td colspan="5" style="font-family:var(--font-main);font-weight:400;color:var(--text-secondary)">Nothing came back in the last 24 hours.</td></tr>') + '</tbody>';
+      document.getElementById('mt-off-s').textContent = `Off duty, no alert (${st.off.length}): idle, service, other site`;
+      document.getElementById('mt-off').innerHTML = st.off.map(u => `<tr><td>${E(u.name)}</td><td>${E([u.reason, u.notes].filter(Boolean).join(': ') || '—')}</td></tr>`).join('');
+      mtDrawMap();
+      if (_mt.pop) mtFillPop();
+    }
+
+    // Map: the Live Map's satellite layer, the pin where the phone was, the ring as wide as the GPS accuracy
+    function mtMap() {
+      if (!_mt.map) {
+        _mt.map = L.map('mt-map', { maxZoom: 19 }).setView([21.15, 79.09], 5);
+        LiveMap.satellite().addTo(_mt.map);
+        _mt.layer = L.layerGroup().addTo(_mt.map);
+      }
+      setTimeout(() => _mt.map.invalidateSize(), 50);
+    }
+    function mtDrawMap() {
+      if (!_mt.map || !_mt.st) return;
+      _mt.layer.clearLayers();
+      const at = _mt.st.down.filter(u => u.loc), none = _mt.st.down.filter(u => !u.loc && !u.gpsWait);
+      at.forEach(u => {
+        const ll = [u.loc.lat, u.loc.lng];
+        if (u.loc.acc != null) L.circle(ll, { radius: u.loc.acc, color: '#ef4444', weight: 1.5, dashArray: u.loc.acc > 100 ? '4 3' : null, fillColor: '#ef4444', fillOpacity: .15, interactive: false }).addTo(_mt.layer);
+        L.circleMarker(ll, { radius: _mt.sel === u.key ? 10 : 7, color: '#fff', weight: 2, fillColor: '#c0392b', fillOpacity: 1 })
+          .bindTooltip(`${ctlEsc(u.name)}${u.loc.acc == null ? '' : ' ±' + Math.round(u.loc.acc) + ' m'}`, { permanent: true, direction: 'right', offset: [10, 0] })
+          .on('click', () => mtSelect(u.key)).addTo(_mt.layer);
+      });
+      const fk = at.map(u => u.key).join();
+      if (fk !== _mt.fitKey) { _mt.fitKey = fk; if (at.length) _mt.map.fitBounds(L.latLngBounds(at.map(u => [u.loc.lat, u.loc.lng])), { padding: [50, 50], maxZoom: 17 }); }
+      document.getElementById('mt-mapnote').innerHTML = (at.length ? 'Pin = where the phone was when Breakdown was pressed. The ring is the GPS accuracy: a wide ring means "somewhere in here", not an exact spot.' : 'No breakdown has a location to show.')
+        + (none.length ? ` <b>No location:</b> ${none.map(u => ctlEsc(u.name)).join(', ')}.` : '');
+    }
+    function mtSelect(key) {
+      _mt.sel = key; mtRender();
+      const u = _mt.st && _mt.st.down.find(x => x.key === key);
+      if (u && u.loc) _mt.map.setView([u.loc.lat, u.loc.lng], Math.max(_mt.map.getZoom(), 16));
+      const card = [...document.querySelectorAll('.mt-un')].find(c => c.dataset.key === key); if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function mtAck(key) {
+      _mt.acked.add(key);
+      try { localStorage.setItem(MT_ACK_KEY, JSON.stringify([..._mt.acked].slice(-300))); } catch (_) { }
+      mtRender();
+    }
+
+    // Popup for a new breakdown. It reads the unit from the latest poll, so the GPS fills in when it arrives.
+    function mtOpenPop(key) { _mt.pop = key; mtFillPop(); const o = document.getElementById('mt-ov'); o.classList.add('show'); o.setAttribute('aria-hidden', 'false'); const b = document.getElementById('mt-d-ack'); if (b) b.focus(); }
+    function mtFillPop() {
+      const u = _mt.st && _mt.st.down.find(x => x.key === _mt.pop); if (!u) return mtClosePop(); // fixed in the meantime
+      const E = ctlEsc;
+      document.getElementById('mt-dlg').innerHTML = `
+        <div class="mt-dlg-top"><span>NEW BREAKDOWN${isNaN(u.at) ? '' : ' · ' + mtClock(u.at)}</span>${_mt.extra ? `<span>+${_mt.extra} more in the list</span>` : ''}</div>
+        <div class="mt-dlg-b">
+          <div class="mt-un-h"><span class="mt-id" id="mt-dlg-t">${E(u.name)}</span><span class="mt-ty">${E(eqhFmtType(u.type))}</span>${u.repeat > 1 ? `<span class="mt-tag rep">${u.repeat === 2 ? '2nd' : u.repeat + 'th'} in 7 days</span>` : ''}</div>
+          <div class="mt-reason">${E(u.reason || 'No reason given')}</div>${u.notes ? `<div class="mt-notes">${E(u.notes)}</div>` : ''}
+          <div class="mt-meta">${u.by ? `Reported by <b>${E(u.by)}</b>` : ''}${u.shift ? ' · Shift ' + E(u.shift) : ''}</div>
+          <div class="mt-loc">${mtLocHtml(u)}</div>
+          <div class="btns"><button class="action-btn mt-primary" id="mt-d-ack">Acknowledge</button><button class="action-btn" id="mt-d-map">Show on map</button><button class="action-btn" id="mt-d-x">Close</button></div>
+        </div>`;
+    }
+    function mtClosePop() { _mt.pop = ''; _mt.extra = 0; const o = document.getElementById('mt-ov'); o.classList.remove('show'); o.setAttribute('aria-hidden', 'true'); }
+    function mtKey(e) { if (_mt.pop && e.key === 'Escape') mtClosePop(); }
+    document.getElementById('mt-dlg').addEventListener('click', e => {
+      const id = (e.target.closest('button') || {}).id, key = _mt.pop;
+      if (id === 'mt-d-ack') { mtClosePop(); mtAck(key); } else if (id === 'mt-d-map') { mtClosePop(); mtSelect(key); } else if (id === 'mt-d-x') mtClosePop();
+      else if (e.target.closest('[data-copy]')) mtCopy(e.target.closest('[data-copy]'));
+    });
+    document.getElementById('mt-ov').addEventListener('click', e => { if (e.target.id === 'mt-ov') mtClosePop(); });
+    function mtCopy(btn) {
+      const u = _mt.st && _mt.st.down.find(x => x.key === btn.dataset.copy);
+      if (u && u.loc && navigator.clipboard) navigator.clipboard.writeText(`${u.loc.lat}, ${u.loc.lng}`).then(() => { btn.textContent = 'Copied'; }).catch(() => { });
+    }
+    document.getElementById('mt-list').addEventListener('click', e => {
+      const ack = e.target.closest('[data-ack]'); if (ack) { e.stopPropagation(); return mtAck(ack.dataset.ack); }
+      const cp = e.target.closest('[data-copy]'); if (cp) return mtCopy(cp);
+      if (e.target.closest('a')) return;
+      const card = e.target.closest('.mt-un'); if (card) mtSelect(card.dataset.key);
+    });
+    document.getElementById('mt-list').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('mt-un')) { e.preventDefault(); mtSelect(e.target.dataset.key); } });
+
+    // Sound: a two-tone horn for a new breakdown. Browsers only start audio after a click; the wish is remembered.
+    function mtTone(f, at, dur) {
+      const o = _mt.ctx.createOscillator(), g = _mt.ctx.createGain(), t = _mt.ctx.currentTime + at;
+      o.type = 'square'; o.frequency.value = f; o.connect(g); g.connect(_mt.master);
+      g.gain.setValueAtTime(.2, t); g.gain.setValueAtTime(.2, t + dur - .02); g.gain.linearRampToValueAtTime(0, t + dur);
+      o.start(t); o.stop(t + dur + .05);
+    }
+    function mtStopSound() { if (_mt.master) { _mt.master.gain.cancelScheduledValues(_mt.ctx.currentTime); _mt.master.gain.setTargetAtTime(0, _mt.ctx.currentTime, .03); } }
+    function mtPlay(check) {
+      if (!_mt.sound) return;
+      mtStopSound(); _mt.master = _mt.ctx.createGain(); _mt.master.connect(_mt.ctx.destination);
+      if (check) { mtTone(523, 0, .3); mtTone(784, .35, .4); } else for (let i = 0; i < 8; i++) mtTone(i % 2 ? 370 : 440, i * .5, .48);
+    }
+    function mtAudio() {
+      if (!_mt.ctx) _mt.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      return _mt.ctx.resume().then(() => _mt.ctx.state === 'running');
+    }
+    function mtRenderSound() {
+      document.getElementById('mt-sound').className = 'action-btn mt-sound ' + (_mt.sound ? 'on' : 'off'); document.getElementById('mt-sound').setAttribute('aria-pressed', String(_mt.sound));
+      document.getElementById('mt-sound-ic').className = 'fi ' + (_mt.sound ? 'fi-rr-volume' : 'fi-rr-volume-mute');
+      document.getElementById('mt-sound-t').textContent = _mt.sound ? 'Sound on' : 'Sound off, click to enable';
+    }
+    function mtSoundInit() {
+      let want = false; try { want = localStorage.getItem(MT_SOUND_KEY) === '1'; } catch (_) { }
+      _mt.sound = false; mtRenderSound();
+      if (want) mtAudio().then(ok => { _mt.sound = ok; mtRenderSound(); if (ok) mtPlay(true); }).catch(() => { });
+    }
+    function mtToggleSound() {
+      const on = !_mt.sound;
+      try { localStorage.setItem(MT_SOUND_KEY, on ? '1' : '0'); } catch (_) { }
+      if (!on) { mtStopSound(); _mt.sound = false; return mtRenderSound(); }
+      mtAudio().then(ok => { _mt.sound = ok; mtRenderSound(); if (ok) mtPlay(true); }).catch(() => { }); // the ping = "sound works"
+    }
+    /* ═══════════════════════ END MAINTENANCE ═══════════════════════ */
 
   </script>
 </body>
