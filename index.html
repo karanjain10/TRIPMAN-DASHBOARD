@@ -24503,6 +24503,7 @@
       }
     }
 
+    // src-edit:pure:start
     function srcAddReading(readings, metric, field, rawValue) {
       if (rawValue === '') return;
       const value = Number(rawValue);
@@ -24510,6 +24511,21 @@
       if (!readings[metric]) readings[metric] = {};
       readings[metric][field] = value;
     }
+
+    // Body for PATCH /shift-readings/:id/admin-override from the Edit Reading form: every field the admin
+    // changed, opening AND closing together in one request (the server checks them as a pair).
+    function srcOverridePayload(d, vals, isTip, reason) {
+      const readings = {};
+      const changed = (raw, cur) => raw !== '' && raw !== String(cur ?? '');
+      if (changed(vals.hmrOpen, d.hmr_opening_value)) srcAddReading(readings, 'HMR', 'opening_value', vals.hmrOpen);
+      if (changed(vals.hmrClose, d.hmr_closing_value)) srcAddReading(readings, 'HMR', 'closing_value', vals.hmrClose);
+      if (isTip) {
+        if (changed(vals.kmrOpen, d.kmr_opening_value)) srcAddReading(readings, 'KMR', 'opening_value', vals.kmrOpen);
+        if (changed(vals.kmrClose, d.kmr_closing_value)) srcAddReading(readings, 'KMR', 'closing_value', vals.kmrClose);
+      }
+      return { override_reason: reason, readings };
+    }
+    // src-edit:pure:end
 
     function srcBuildCreateReadings(values) {
       const readings = {};
@@ -24546,7 +24562,7 @@
     let _srcEditReadingId = null;
     let _srcEditRowIdx    = null;
 
-    function srcOpenEditModal(idx) {
+    function srcOpenEditModal(idx, field) {
       const d = _srcRenderedRows[idx];
       if (!d) return;
       _srcEditReadingId = d._reading_id;
@@ -24577,6 +24593,8 @@
       errEl.classList.remove('visible');
 
       document.getElementById('src-edit-modal').classList.add('open');
+      const focusEl = document.getElementById('src-edit-' + String(field || '').replace('_opening', '-open').replace('_closing', '-close').replace('_', '-'));
+      if (focusEl) setTimeout(() => { focusEl.focus(); focusEl.select(); }, 50);
     }
 
     function srcCloseEditModal() {
@@ -24599,19 +24617,11 @@
       const d = _srcRenderedRows[_srcEditRowIdx];
       const isTip = d && srcIsTipper(d);
 
-      // Build payload: only changed fields + override_reason
-      const readings = {};
-      const hmrOpen  = document.getElementById('src-edit-hmr-open').value;
-      const hmrClose = document.getElementById('src-edit-hmr-close').value;
-      if (hmrOpen  !== '' && hmrOpen  !== String(d.hmr_opening_value ?? '')) srcAddReading(readings, 'HMR', 'opening_value', hmrOpen);
-      if (hmrClose !== '' && hmrClose !== String(d.hmr_closing_value ?? '')) srcAddReading(readings, 'HMR', 'closing_value', hmrClose);
-      if (isTip) {
-        const kmrOpen  = document.getElementById('src-edit-kmr-open').value;
-        const kmrClose = document.getElementById('src-edit-kmr-close').value;
-        if (kmrOpen  !== '' && kmrOpen  !== String(d.kmr_opening_value ?? '')) srcAddReading(readings, 'KMR', 'opening_value', kmrOpen);
-        if (kmrClose !== '' && kmrClose !== String(d.kmr_closing_value ?? '')) srcAddReading(readings, 'KMR', 'closing_value', kmrClose);
-      }
-      const payload = { override_reason: reason, readings };
+      const val = id => document.getElementById(id).value;
+      const payload = srcOverridePayload(d, {
+        hmrOpen: val('src-edit-hmr-open'), hmrClose: val('src-edit-hmr-close'),
+        kmrOpen: val('src-edit-kmr-open'), kmrClose: val('src-edit-kmr-close'),
+      }, isTip, reason);
 
       const saveBtn = document.getElementById('src-edit-save-btn');
       saveBtn.disabled    = true;
@@ -24983,6 +24993,10 @@
       event.stopPropagation();
       const d = _srcRenderedRows[idx];
       if (!d) return;
+
+      // Existing reading: open the full form so opening and closing can be changed together
+      // (the server checks them as a pair, so fixing one alone can be impossible).
+      if (d._reading_id) { srcCellPopClose(); srcOpenEditModal(idx, field); return; }
 
       _srcPopRowIdx = idx;
       _srcPopField  = field;
