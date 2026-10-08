@@ -25395,13 +25395,14 @@
       return null;
     }
     const lmEsc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // "<br/>GPS accuracy: ±N m" for a { latitude, longitude, accuracy } object, or '' when it has no accuracy.
+    const lmAccuracy = loc => loc && Number.isFinite(loc.accuracy) ? `<br/>GPS accuracy: ±${Math.round(loc.accuracy)} m` : '';
     // One map pin for a fuel log (a refill), or null when the log has no coordinates. Fuel logs keep them in location { latitude, longitude, accuracy }
     // (saved with the log since 22 Sep). The name comes from the log: for excavators and dozers vehicle_id is a machine id, no use on a popup.
     function lmFuelPin(f) {
       const pos = lmExtractLatLng(f);
       if (!pos) return null;
-      const acc = f.location && Number.isFinite(f.location.accuracy) ? `<br/>GPS accuracy: ±${Math.round(f.location.accuracy)} m` : '';
-      const t = f.created_at ? new Date(f.created_at) : null;
+            const t = f.created_at ? new Date(f.created_at) : null;
       const when = t && !isNaN(t) ? t.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '—';
       const type = String(f.vehicle_type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       return { lat: pos.lat, lng: pos.lng, html: `<div style="font-size:12px;line-height:1.5;">
@@ -25409,7 +25410,7 @@
         Vehicle: ${lmEsc(f.vehicle_name || f.remarks || '—')}${type ? ' (' + lmEsc(type) + ')' : ''}<br/>
         Litres: ${lmEsc(f.litres_filled ?? '—')}<br/>
         Logged by: ${lmEsc(f.logged_by || '—')}<br/>
-        When: ${lmEsc(when)}${acc}
+        When: ${lmEsc(when)}${lmAccuracy(f.location)}
       </div>` };
     }
     // The fuel-logs endpoint accepts start_date / end_date but returns every log, so filter here (same rule as the Fuel Reports page).
@@ -25477,7 +25478,7 @@
             Loaded By: ${excavator}<br/>
             Material: ${t.material_type || '—'}<br/>
             Shift: ${t.shift || '—'}<br/>
-            Time: ${lmFmtTime(t.timestamp || t.trip_time || t.created_at)}
+            Time: ${lmFmtTime(t.timestamp || t.trip_time || t.created_at)}${lmAccuracy(t.location)}
           </div>`;
           LiveMap.addMarker({ lat: pos.lat, lng: pos.lng, type: 'trip', popupHtml: popup });
         });
@@ -25529,15 +25530,15 @@
 
           if (openPos) {
             geoOpen++;
-            LiveMap.addMarker({ lat: openPos.lat, lng: openPos.lng, type: 'shiftOpen', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Open</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}</div>` });
+            LiveMap.addMarker({ lat: openPos.lat, lng: openPos.lng, type: 'shiftOpen', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Open</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}${lmAccuracy(r.opening_location || r.readings?.opening_location)}</div>` });
           }
           if (closePos) {
             geoClose++;
-            LiveMap.addMarker({ lat: closePos.lat, lng: closePos.lng, type: 'shiftClose', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Close</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}</div>` });
+            LiveMap.addMarker({ lat: closePos.lat, lng: closePos.lng, type: 'shiftClose', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Close</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}${lmAccuracy(r.closing_location || r.readings?.closing_location)}</div>` });
           }
           if (singlePos) {
             geoOpen++;
-            LiveMap.addMarker({ lat: singlePos.lat, lng: singlePos.lng, type: 'shiftOpen', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Reading</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}</div>` });
+            LiveMap.addMarker({ lat: singlePos.lat, lng: singlePos.lng, type: 'shiftOpen', popupHtml: `<div style="font-size:12px;line-height:1.5;"><b>Shift Reading</b><br/>Vehicle: ${vehicle}<br/>Driver: ${driver}<br/>Shift: ${r.shift || '—'}${lmAccuracy(r.location)}</div>` });
           }
         });
         _lmCounts.shiftOpen = [geoOpen, filtered.length];

@@ -4,7 +4,12 @@ const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/\/\/ lmfuel:pure:start([\s\S]*?)\/\/ lmfuel:pure:end/);
 assert(m, 'lmfuel:pure markers not found in index.html');
-const { lmExtractLatLng, lmFuelPin, lmFuelInRange } = new Function(m[1] + '; return { lmExtractLatLng, lmFuelPin, lmFuelInRange };')();
+const { lmExtractLatLng, lmFuelPin, lmFuelInRange, lmAccuracy } = new Function(m[1] + '; return { lmExtractLatLng, lmFuelPin, lmFuelInRange, lmAccuracy };')();
+
+// trips and shift open/close pins show accuracy the same way
+assert.strictEqual(lmAccuracy({ latitude: 1, longitude: 2, accuracy: 6.8 }), '<br/>GPS accuracy: ±7 m');
+assert.strictEqual(lmAccuracy({ latitude: 1, longitude: 2 }), '');
+assert.strictEqual(lmAccuracy(null), '');
 
 const log = (extra = {}) => ({ _id: 'f1', vehicle_id: 'v1', vehicle_name: 'EX-03', vehicle_type: 'excavator', litres_filled: 312, logged_by: 'SVP318', created_at: '2026-09-26T20:45:28+05:30',
   location: { latitude: 21.3441617, longitude: 78.9694683, accuracy: 6.8 }, ...extra });
