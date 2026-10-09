@@ -5721,26 +5721,9 @@
     #drill-report-page .fl-cv { height:270px; } #drill-report-page .fl-cv.drp-tall { height:330px; }
     #drill-report-page .fl-tbl { font-size:13px; } #drill-report-page .fl-tbl th { font-size:11px; padding:6px 8px; } #drill-report-page .fl-tbl td { padding:8px; }
     #drill-report-page .fl-foot { font-size:12px; } #drill-report-page .drp-lede { font-size:15px; }
-    /* PDF is always printed light, even when the app is dark, or the text prints white on white */
-    :root[data-theme] body.drp-printing #drill-report-page { --bg:#fff; --surface:#fff; --border:#e2e0d8; --border-strong:#c8c5bb; --text-primary:#1a1917; --text-secondary:#6b6860; --text-muted:#9b9890;
+    /* The PDF is drawn in light colours even when the app is dark: drpPrint switches this class on while it captures the charts */
+    :root[data-theme] body.drp-light #drill-report-page { --bg:#fff; --surface:#fff; --border:#e2e0d8; --border-strong:#c8c5bb; --text-primary:#1a1917; --text-secondary:#6b6860; --text-muted:#9b9890;
       --fl-grid:#e7e6e2; --drp-d:#2a78d6; --drp-c:#16a085; --drp-cum:#1f7a45; --drp-bad:#c0392b; color:#1a1917; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    body.drp-printing > *:not(#drill-report-page) { display:none !important; }
-    body.drp-printing #drill-report-page .topbar, body.drp-printing #drill-report-page .fl-controls, body.drp-printing #drill-report-page .fl-banner { display:none !important; }
-    body.drp-printing #drill-report-page { background:#fff; min-height:0; }
-    body.drp-printing #drill-report-page .fl-body { padding:0; width:1062px; max-width:none; margin:0; }
-    body.drp-printing #drill-report-page .fl-sheet { border:0; padding:0; }
-    body.drp-printing #drill-report-page .fl-cols { grid-template-columns:1fr 1fr; }
-    body.drp-printing #drill-report-page .fl-col + .fl-col { border-left:1px solid var(--border); padding-left:26px; margin-top:0; }
-    body.drp-printing #drill-report-page .fl-charts { grid-template-columns:1fr 1fr; gap:8px 14px; margin-bottom:8px; }
-    body.drp-printing #drill-report-page .fl-kpis { grid-template-columns:repeat(4,1fr); margin-bottom:8px; } body.drp-printing #drill-report-page .fl-kpis.drp-k3 { grid-template-columns:repeat(3,1fr); }
-    body.drp-printing #drill-report-page .fl-cv { height:110px; } body.drp-printing #drill-report-page .fl-cv.drp-tall { height:135px; }
-    body.drp-printing #drill-report-page .fl-k { padding:8px 10px 9px; } body.drp-printing #drill-report-page .fl-k .l { font-size:10px; } body.drp-printing #drill-report-page .fl-k b { font-size:19px; } body.drp-printing #drill-report-page .fl-k b small { font-size:11px; } body.drp-printing #drill-report-page .fl-k .s { font-size:10px; }
-    body.drp-printing #drill-report-page .fl-head h1 { font-size:20px; } body.drp-printing #drill-report-page .fl-head .m { font-size:12px; } body.drp-printing #drill-report-page .fl-h { font-size:11px; }
-    body.drp-printing #drill-report-page .fl-charts figcaption { font-size:11px; margin-bottom:4px; } body.drp-printing #drill-report-page .fl-tbl th { font-size:10px; padding:4px 6px; }
-    body.drp-printing #drill-report-page .fl-charts figure, body.drp-printing #drill-report-page .fl-tbl tr { break-inside:avoid; }
-    body.drp-printing #drill-report-page .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
-    body.drp-printing #drill-report-page .fl-tbl { font-size:10px; } body.drp-printing #drill-report-page .fl-tbl td { padding:3px 5px; }
-    body.drp-printing #drill-report-page .drp-lede { font-size:11px; margin-bottom:8px; }
 
     #daily-operations-page { display:none; min-height:100vh; background:var(--bg); }
     .dos-body { max-width:1440px; margin:0 auto; padding:24px; }
@@ -27067,6 +27050,8 @@
         [String(f.vehicle_id), nk].filter(k => k).forEach(k => { add(fuelBy, k, l); (fuelDay[k] = fuelDay[k] || {})[d] = (fuelDay[k][d] || 0) + l; });
       });
       const fuelKey = (...ks) => ks.find(k => k && fuelBy[k] != null);
+      const idByName = {};   // a compressor with no matching unit still has the vehicle_id its refills were logged under
+      fuel.forEach(f => { const nk = norm(f.vehicle_name); if (nk && f.vehicle_id) idByName[nk] = String(f.vehicle_id); });
       const rows = {}, days = {}, credit = {}, seen = new Set(), seenC = new Set(), unmatched = new Set();
       assigns.filter(a => a.date >= from && a.date <= to).forEach(a => {
         const id = String(a.unit_id), r = rows[id] || (rows[id] = { id, name: name[id] || `…${id.slice(-6)}`, comps: new Set(), deploys: 0, entered: 0, hd: 0, holes: 0, m: 0, dh: 0, ch: 0, rm: 0, rh: 0, fk: fuelKey(id, norm(name[id])), dfu: 0, cfu: 0 });
@@ -27080,8 +27065,8 @@
         if (a.compressor_number) {
           // A compressor is its unit when the number matches one (hours come from that unit's readings); otherwise it is only the
           // typed number, which can still find its fuel by vehicle_name but has no hours.
-          const typed = norm(a.compressor_number), cid = compId[typed], key = cid || `n:${typed}`, c = credit[key] || (credit[key] = { typed, cid, by: {} });
-          r.comps.add(cid ? name[cid] : String(a.compressor_number).trim());
+          const typed = norm(a.compressor_number), cid = compId[typed] || idByName[typed], key = cid || `n:${typed}`, c = credit[key] || (credit[key] = { typed, cid, by: {} });
+          r.comps.add(name[cid] || String(a.compressor_number).trim());
           if (!cid) unmatched.add(String(a.compressor_number).trim());
           const sk = `${key}|${a.date}|${a.shift}`, b = c.by[id] || (c.by[id] = { h: 0, n: 0 });
           if (!seenC.has(sk)) { seenC.add(sk); const ch = cid ? hrs(cid, a.date, a.shift) : 0; r.ch += ch; day.ch += ch; b.h += ch; b.n++; }
@@ -27244,14 +27229,36 @@
       drpCharts();
     }
 
+    // The PDF is a separate light page in a new window (as the Daily Operations PDF is), with the charts captured as images in the
+    // light colours. Printing the app page itself came out blank or cropped. ponytail: needs pop-ups allowed for the site.
     function drpPrint() {
-      const title = document.title;
-      document.title = `Tripman Drilling Report ${_drp.from} to ${_drp.to}`;   // becomes the saved file's name
-      document.body.classList.add('drp-printing');
-      const done = () => { document.body.classList.remove('drp-printing'); document.title = title; window.removeEventListener('afterprint', done); if (_drp.data) drpCharts(); };
-      window.addEventListener('afterprint', done);
-      if (_drp.data) drpCharts();   // redrawn at print width and in the light colours
-      setTimeout(() => window.print(), 300);
+      if (!_drp.data) return;
+      const w = window.open('', '_blank');
+      if (!w) { showToast('Allow pop-ups for this site to download the PDF'); return; }
+      const el = document.getElementById('drp-main'), title = `Tripman Drilling Report ${_drp.from} to ${_drp.to}`;
+      document.body.classList.add('drp-light'); drpCharts();
+      const imgs = {}; el.querySelectorAll('canvas').forEach(c => { imgs[c.id] = c.toDataURL('image/png'); });
+      document.body.classList.remove('drp-light'); drpCharts();
+      const sheet = el.cloneNode(true);
+      sheet.querySelectorAll('canvas').forEach(c => { const i = document.createElement('img'); i.src = imgs[c.id]; c.replaceWith(i); });
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+        @page{size:A4 landscape;margin:8mm} *{box-sizing:border-box} body{margin:0;font:12px/1.4 'DM Sans',Arial,sans-serif;color:#1a1917;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        .topbar-tripman-logo{display:inline-flex;background:#1e1e1e;border-radius:6px;padding:4px 10px;margin-right:12px}.topbar-tripman-text{color:#e8a24c;font-weight:700;font-size:15px;line-height:1}
+        .fl-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1a1917;padding-bottom:8px;margin-bottom:10px}.fl-head .l{display:flex;align-items:center}
+        h1{font-size:20px;margin:0}.fl-head .m{font:12px ui-monospace,Menlo,monospace;color:#6b6860;text-align:right}
+        .drp-lede{margin:0 0 10px;font-size:12px;color:#4a4842}.drp-lede b{color:#1a1917}
+        .fl-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#e2e0d8;border:1px solid #e2e0d8;margin-bottom:10px}.fl-kpis.drp-k3{grid-template-columns:repeat(3,minmax(0,1fr))}
+        .fl-k{background:#fff;padding:6px 10px}.fl-k .l{display:block;font-size:10px;color:#6b6860}.fl-k b{display:block;font:600 18px ui-monospace,Menlo,monospace}
+        .fl-k b small{font-size:11px;color:#6b6860;margin-left:2px}.fl-k .s{display:block;font-size:10px;color:#9b9890}
+        .fl-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 24px;margin-bottom:10px}.fl-col{min-width:0}.fl-h{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b6860;margin:0 0 6px}
+        .fl-charts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px;margin-bottom:10px}figure{margin:0;min-width:0;break-inside:avoid}figcaption{font-size:11px;font-weight:600;margin-bottom:4px}
+        img{display:block;width:100%;max-width:100%;height:auto}
+        table{width:100%;border-collapse:collapse;font-size:10.5px}th{text-align:right;font-size:9.5px;color:#6b6860;padding:4px 5px;border-bottom:1px solid #1a1917;white-space:nowrap}
+        td{text-align:right;padding:4px 5px;border-bottom:1px solid #e2e0d8;font-family:ui-monospace,Menlo,monospace}th:first-child,td:first-child,td.t{text-align:left}td.t{font-family:inherit;color:#6b6860}
+        tr{break-inside:avoid}.fl-foot{margin:10px 0 0;padding-top:8px;border-top:1px solid #e2e0d8;font-size:10px;color:#6b6860}.fl-foot b{color:#1a1917}
+      </style></head><body>${sheet.innerHTML}</body></html>`);
+      w.document.close();
+      setTimeout(() => { w.focus(); w.print(); }, 500);
     }
     /* ═══════════════════════ END DRILLING REPORT ═══════════════════════ */
 

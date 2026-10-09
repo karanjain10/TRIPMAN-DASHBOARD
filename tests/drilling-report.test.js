@@ -60,4 +60,23 @@ r = run({ assigns: [as('d1', '2026-09-01', 'A', 'CP-21', 1, 10), as('d1', '2026-
 near(r.T.cfu, 300, 'refill matched to CP-21 by name'); assert.deepStrictEqual(r.unmatched, ['CP-77'], 'a compressor number with no unit is reported');
 assert.deepStrictEqual([r.T.deploys, r.T.hd], [2, 1], 'one of two deployments has hours');
 console.log('drilling-report: name match ok');
+
+// ── compressor not among the units at all: its typed number still finds fuel by vehicle_name; hours stay 0 ──
+r = run({ assigns: [as('d1', '2026-09-01', 'A', 'DRILL COMPRESSOR NO:-01', 1, 10)], readings: [rd('d1', '2026-09-01', 'A', 0, 6)],
+  fuel: [{ vehicle_id: 'zz', vehicle_name: 'DRILL COMPRESSOR NO:-01', refill_date: '2026-09-01', litres_filled: 279 }] });
+near(r.T.cfu, 279, 'fuel found by the typed compressor number'); near(r.T.ch, 0, 'no hours without a unit'); assert.strictEqual(r.T.clph, null);
+// ── a unit known by another name (alias) is matched ──
+r = drillRollup({ units: [{ id: 'd1', name: 'DR-1', kind: 'drill' }, { id: 'c9', name: 'CP-9', aliases: ['DRILL COMPRESSOR NO:-01'], kind: 'comp' }], from: '2026-09-01', to: '2026-09-30',
+  assigns: [as('d1', '2026-09-01', 'A', 'drill compressor no:-01', 1, 10)], readings: [rd('c9', '2026-09-01', 'A', 0, 5)], fuel: [] });
+near(r.T.ch, 5, 'matched through the alias'); assert.deepStrictEqual(r.rows[0].comps, ['CP-9']);
+// ── a repeated refill entry is counted once ──
+r = run({ assigns: [as('d1', '2026-09-01', 'A', '', 1, 10)], readings: [rd('d1', '2026-09-01', 'A', 0, 6)],
+  fuel: [{ vehicle_id: 'd1', refill_date: '2026-09-04', litres_filled: 186, hmr_reading: 26813.5 }, { vehicle_id: 'd1', refill_date: '2026-09-04', litres_filled: 186, hmr_reading: 26813.5 },
+         { vehicle_id: 'd1', refill_date: '2026-09-05', litres_filled: 186, hmr_reading: 26820 }] });
+near(r.T.dfu, 372, 'the double entry on the 4th counts once, the 5th is a real refill');
+
+// ── no compressor unit, but its refills carry a vehicle_id that the shift readings also use: hours and fuel both count ──
+r = run({ assigns: [as('d1', '2026-09-01', 'A', 'DRILL COMPRESSOR NO:-01', 1, 10)], readings: [rd('d1', '2026-09-01', 'A', 0, 6), rd('c7', '2026-09-01', 'A', 0, 8)],
+  fuel: [{ vehicle_id: 'c7', vehicle_name: 'DRILL COMPRESSOR NO:-01', refill_date: '2026-09-01', litres_filled: 200 }] });
+near(r.T.ch, 8, 'hours through the fuel log id'); near(r.T.cfu, 200, 'fuel'); near(r.T.clph, 25, 'L/h'); assert.deepStrictEqual(r.unmatched, [], 'nothing left unmatched');
 console.log('drilling-report: ok');
