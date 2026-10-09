@@ -25728,8 +25728,8 @@
       ['water_tanker', 'Water Tanker', 'Drivers'], ['generator', 'Generator', 'Operators'], ['diesel_tanker', 'Diesel Tanker', 'Drivers']];
     const WP_GROUPS = [
       { key: 'home', label: 'Home' },
-      // Not in the app's 44 keys: the backend's WorkerPermissions must add `maintenance: bool = False`, or it is dropped on save.
-      { key: 'maintenance', label: 'Maintenance screen only (this login sees nothing else on the website)' },
+      // Not in the app's 44 keys: the backend's WorkerPermissions must add `dept_maintenance: bool = False`, or it is dropped on save.
+      { key: 'dept_maintenance', label: 'Maintenance department (this login sees only the Maintenance screen)' },
       { key: 'deployment', label: 'Deployment', hidden: ['deployment_trucks', 'deployment_excavators'],
         kids: [['deploy_tipper', 'Tipper'], ['deploy_excavator', 'Excavator'], ['deploy_dozer', 'Dozer'], ['deploy_grader', 'Grader'],
                ['deploy_drill_machine', 'Drill Machine'], ['deploy_drill_compressor', 'Drill Compressor'], ['deploy_loader', 'Loader'],
@@ -27581,7 +27581,7 @@
     /* ═══════════════════════ MAINTENANCE ═══════════════════════ */
     // Breakdown screen for the maintenance team, under Equipment health. Polls the status logs, pops up when a new
     // breakdown is reported and shows where it stopped on the satellite map. The rules sit in the mt:pure block
-    // (tests/maintenance.test.js). A worker with the "maintenance" permission (not admin or owner) sees only this page.
+    // (tests/maintenance.test.js). A worker with the dept_maintenance permission (not admin or owner) sees only this page.
     // mt:pure:start
     const MT_GPS_WAIT_MS = 2 * 60000, MT_REPEAT_MS = 7 * 864e5, MT_FIXED_MS = 864e5;
     // The live API sends IST with an offset. A bare string is read as UTC, which is how the Mongo dump stores it.
@@ -27634,7 +27634,7 @@
     const MT_SRC = [['vehicles', 'vehicle', v => `Truck #${v.vehicle_number}`], ['machines', 'machine', m => m.machine_number || m.machine_id], ['others', 'other', o => o.vehicle_number]];
     let _mt = { fetchTimer: 0, tickTimer: 0, items: [], logs: [], st: null, seen: null, acked: new Set(), pop: '', extra: 0, sel: '', lastOk: 0, error: false, map: null, layer: null, fitKey: '', title: '', ctx: null, master: null, sound: false };
     // Ticked on the Worker permissions page. The login response carries the worker's permissions at the top level.
-    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner' && !!(currentUser.permissions && currentUser.permissions.maintenance === true);
+    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner' && !!(currentUser.permissions && currentUser.permissions.dept_maintenance === true);
     const mtClock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
     const mtSince = ms => isNaN(ms) ? 'time not recorded' : (new Date(ms).toDateString() === new Date().toDateString() ? 'since ' : 'since ' + new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ') + mtClock(ms);
     const mtAge = ms => isNaN(ms) ? '—' : eqhFmtDuration(Date.now() - ms);
