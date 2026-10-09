@@ -25728,8 +25728,6 @@
       ['water_tanker', 'Water Tanker', 'Drivers'], ['generator', 'Generator', 'Operators'], ['diesel_tanker', 'Diesel Tanker', 'Drivers']];
     const WP_GROUPS = [
       { key: 'home', label: 'Home' },
-      // Not in the app's 44 keys: the backend's WorkerPermissions must add `dept_maintenance: bool = False`, or it is dropped on save.
-      { key: 'dept_maintenance', label: 'Maintenance department (this login sees only the Maintenance screen)' },
       { key: 'deployment', label: 'Deployment', hidden: ['deployment_trucks', 'deployment_excavators'],
         kids: [['deploy_tipper', 'Tipper'], ['deploy_excavator', 'Excavator'], ['deploy_dozer', 'Dozer'], ['deploy_grader', 'Grader'],
                ['deploy_drill_machine', 'Drill Machine'], ['deploy_drill_compressor', 'Drill Compressor'], ['deploy_loader', 'Loader'],
@@ -27055,16 +27053,23 @@
         e.lo = Math.min(e.lo, o); e.hi = Math.max(e.hi, c);
       });
       const hrs = (id, date, shift) => { const e = hmr[`${id}|${date}|${String(shift).toUpperCase()}`]; return e ? e.hi - e.lo : 0; };
-      const name = {}, compId = {}, nameId = {};
-      units.forEach(u => { name[u.id] = u.name; nameId[norm(u.name)] = u.id; if (u.kind === 'comp') compId[norm(u.name)] = u.id; });
-      // a refill belongs to the unit with that id, else to the unit with that vehicle_name (compressor refills did not match by id on live data)
+      const name = {}, compId = {};
+      units.forEach(u => { name[u.id] = u.name; if (u.kind === 'comp') [u.name, ...(u.aliases || [])].forEach(n => { if (norm(n)) compId[norm(n)] = u.id; }); });
+      // Refill litres are kept under the log's vehicle_id AND under its normalised vehicle_name; a unit reads whichever of its keys
+      // has fuel (compressor refills did not match by id on live data). A repeated entry (same vehicle, day, litres and meter)
+      // is a double entry and counted once.
+      const dupe = new Set();
       fuel.forEach(f => {
-        const d = String(f.refill_date || '').slice(0, 10), raw = String(f.vehicle_id), id = name[raw] != null ? raw : (nameId[norm(f.vehicle_name)] || raw);
-        if (d >= from && d <= to) { add(fuelBy, id, Number(f.litres_filled) || 0); (fuelDay[id] = fuelDay[id] || {})[d] = (fuelDay[id][d] || 0) + (Number(f.litres_filled) || 0); }
+        const d = String(f.refill_date || '').slice(0, 10), l = Number(f.litres_filled) || 0, nk = norm(f.vehicle_name);
+        const dk = `${f.vehicle_id}|${nk}|${d}|${l}|${f.hmr_reading}`;
+        if (d < from || d > to || dupe.has(dk)) return;
+        dupe.add(dk);
+        [String(f.vehicle_id), nk].filter(k => k).forEach(k => { add(fuelBy, k, l); (fuelDay[k] = fuelDay[k] || {})[d] = (fuelDay[k][d] || 0) + l; });
       });
+      const fuelKey = (...ks) => ks.find(k => k && fuelBy[k] != null);
       const rows = {}, days = {}, credit = {}, seen = new Set(), seenC = new Set(), unmatched = new Set();
       assigns.filter(a => a.date >= from && a.date <= to).forEach(a => {
-        const id = String(a.unit_id), r = rows[id] || (rows[id] = { id, name: name[id] || `…${id.slice(-6)}`, comps: new Set(), deploys: 0, entered: 0, hd: 0, holes: 0, m: 0, dh: 0, ch: 0, rm: 0, rh: 0, dfu: fuelBy[id] || 0, cfu: 0 });
+        const id = String(a.unit_id), r = rows[id] || (rows[id] = { id, name: name[id] || `…${id.slice(-6)}`, comps: new Set(), deploys: 0, entered: 0, hd: 0, holes: 0, m: 0, dh: 0, ch: 0, rm: 0, rh: 0, fk: fuelKey(id, norm(name[id])), dfu: 0, cfu: 0 });
         const day = days[a.date] || (days[a.date] = { date: a.date, m: null, dh: 0, ch: 0, rm: 0, rh: 0 }), h = hrs(id, a.date, a.shift), slot = `${id}|${a.date}|${a.shift}`;
         r.deploys++;
         if (!seen.has(slot)) { seen.add(slot); r.dh += h; day.dh += h; if (h > 0) r.hd++; }
@@ -27072,26 +27077,34 @@
           r.entered++; r.m += Number(a.total_meterage) || 0; r.holes += Number(a.total_holes) || 0; day.m = (day.m || 0) + (Number(a.total_meterage) || 0);
           if (h > 0) { r.rm += Number(a.total_meterage) || 0; r.rh += h; day.rm += Number(a.total_meterage) || 0; day.rh += h; }
         }
-        const cid = a.compressor_number ? compId[norm(a.compressor_number)] : null;
-        if (cid) {
-          r.comps.add(name[cid]);
-          const ck = `${cid}|${a.date}|${a.shift}`;
-          if (!seenC.has(ck)) { seenC.add(ck); const ch = hrs(cid, a.date, a.shift); r.ch += ch; day.ch += ch; (credit[cid] = credit[cid] || {})[id] = (credit[cid][id] || 0) + ch; }
-        } else if (a.compressor_number) { r.comps.add(String(a.compressor_number).trim()); unmatched.add(String(a.compressor_number).trim()); }
+        if (a.compressor_number) {
+          // A compressor is its unit when the number matches one (hours come from that unit's readings); otherwise it is only the
+          // typed number, which can still find its fuel by vehicle_name but has no hours.
+          const typed = norm(a.compressor_number), cid = compId[typed], key = cid || `n:${typed}`, c = credit[key] || (credit[key] = { typed, cid, by: {} });
+          r.comps.add(cid ? name[cid] : String(a.compressor_number).trim());
+          if (!cid) unmatched.add(String(a.compressor_number).trim());
+          const sk = `${key}|${a.date}|${a.shift}`, b = c.by[id] || (c.by[id] = { h: 0, n: 0 });
+          if (!seenC.has(sk)) { seenC.add(sk); const ch = cid ? hrs(cid, a.date, a.shift) : 0; r.ch += ch; day.ch += ch; b.h += ch; b.n++; }
+        }
       });
-      Object.entries(credit).forEach(([cid, by]) => {
-        const total = Object.values(by).reduce((n, v) => n + v, 0);
-        if (total > 0) Object.entries(by).forEach(([did, v]) => { rows[did].cfu += (fuelBy[cid] || 0) * v / total; });
+      // each compressor's fuel is split between the drills it served by their share of its hours (by shifts when it has no hours)
+      const compKeys = [];
+      Object.values(credit).forEach(c => {
+        const fk = fuelKey(c.cid, c.cid && norm(name[c.cid]), c.typed); if (!fk) return;
+        compKeys.push(fk);
+        const bs = Object.entries(c.by), th = bs.reduce((n, [, b]) => n + b.h, 0), tn = bs.reduce((n, [, b]) => n + b.n, 0);
+        bs.forEach(([did, b]) => { rows[did].cfu += fuelBy[fk] * (th > 0 ? b.h / th : b.n / tn); });
       });
+      Object.values(rows).forEach(r => { r.dfu = r.fk ? fuelBy[r.fk] : 0; });
       const list = Object.values(rows).map(r => ({ ...r, comps: [...r.comps].sort(), mph: r.rh > 0 ? r.rm / r.rh : null, dlph: r.dh > 0 ? r.dfu / r.dh : null, clph: r.ch > 0 ? r.cfu / r.ch : null,
         lpm: r.deploys === r.entered && r.m > 0 ? (r.dfu + r.cfu) / r.m : null })).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
       // fuel per day: the drills' own refills, and the refills of every compressor that was credited to a drill
-      const driveIds = new Set(list.map(r => r.id)), compIds = Object.keys(credit);
+      const driveKeys = new Set(list.map(r => r.fk).filter(Boolean)), compIds = [...new Set(compKeys)];
       const sorted = Object.values(days).sort((a, b) => a.date.localeCompare(b.date));
       let cm = 0, chh = 0, cdf = 0, cdh = 0, ccf = 0, cch = 0;
       sorted.forEach(d => {
         cm += d.rm; chh += d.rh; d.mph = d.rh > 0 ? d.rm / d.rh : null; d.cum = chh > 0 ? cm / chh : null;
-        driveIds.forEach(id => { cdf += (fuelDay[id] || {})[d.date] || 0; }); compIds.forEach(id => { ccf += (fuelDay[id] || {})[d.date] || 0; });
+        driveKeys.forEach(id => { cdf += (fuelDay[id] || {})[d.date] || 0; }); compIds.forEach(id => { ccf += (fuelDay[id] || {})[d.date] || 0; });
         cdh += d.dh; cch += d.ch; d.dlph = cdh > 0 && cdf > 0 ? cdf / cdh : null; d.clph = cch > 0 && ccf > 0 ? ccf / cch : null;   // blank until the first refill, not 0
       });
       const sum = k => list.reduce((n, r) => n + r[k], 0), T = { holes: sum('holes'), m: sum('m'), dh: sum('dh'), ch: sum('ch'), dfu: sum('dfu'), cfu: sum('cfu'), rm: sum('rm'), rh: sum('rh'),
@@ -27146,7 +27159,7 @@
         if (seq !== _drp.seq) return;
         const units = others.map(o => {
           const t = eqRawType(o).toLowerCase().replace(/[_-]+/g, ' ');
-          return { id: String(o._id), name: o.number_plate || o.vehicle_number || o.name || String(o._id), kind: t.includes('compressor') ? 'comp' : t.includes('drill') ? 'drill' : null };
+          return { id: String(o._id), name: o.number_plate || o.vehicle_number || o.name || String(o._id), aliases: [o.name, o.vehicle_name, o.machine_number, o.machine_id, o.equipment_name, o.vehicle_number, o.number_plate].filter(Boolean), kind: t.includes('compressor') ? 'comp' : t.includes('drill') ? 'drill' : null };
         }).filter(u => u.kind);
         _drp = { ..._drp, from, to, data: drillRollup({ units, assigns: assigns.rows, fuel, readings: readings.rows, from, to }) };
         const bad = [];
@@ -27209,7 +27222,7 @@
       const note = t => `<p class="drp-lede" style="border-left:3px solid #e8a020;padding-left:10px;">${t}</p>`;
       const missing = (T.entered < T.deploys ? note(`Metres and holes are entered for ${T.entered} of ${T.deploys} deployments. Metres, holes and metres per hour count only those.`) : '')
         + (T.hd < T.deploys ? note(`Drill hours are recorded for ${T.hd} of ${T.deploys} deployments, so engine hours are low and metres per hour counts only those with hours.`) : '')
-        + (unmatched.length ? note(`Compressor ${unmatched.map(drEsc).join(', ')} on the deployments matches no compressor unit, so its hours and fuel are not counted.`) : '');
+        + (unmatched.length ? note(`Compressor ${unmatched.map(drEsc).join(', ')} on the deployments matches no compressor unit, so its hours are not counted. Its fuel is counted only if a fuel log has that exact vehicle name.`) : '');
       const col = (title, h, f, l) => `<div class="fl-col"><div class="fl-h">${title}</div><div class="fl-kpis drp-k3">${tile('Engine hours', n(h), 'h')}${tile('Fuel issued', n(f), 'L')}${tile('Average', d1(l), 'L/h')}</div></div>`;
       main.innerHTML = `${missing}
         <div class="fl-head"><div class="l"><span class="topbar-tripman-logo" style="margin-right:12px;"><span class="topbar-tripman-text">Tripman</span></span><h1>Drilling Report</h1></div><div class="m">${drpDay(_drp.from)} to ${drpDay(_drp.to)} · all shifts</div></div>
@@ -27581,7 +27594,7 @@
     /* ═══════════════════════ MAINTENANCE ═══════════════════════ */
     // Breakdown screen for the maintenance team, under Equipment health. Polls the status logs, pops up when a new
     // breakdown is reported and shows where it stopped on the satellite map. The rules sit in the mt:pure block
-    // (tests/maintenance.test.js). A worker with the dept_maintenance permission (not admin or owner) sees only this page.
+    // (tests/maintenance.test.js). A worker whose department is "maintenance" (not admin or owner) sees only this page.
     // mt:pure:start
     const MT_GPS_WAIT_MS = 2 * 60000, MT_REPEAT_MS = 7 * 864e5, MT_FIXED_MS = 864e5;
     // The live API sends IST with an offset. A bare string is read as UTC, which is how the Mongo dump stores it.
@@ -27633,8 +27646,8 @@
     const MT_FETCH_MS = 20000, MT_TICK_MS = 15000, MT_LOG_DAYS = 30, MT_ACK_KEY = 'tripman_mt_ack', MT_SOUND_KEY = 'tripman_mt_sound';
     const MT_SRC = [['vehicles', 'vehicle', v => `Truck #${v.vehicle_number}`], ['machines', 'machine', m => m.machine_number || m.machine_id], ['others', 'other', o => o.vehicle_number]];
     let _mt = { fetchTimer: 0, tickTimer: 0, items: [], logs: [], st: null, seen: null, acked: new Set(), pop: '', extra: 0, sel: '', lastOk: 0, error: false, map: null, layer: null, fitKey: '', title: '', ctx: null, master: null, sound: false };
-    // Ticked on the Worker permissions page. The login response carries the worker's permissions at the top level.
-    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner' && !!(currentUser.permissions && currentUser.permissions.dept_maintenance === true);
+    // The worker's `department` ("maintenance") comes back at the top level of the login response.
+    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner' && currentUser.department === 'maintenance';
     const mtClock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
     const mtSince = ms => isNaN(ms) ? 'time not recorded' : (new Date(ms).toDateString() === new Date().toDateString() ? 'since ' : 'since ' + new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ') + mtClock(ms);
     const mtAge = ms => isNaN(ms) ? '—' : eqhFmtDuration(Date.now() - ms);
