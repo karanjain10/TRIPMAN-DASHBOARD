@@ -52,4 +52,12 @@ assert.strictEqual(r.rows[0].mph, null); assert.strictEqual(r.rows[0].dlph, null
 assert.deepStrictEqual(run({}).rows, []); assert.strictEqual(run({}).T.mph, null);
 r = run({ assigns: [as('d1', '2026-09-01', 'A', '', 1, 5), as('d1', '2026-09-01', 'A', '', 1, 5)], readings: [rd('d1', '2026-09-01', 'A', 0, 6)] });
 assert.strictEqual(r.rows[0].dh, 6, 'the same drill and shift listed twice counts its hours once');
+
+// ── compressor refills that carry a different vehicle_id still land on the compressor with that vehicle_name ──
+r = run({ assigns: [as('d1', '2026-09-01', 'A', 'CP-21', 1, 10), as('d1', '2026-09-02', 'A', 'CP-77', 1, 10)],
+  readings: [rd('d1', '2026-09-01', 'A', 0, 6), rd('c1', '2026-09-01', 'A', 0, 6)],
+  fuel: [{ vehicle_id: 'other-id', vehicle_name: ' cp-21 ', refill_date: '2026-09-01', litres_filled: 300 }] });
+near(r.T.cfu, 300, 'refill matched to CP-21 by name'); assert.deepStrictEqual(r.unmatched, ['CP-77'], 'a compressor number with no unit is reported');
+assert.deepStrictEqual([r.T.deploys, r.T.hd], [2, 1], 'one of two deployments has hours');
+console.log('drilling-report: name match ok');
 console.log('drilling-report: ok');

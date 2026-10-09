@@ -5714,7 +5714,16 @@
     :root[data-theme="dark"] #drill-report-page { --fl-grid:#2c2c2a; --drp-d:#3987e5; --drp-c:#2dd4bf; --drp-cum:#5fd493; --drp-bad:#ff8a84; }
     .drp-k3 { grid-template-columns:repeat(3,1fr); }
     .drp-lede { margin:0 0 14px; font-size:13px; line-height:1.5; color:var(--text-secondary); max-width:90ch; } .drp-lede b { color:var(--text-primary); }
-    .fl-cv.drp-tall { height:230px; }
+    #drill-report-page .fl-head { flex-wrap:wrap; }
+    #drill-report-page .fl-head h1 { font-size:26px; } #drill-report-page .fl-head .m { font-size:13px; }
+    #drill-report-page .fl-k { padding:12px 14px; } #drill-report-page .fl-k .l { font-size:12px; } #drill-report-page .fl-k b { font-size:28px; } #drill-report-page .fl-k b small { font-size:13px; } #drill-report-page .fl-k .s { font-size:11px; }
+    #drill-report-page .fl-h { font-size:12px; } #drill-report-page .fl-charts figcaption { font-size:13px; margin-bottom:8px; } #drill-report-page .fl-charts { gap:22px 26px; }
+    #drill-report-page .fl-cv { height:270px; } #drill-report-page .fl-cv.drp-tall { height:330px; }
+    #drill-report-page .fl-tbl { font-size:13px; } #drill-report-page .fl-tbl th { font-size:11px; padding:6px 8px; } #drill-report-page .fl-tbl td { padding:8px; }
+    #drill-report-page .fl-foot { font-size:12px; } #drill-report-page .drp-lede { font-size:15px; }
+    /* PDF is always printed light, even when the app is dark, or the text prints white on white */
+    :root[data-theme] body.drp-printing #drill-report-page { --bg:#fff; --surface:#fff; --border:#e2e0d8; --border-strong:#c8c5bb; --text-primary:#1a1917; --text-secondary:#6b6860; --text-muted:#9b9890;
+      --fl-grid:#e7e6e2; --drp-d:#2a78d6; --drp-c:#16a085; --drp-cum:#1f7a45; --drp-bad:#c0392b; color:#1a1917; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     body.drp-printing > *:not(#drill-report-page) { display:none !important; }
     body.drp-printing #drill-report-page .topbar, body.drp-printing #drill-report-page .fl-controls, body.drp-printing #drill-report-page .fl-banner { display:none !important; }
     body.drp-printing #drill-report-page { background:#fff; min-height:0; }
@@ -5725,6 +5734,10 @@
     body.drp-printing #drill-report-page .fl-charts { grid-template-columns:1fr 1fr; gap:8px 14px; margin-bottom:8px; }
     body.drp-printing #drill-report-page .fl-kpis { grid-template-columns:repeat(4,1fr); margin-bottom:8px; } body.drp-printing #drill-report-page .fl-kpis.drp-k3 { grid-template-columns:repeat(3,1fr); }
     body.drp-printing #drill-report-page .fl-cv { height:110px; } body.drp-printing #drill-report-page .fl-cv.drp-tall { height:135px; }
+    body.drp-printing #drill-report-page .fl-k { padding:8px 10px 9px; } body.drp-printing #drill-report-page .fl-k .l { font-size:10px; } body.drp-printing #drill-report-page .fl-k b { font-size:19px; } body.drp-printing #drill-report-page .fl-k b small { font-size:11px; } body.drp-printing #drill-report-page .fl-k .s { font-size:10px; }
+    body.drp-printing #drill-report-page .fl-head h1 { font-size:20px; } body.drp-printing #drill-report-page .fl-head .m { font-size:12px; } body.drp-printing #drill-report-page .fl-h { font-size:11px; }
+    body.drp-printing #drill-report-page .fl-charts figcaption { font-size:11px; margin-bottom:4px; } body.drp-printing #drill-report-page .fl-tbl th { font-size:10px; padding:4px 6px; }
+    body.drp-printing #drill-report-page .fl-charts figure, body.drp-printing #drill-report-page .fl-tbl tr { break-inside:avoid; }
     body.drp-printing #drill-report-page .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
     body.drp-printing #drill-report-page .fl-tbl { font-size:10px; } body.drp-printing #drill-report-page .fl-tbl td { padding:3px 5px; }
     body.drp-printing #drill-report-page .drp-lede { font-size:11px; margin-bottom:8px; }
@@ -27042,18 +27055,19 @@
         e.lo = Math.min(e.lo, o); e.hi = Math.max(e.hi, c);
       });
       const hrs = (id, date, shift) => { const e = hmr[`${id}|${date}|${String(shift).toUpperCase()}`]; return e ? e.hi - e.lo : 0; };
+      const name = {}, compId = {}, nameId = {};
+      units.forEach(u => { name[u.id] = u.name; nameId[norm(u.name)] = u.id; if (u.kind === 'comp') compId[norm(u.name)] = u.id; });
+      // a refill belongs to the unit with that id, else to the unit with that vehicle_name (compressor refills did not match by id on live data)
       fuel.forEach(f => {
-        const d = String(f.refill_date || '').slice(0, 10), id = String(f.vehicle_id);
+        const d = String(f.refill_date || '').slice(0, 10), raw = String(f.vehicle_id), id = name[raw] != null ? raw : (nameId[norm(f.vehicle_name)] || raw);
         if (d >= from && d <= to) { add(fuelBy, id, Number(f.litres_filled) || 0); (fuelDay[id] = fuelDay[id] || {})[d] = (fuelDay[id][d] || 0) + (Number(f.litres_filled) || 0); }
       });
-      const name = {}, compId = {};
-      units.forEach(u => { name[u.id] = u.name; if (u.kind === 'comp') compId[norm(u.name)] = u.id; });
-      const rows = {}, days = {}, credit = {}, seen = new Set(), seenC = new Set();
+      const rows = {}, days = {}, credit = {}, seen = new Set(), seenC = new Set(), unmatched = new Set();
       assigns.filter(a => a.date >= from && a.date <= to).forEach(a => {
-        const id = String(a.unit_id), r = rows[id] || (rows[id] = { id, name: name[id] || `…${id.slice(-6)}`, comps: new Set(), deploys: 0, entered: 0, holes: 0, m: 0, dh: 0, ch: 0, rm: 0, rh: 0, dfu: fuelBy[id] || 0, cfu: 0 });
+        const id = String(a.unit_id), r = rows[id] || (rows[id] = { id, name: name[id] || `…${id.slice(-6)}`, comps: new Set(), deploys: 0, entered: 0, hd: 0, holes: 0, m: 0, dh: 0, ch: 0, rm: 0, rh: 0, dfu: fuelBy[id] || 0, cfu: 0 });
         const day = days[a.date] || (days[a.date] = { date: a.date, m: null, dh: 0, ch: 0, rm: 0, rh: 0 }), h = hrs(id, a.date, a.shift), slot = `${id}|${a.date}|${a.shift}`;
         r.deploys++;
-        if (!seen.has(slot)) { seen.add(slot); r.dh += h; day.dh += h; }
+        if (!seen.has(slot)) { seen.add(slot); r.dh += h; day.dh += h; if (h > 0) r.hd++; }
         if (a.total_meterage != null) {
           r.entered++; r.m += Number(a.total_meterage) || 0; r.holes += Number(a.total_holes) || 0; day.m = (day.m || 0) + (Number(a.total_meterage) || 0);
           if (h > 0) { r.rm += Number(a.total_meterage) || 0; r.rh += h; day.rm += Number(a.total_meterage) || 0; day.rh += h; }
@@ -27063,7 +27077,7 @@
           r.comps.add(name[cid]);
           const ck = `${cid}|${a.date}|${a.shift}`;
           if (!seenC.has(ck)) { seenC.add(ck); const ch = hrs(cid, a.date, a.shift); r.ch += ch; day.ch += ch; (credit[cid] = credit[cid] || {})[id] = (credit[cid][id] || 0) + ch; }
-        } else if (a.compressor_number) r.comps.add(String(a.compressor_number).trim());
+        } else if (a.compressor_number) { r.comps.add(String(a.compressor_number).trim()); unmatched.add(String(a.compressor_number).trim()); }
       });
       Object.entries(credit).forEach(([cid, by]) => {
         const total = Object.values(by).reduce((n, v) => n + v, 0);
@@ -27081,11 +27095,11 @@
         cdh += d.dh; cch += d.ch; d.dlph = cdh > 0 && cdf > 0 ? cdf / cdh : null; d.clph = cch > 0 && ccf > 0 ? ccf / cch : null;   // blank until the first refill, not 0
       });
       const sum = k => list.reduce((n, r) => n + r[k], 0), T = { holes: sum('holes'), m: sum('m'), dh: sum('dh'), ch: sum('ch'), dfu: sum('dfu'), cfu: sum('cfu'), rm: sum('rm'), rh: sum('rh'),
-        deploys: sum('deploys'), entered: sum('entered') };
+        deploys: sum('deploys'), entered: sum('entered'), hd: sum('hd') };
       T.mph = T.rh > 0 ? T.rm / T.rh : null; T.dlph = T.dh > 0 ? T.dfu / T.dh : null; T.clph = T.ch > 0 ? T.cfu / T.ch : null;
       T.lpm = T.deploys === T.entered && T.m > 0 ? (T.dfu + T.cfu) / T.m : null;
       T.lastDay = [...sorted].reverse().find(d => d.mph != null) || null;
-      return { rows: list, days: sorted, T };
+      return { rows: list, days: sorted, T, unmatched: [...unmatched].sort() };
     }
     // drill:pure:end
 
@@ -27185,17 +27199,20 @@
     }
 
     function drpRender() {
-      const main = document.getElementById('drp-main'), { rows, days, T } = _drp.data, n = flNum, d1 = v => (v == null ? '—' : flNum(v, 1)), tile = flTile;
+      const main = document.getElementById('drp-main'), { rows, days, T, unmatched } = _drp.data, n = flNum, d1 = v => (v == null ? '—' : flNum(v, 1)), tile = flTile;
       if (!rows.length) { drpKillCharts(); main.innerHTML = `<div class="fl-empty">No drill deployments between ${drpDay(_drp.from)} and ${drpDay(_drp.to)}.</div>`; return; }
       const cmp = rows.filter(r => r.clph != null).sort((a, b) => b.clph - a.clph)[0], slow = rows.filter(r => r.mph != null).sort((a, b) => a.mph - b.mph)[0];
       const idle = Math.max(0, T.ch - T.dh), lede = [
         slow && rows.length > 1 && T.mph ? `<b>${drEsc(slow.name)}</b> drilled ${d1(slow.mph)} m an hour against ${d1(T.mph)} for all drills.` : '',
         cmp && rows.length > 1 && T.clph ? `<b>${drEsc(cmp.comps.join(', '))}</b> burned ${d1(cmp.clph)} L an hour against ${d1(T.clph)} for all compressors.` : '',
         idle > 0 && T.clph ? `Compressors ran ${n(idle)} hours more than their drills, about ${n(idle * T.clph)} L of diesel.` : '' ].filter(Boolean).join(' ');
-      const missing = T.entered < T.deploys ? `<p class="drp-lede" style="border-left:3px solid #e8a020;padding-left:10px;">Metres and holes are entered for ${T.entered} of ${T.deploys} deployments. Metres, holes and metres per hour count only those. Hours and fuel come from readings and are not affected.</p>` : '';
+      const note = t => `<p class="drp-lede" style="border-left:3px solid #e8a020;padding-left:10px;">${t}</p>`;
+      const missing = (T.entered < T.deploys ? note(`Metres and holes are entered for ${T.entered} of ${T.deploys} deployments. Metres, holes and metres per hour count only those.`) : '')
+        + (T.hd < T.deploys ? note(`Drill hours are recorded for ${T.hd} of ${T.deploys} deployments, so engine hours are low and metres per hour counts only those with hours.`) : '')
+        + (unmatched.length ? note(`Compressor ${unmatched.map(drEsc).join(', ')} on the deployments matches no compressor unit, so its hours and fuel are not counted.`) : '');
       const col = (title, h, f, l) => `<div class="fl-col"><div class="fl-h">${title}</div><div class="fl-kpis drp-k3">${tile('Engine hours', n(h), 'h')}${tile('Fuel issued', n(f), 'L')}${tile('Average', d1(l), 'L/h')}</div></div>`;
       main.innerHTML = `${missing}
-        <div class="fl-head"><div class="l"><h1>Drilling Report</h1></div><div class="m">${drpDay(_drp.from)} to ${drpDay(_drp.to)} · all shifts<br>Tripman</div></div>
+        <div class="fl-head"><div class="l"><span class="topbar-tripman-logo" style="margin-right:12px;"><span class="topbar-tripman-text">Tripman</span></span><h1>Drilling Report</h1></div><div class="m">${drpDay(_drp.from)} to ${drpDay(_drp.to)} · all shifts</div></div>
         ${lede ? `<p class="drp-lede">${lede}</p>` : ''}
         <div class="fl-kpis">${tile('Holes drilled', n(T.holes), '')}${tile('Metres drilled', n(T.m), 'm')}
           ${tile('Per hour, latest day', d1(T.lastDay && T.lastDay.mph), 'm/h', T.lastDay ? drpDay(T.lastDay.date) : '')}${tile('Cumulative per hour', d1(T.mph), 'm/h', 'whole range')}</div>
@@ -27218,10 +27235,10 @@
       const title = document.title;
       document.title = `Tripman Drilling Report ${_drp.from} to ${_drp.to}`;   // becomes the saved file's name
       document.body.classList.add('drp-printing');
-      const done = () => { document.body.classList.remove('drp-printing'); document.title = title; window.removeEventListener('afterprint', done); };
+      const done = () => { document.body.classList.remove('drp-printing'); document.title = title; window.removeEventListener('afterprint', done); if (_drp.data) drpCharts(); };
       window.addEventListener('afterprint', done);
-      _drp.charts.forEach(c => c.resize());
-      setTimeout(() => window.print(), 250);
+      if (_drp.data) drpCharts();   // redrawn at print width and in the light colours
+      setTimeout(() => window.print(), 300);
     }
     /* ═══════════════════════ END DRILLING REPORT ═══════════════════════ */
 
