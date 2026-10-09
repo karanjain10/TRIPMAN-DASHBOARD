@@ -21,6 +21,11 @@ assert.strictEqual(g[2].label, 'No department');
 assert.strictEqual(g.reduce((n, x) => n + x.workers.length, 0), 5);
 // an unknown department value does not hide the worker
 assert.deepStrictEqual(wpGroups([w('z', ['legal'])], D).map(x => x.key), ['']);
+// admins form their own group, first, even if they also carry a stored department
+const adm = wpGroups([w('a', ['fuel']), { _id: 'x', name: 'x', is_admin: true, departments: ['hr'] }, { _id: 'y', name: 'y', is_admin: true }], D);
+assert.deepStrictEqual(adm.map(x => x.key), ['@admin', 'fuel']);
+assert.deepStrictEqual(adm[0].workers.map(x => x.name), ['x', 'y']);
+assert.strictEqual(adm[0].label, 'Admin');
 // empty groups are dropped
 assert.deepStrictEqual(wpGroups([], D), []);
 

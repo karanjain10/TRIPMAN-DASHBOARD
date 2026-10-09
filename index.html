@@ -25732,15 +25732,17 @@
     const WP_DEPTS = [['maintenance', 'Maintenance'], ['hr', 'HR'], ['production', 'Production'], ['fuel', 'Fuel'], ['other_1', 'Other 1'], ['other_2', 'Other 2']];
     // wp:pure:start
     const wpDeptList = w => Array.isArray(w && w.departments) ? w.departments : [];
-    // One group per department, in menu order. A worker sits under their FIRST department in that order
+    // Admin first: every worker with is_admin sits there (it comes from the flag, not from the stored list).
+    // Then one group per department, in menu order. Anyone else sits under their FIRST department in that order
     // (the row still lists the others); workers with none go last. Empty groups are left out.
     function wpGroups(workers, depts) {
       const order = depts.map(d => d[0]), by = {};
       workers.forEach(w => {
         const mine = wpDeptList(w).filter(d => order.includes(d)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-        (by[mine[0] || ''] = by[mine[0] || ''] || []).push(w);
+        const k = w.is_admin ? '@admin' : (mine[0] || '');
+        (by[k] = by[k] || []).push(w);
       });
-      return [...depts.map(([k, label]) => ({ key: k, label, workers: by[k] || [] })), { key: '', label: 'No department', workers: by[''] || [] }].filter(g => g.workers.length);
+      return [{ key: '@admin', label: 'Admin', workers: by['@admin'] || [] }, ...depts.map(([k, label]) => ({ key: k, label, workers: by[k] || [] })), { key: '', label: 'No department', workers: by[''] || [] }].filter(g => g.workers.length);
     }
     const wpSameDepts = (a, b) => a.length === b.length && a.every(x => b.includes(x));
     // wp:pure:end
