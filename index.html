@@ -5709,6 +5709,26 @@
     body.fl-printing .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
     body.fl-printing .fl-tbl { font-size:10px; } body.fl-printing .fl-tbl td { padding:3px 5px; }
 
+    /* ── DRILLING REPORT: reuses the fl-* sheet; own colours and print switch ── */
+    #drill-report-page { display:none; min-height:100vh; background:var(--bg); --fl-grid:#e7e6e2; --drp-d:#2a78d6; --drp-c:#16a085; --drp-cum:#1f7a45; --drp-bad:#c0392b; }
+    :root[data-theme="dark"] #drill-report-page { --fl-grid:#2c2c2a; --drp-d:#3987e5; --drp-c:#2dd4bf; --drp-cum:#5fd493; --drp-bad:#ff8a84; }
+    .drp-k3 { grid-template-columns:repeat(3,1fr); }
+    .drp-lede { margin:0 0 14px; font-size:13px; line-height:1.5; color:var(--text-secondary); max-width:90ch; } .drp-lede b { color:var(--text-primary); }
+    .fl-cv.drp-tall { height:230px; }
+    body.drp-printing > *:not(#drill-report-page) { display:none !important; }
+    body.drp-printing #drill-report-page .topbar, body.drp-printing #drill-report-page .fl-controls, body.drp-printing #drill-report-page .fl-banner { display:none !important; }
+    body.drp-printing #drill-report-page { background:#fff; min-height:0; }
+    body.drp-printing #drill-report-page .fl-body { padding:0; width:1062px; max-width:none; margin:0; }
+    body.drp-printing #drill-report-page .fl-sheet { border:0; padding:0; }
+    body.drp-printing #drill-report-page .fl-cols { grid-template-columns:1fr 1fr; }
+    body.drp-printing #drill-report-page .fl-col + .fl-col { border-left:1px solid var(--border); padding-left:26px; margin-top:0; }
+    body.drp-printing #drill-report-page .fl-charts { grid-template-columns:1fr 1fr; gap:8px 14px; margin-bottom:8px; }
+    body.drp-printing #drill-report-page .fl-kpis { grid-template-columns:repeat(4,1fr); margin-bottom:8px; } body.drp-printing #drill-report-page .fl-kpis.drp-k3 { grid-template-columns:repeat(3,1fr); }
+    body.drp-printing #drill-report-page .fl-cv { height:110px; } body.drp-printing #drill-report-page .fl-cv.drp-tall { height:135px; }
+    body.drp-printing #drill-report-page .fl-foot { margin-top:8px; padding-top:6px; font-size:9px; }
+    body.drp-printing #drill-report-page .fl-tbl { font-size:10px; } body.drp-printing #drill-report-page .fl-tbl td { padding:3px 5px; }
+    body.drp-printing #drill-report-page .drp-lede { font-size:11px; margin-bottom:8px; }
+
     #daily-operations-page { display:none; min-height:100vh; background:var(--bg); }
     .dos-body { max-width:1440px; margin:0 auto; padding:24px; }
     .dos-controls { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; padding:18px; margin-bottom:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
@@ -7751,6 +7771,15 @@
           </div>
         </div>
 
+        <!-- Drilling Report -->
+        <div onclick="openReportFrom('drilling')" style="cursor:pointer;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:24px 28px;display:flex;align-items:flex-start;gap:18px;transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(16,185,129,.10)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+          <svg width="36" height="36" viewBox="0 0 36 36" style="flex-shrink:0;" aria-hidden="true"><rect x="15" y="2" width="6" height="18" fill="currentColor" opacity=".6"/><polygon points="12,20 24,20 18,33" fill="currentColor"/><rect x="2" y="21" width="9" height="3" fill="currentColor" opacity=".35"/><rect x="25" y="21" width="9" height="3" fill="currentColor" opacity=".35"/></svg>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:5px;">Drilling Report</div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">Holes, metres and metres per hour, drill and compressor hours, fuel and litres per hour, with charts. Pick a date range, save as PDF.</div>
+          </div>
+        </div>
+
         <!-- Daily Operations Report -->
         <div onclick="openReportFrom('daily-operations')" style="cursor:pointer;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:24px 28px;display:flex;align-items:flex-start;gap:18px;transition:border-color .15s,box-shadow .15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(16,185,129,.10)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
           <div style="font-size:36px;line-height:1;flex-shrink:0;">📋</div>
@@ -7783,6 +7812,27 @@
       </div>
       <div id="fl-banner"></div>
       <div id="fl-main" class="fl-sheet"></div>
+    </div>
+  </div>
+
+  <!-- DRILLING REPORT PAGE -->
+  <div id="drill-report-page">
+    <div class="topbar">
+      <button class="action-btn" onclick="closeReportToHub()" style="margin-right:8px;">← Back</button>
+      <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
+      <div class="topbar-title">Drilling Report</div>
+      <div class="topbar-user" style="display:flex;gap:8px;">
+        <button class="action-btn primary" onclick="drpPrint()" style="height:30px;font-size:12px;">⬇ PDF</button>
+      </div>
+    </div>
+    <div class="fl-body">
+      <div class="fl-controls">
+        <div class="dos-field"><label for="drp-from">From</label><input id="drp-from" type="date" onchange="drpLoad()"></div>
+        <div class="dos-field"><label for="drp-to">To</label><input id="drp-to" type="date" onchange="drpLoad()"></div>
+        <span class="fl-status" id="drp-status"></span>
+      </div>
+      <div id="drp-banner"></div>
+      <div id="drp-main" class="fl-sheet"></div>
     </div>
   </div>
 
@@ -12747,7 +12797,7 @@
     // ── Reports Hub ───────────────────────────────────────────────────────────────
     const _ALL_REPORT_PAGES = [
       'driver-report-page', 'truck-report-page',
-      'fuel-page', 'excavator-page', 'daily-operations-page', 'fleet-summary-page'
+      'fuel-page', 'excavator-page', 'daily-operations-page', 'fleet-summary-page', 'drill-report-page'
     ];
 
     function openReportsHub() {
@@ -12780,6 +12830,7 @@
       else if (type === 'excavator') { openExcavatorPage(); }
       else if (type === 'daily-operations') { openDailyOperationsReport(); }
       else if (type === 'fleet') { openFleetSummaryPage(); }
+      else if (type === 'drilling') { openDrillReportPage(); }
     }
 
     // ─── DAILY OPERATIONS REPORT ──────────────────────────────────────────────
@@ -26964,6 +27015,215 @@
       setTimeout(() => window.print(), 250);
     }
     /* ═══════════════════════ END FLEET SUMMARY ═══════════════════════ */
+
+    /* ═══════════════════════ DRILLING REPORT ═══════════════════════ */
+    // Holes and metres are typed in per deployment (GET /equipment-assignments, drill_machine). Hours are the HMR movement in each
+    // shift's readings, fuel is what was issued by refill date (not burned). A compressor is matched to its drill through the
+    // deployment's compressor_number, by name. ponytail: that match and the readings/fuel ids of /others units are unverified against
+    // the live API; a compressor that does not match shows by its typed number with no hours or fuel. The rules sit in the drill:pure
+    // block so tests/drilling-report.test.js can run them without a browser.
+
+    // drill:pure:start
+    // units [{id,name,kind:'drill'|'comp'}], assigns [{unit_id,date,shift,compressor_number,total_holes,total_meterage}],
+    // fuel [{vehicle_id,refill_date,litres_filled}], readings = shift-readings rows. Everything is summed from the deployments:
+    // a drill's hours are its HMR movement in the shifts it was deployed, and a compressor's hours and fuel go to the drill it
+    // was deployed with (fuel split by each drill's share of that compressor's hours).
+    // Metres per hour only counts deployments that have both metres entered and hours; litres per metre only when every
+    // deployment of the drill has metres, because fuel is not split by entered day.
+    function drillRollup({ units, assigns, fuel, readings, from, to }) {
+      const add = (o, k, n) => { o[k] = (o[k] || 0) + n; };
+      const norm = s => String(s == null ? '' : s).trim().toUpperCase().replace(/\s+/g, '');
+      const hmr = {}, fuelBy = {}, fuelDay = {};
+      readings.forEach(r => {
+        const id = String(r.vehicle_id || r.equipment_id || r.machine_id || ''), date = String(r.date || '').slice(0, 10), x = (r.readings && r.readings.HMR) || {};
+        const o = Number(x.opening_value), c = Number(x.closing_value);
+        if (!id || date < from || date > to || x.opening_value == null || x.closing_value == null || !Number.isFinite(o) || !Number.isFinite(c) || c < o) return;
+        const k = `${id}|${date}|${String(r.shift).toUpperCase()}`, e = hmr[k] || (hmr[k] = { lo: Infinity, hi: -Infinity });
+        e.lo = Math.min(e.lo, o); e.hi = Math.max(e.hi, c);
+      });
+      const hrs = (id, date, shift) => { const e = hmr[`${id}|${date}|${String(shift).toUpperCase()}`]; return e ? e.hi - e.lo : 0; };
+      fuel.forEach(f => {
+        const d = String(f.refill_date || '').slice(0, 10), id = String(f.vehicle_id);
+        if (d >= from && d <= to) { add(fuelBy, id, Number(f.litres_filled) || 0); (fuelDay[id] = fuelDay[id] || {})[d] = (fuelDay[id][d] || 0) + (Number(f.litres_filled) || 0); }
+      });
+      const name = {}, compId = {};
+      units.forEach(u => { name[u.id] = u.name; if (u.kind === 'comp') compId[norm(u.name)] = u.id; });
+      const rows = {}, days = {}, credit = {}, seen = new Set(), seenC = new Set();
+      assigns.filter(a => a.date >= from && a.date <= to).forEach(a => {
+        const id = String(a.unit_id), r = rows[id] || (rows[id] = { id, name: name[id] || `…${id.slice(-6)}`, comps: new Set(), deploys: 0, entered: 0, holes: 0, m: 0, dh: 0, ch: 0, rm: 0, rh: 0, dfu: fuelBy[id] || 0, cfu: 0 });
+        const day = days[a.date] || (days[a.date] = { date: a.date, m: null, dh: 0, ch: 0, rm: 0, rh: 0 }), h = hrs(id, a.date, a.shift), slot = `${id}|${a.date}|${a.shift}`;
+        r.deploys++;
+        if (!seen.has(slot)) { seen.add(slot); r.dh += h; day.dh += h; }
+        if (a.total_meterage != null) {
+          r.entered++; r.m += Number(a.total_meterage) || 0; r.holes += Number(a.total_holes) || 0; day.m = (day.m || 0) + (Number(a.total_meterage) || 0);
+          if (h > 0) { r.rm += Number(a.total_meterage) || 0; r.rh += h; day.rm += Number(a.total_meterage) || 0; day.rh += h; }
+        }
+        const cid = a.compressor_number ? compId[norm(a.compressor_number)] : null;
+        if (cid) {
+          r.comps.add(name[cid]);
+          const ck = `${cid}|${a.date}|${a.shift}`;
+          if (!seenC.has(ck)) { seenC.add(ck); const ch = hrs(cid, a.date, a.shift); r.ch += ch; day.ch += ch; (credit[cid] = credit[cid] || {})[id] = (credit[cid][id] || 0) + ch; }
+        } else if (a.compressor_number) r.comps.add(String(a.compressor_number).trim());
+      });
+      Object.entries(credit).forEach(([cid, by]) => {
+        const total = Object.values(by).reduce((n, v) => n + v, 0);
+        if (total > 0) Object.entries(by).forEach(([did, v]) => { rows[did].cfu += (fuelBy[cid] || 0) * v / total; });
+      });
+      const list = Object.values(rows).map(r => ({ ...r, comps: [...r.comps].sort(), mph: r.rh > 0 ? r.rm / r.rh : null, dlph: r.dh > 0 ? r.dfu / r.dh : null, clph: r.ch > 0 ? r.cfu / r.ch : null,
+        lpm: r.deploys === r.entered && r.m > 0 ? (r.dfu + r.cfu) / r.m : null })).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      // fuel per day: the drills' own refills, and the refills of every compressor that was credited to a drill
+      const driveIds = new Set(list.map(r => r.id)), compIds = Object.keys(credit);
+      const sorted = Object.values(days).sort((a, b) => a.date.localeCompare(b.date));
+      let cm = 0, chh = 0, cdf = 0, cdh = 0, ccf = 0, cch = 0;
+      sorted.forEach(d => {
+        cm += d.rm; chh += d.rh; d.mph = d.rh > 0 ? d.rm / d.rh : null; d.cum = chh > 0 ? cm / chh : null;
+        driveIds.forEach(id => { cdf += (fuelDay[id] || {})[d.date] || 0; }); compIds.forEach(id => { ccf += (fuelDay[id] || {})[d.date] || 0; });
+        cdh += d.dh; cch += d.ch; d.dlph = cdh > 0 && cdf > 0 ? cdf / cdh : null; d.clph = cch > 0 && ccf > 0 ? ccf / cch : null;   // blank until the first refill, not 0
+      });
+      const sum = k => list.reduce((n, r) => n + r[k], 0), T = { holes: sum('holes'), m: sum('m'), dh: sum('dh'), ch: sum('ch'), dfu: sum('dfu'), cfu: sum('cfu'), rm: sum('rm'), rh: sum('rh'),
+        deploys: sum('deploys'), entered: sum('entered') };
+      T.mph = T.rh > 0 ? T.rm / T.rh : null; T.dlph = T.dh > 0 ? T.dfu / T.dh : null; T.clph = T.ch > 0 ? T.cfu / T.ch : null;
+      T.lpm = T.deploys === T.entered && T.m > 0 ? (T.dfu + T.cfu) / T.m : null;
+      T.lastDay = [...sorted].reverse().find(d => d.mph != null) || null;
+      return { rows: list, days: sorted, T };
+    }
+    // drill:pure:end
+
+    let _drp = { data: null, from: '', to: '', charts: [], seq: 0 };
+
+    function openDrillReportPage() {
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('reports-hub-page').style.display = 'none';
+      document.getElementById('drill-report-page').style.display = 'block';
+      if (!document.getElementById('drp-from').value) {
+        const t = new Date();
+        document.getElementById('drp-from').value = dosLocalDateString(new Date(t.getFullYear(), t.getMonth(), 1));
+        document.getElementById('drp-to').value = dosLocalDateString(t);
+      }
+      drpLoad();
+    }
+
+    // The assignments endpoint needs a date and a shift, so a range is days x 3 requests, eight at a time. Failures are counted, not thrown.
+    async function drpFetchAssigns(start, end) {
+      const jobs = dosListDates(start, end).flatMap(d => ['A', 'B', 'C'].map(sh => [d, sh])), rows = []; let failed = 0;
+      for (let i = 0; i < jobs.length; i += 8) {
+        await Promise.all(jobs.slice(i, i + 8).map(async ([d, sh]) => {
+          try {
+            const res = await apiFetch(`${API}/equipment-assignments?equipment_type=drill_machine&date=${encodeURIComponent(d)}&shift=${sh}`);
+            if (!res.ok) { failed++; return; }
+            const data = await res.json(); if (Array.isArray(data)) rows.push(...data.map(r => ({ ...r, date: d, shift: sh })));
+          } catch (_) { failed++; }
+        }));
+      }
+      return { rows, failed, total: jobs.length };
+    }
+
+    async function drpLoad() {
+      const from = document.getElementById('drp-from').value, to = document.getElementById('drp-to').value, banner = document.getElementById('drp-banner'), main = document.getElementById('drp-main');
+      banner.innerHTML = '';
+      const days = dashboardDateRange(from, to, FL_MAX_DAYS + 1).length;
+      if (!from || !to || from > to) { main.innerHTML = '<div class="fl-empty">Pick a start and end date.</div>'; return; }
+      if (days > FL_MAX_DAYS) { main.innerHTML = `<div class="fl-empty">The range is longer than ${FL_MAX_DAYS} days. Pick a shorter one: every day needs its own requests.</div>`; return; }
+      const seq = ++_drp.seq, status = document.getElementById('drp-status');
+      status.textContent = 'Loading deployments, shift readings and fuel…';
+      if (_drp.data) main.classList.add('loading'); else main.innerHTML = '<div class="fl-empty">Loading…</div>';
+      try {
+        const [others, assigns, readings, fuel] = await Promise.all([flList('others'), drpFetchAssigns(from, to), flFetchReadings(from, to), dosFetchPaged('fuel-logs', `?start_date=${from}&end_date=${to}`)]);
+        if (seq !== _drp.seq) return;
+        const units = others.map(o => {
+          const t = eqRawType(o).toLowerCase().replace(/[_-]+/g, ' ');
+          return { id: String(o._id), name: o.number_plate || o.vehicle_number || o.name || String(o._id), kind: t.includes('compressor') ? 'comp' : t.includes('drill') ? 'drill' : null };
+        }).filter(u => u.kind);
+        _drp = { ..._drp, from, to, data: drillRollup({ units, assigns: assigns.rows, fuel, readings: readings.rows, from, to }) };
+        const bad = [];
+        if (assigns.failed) bad.push(`deployments failed to load for ${assigns.failed} of ${assigns.total} day and shift slots`);
+        if (readings.failed) bad.push(`shift readings failed to load for ${readings.failed} of ${days} days`);
+        if (bad.length) banner.innerHTML = `<div class="fl-banner">${bad.join(', and ')}, so the totals below are too low.</div>`;
+        status.textContent = '';
+        main.classList.remove('loading');
+        drpRender();
+      } catch (e) {
+        if (seq !== _drp.seq) return;
+        status.textContent = '';
+        main.classList.remove('loading');
+        main.innerHTML = `<div class="fl-empty">Could not load the drilling report. Check your connection, then <a href="#" onclick="drpLoad();return false;">try again</a>.</div>`;
+      }
+    }
+
+    function drpKillCharts() { _drp.charts.forEach(c => c.destroy()); _drp.charts = []; }
+    function drpTheme() {
+      const cs = getComputedStyle(document.getElementById('drill-report-page')), v = n => cs.getPropertyValue(n).trim();
+      return { d: v('--drp-d'), c: v('--drp-c'), cum: v('--drp-cum'), bad: v('--drp-bad'), grid: v('--fl-grid'), ink: v('--text-primary'), sub: v('--text-secondary'), surface: v('--surface') };
+    }
+    const drpDay = s => new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+    function drpCharts() {
+      drpKillCharts();
+      const { rows, days, T } = _drp.data, t = drpTheme(), make = (id, cfg) => { const el = document.getElementById(id); if (el) _drp.charts.push(new Chart(el, cfg)); };
+      const axis = (title, extra = {}) => ({ border: { display: false }, grid: { color: t.grid }, title: title ? { display: true, text: title, color: t.sub, font: { size: 10 } } : undefined, ticks: { color: t.sub, font: { size: 10 }, maxTicksLimit: 6 }, ...extra });
+      const x = { border: { color: t.grid }, grid: { display: false }, ticks: { color: t.sub, font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } };
+      const legend = { position: 'bottom', labels: { color: t.sub, boxWidth: 8, boxHeight: 8, font: { size: 10 }, padding: 8 } };
+      const base = { responsive: true, maintainAspectRatio: false, animation: false };
+      const labels = days.map(d => drpDay(d.date));
+      make('drp-c-daily', { data: { labels, datasets: [
+        { type: 'bar', label: 'Metres', data: days.map(d => d.m), backgroundColor: t.d, maxBarThickness: 22, yAxisID: 'y', order: 3 },
+        { type: 'line', label: 'Metres per hour (day)', data: days.map(d => d.mph), borderColor: t.ink, backgroundColor: t.ink, borderWidth: 1.5, pointRadius: 2, yAxisID: 'y2', spanGaps: true, order: 1 },
+        { type: 'line', label: 'Cumulative metres per hour', data: days.map(d => d.cum), borderColor: t.cum, borderWidth: 2.5, borderDash: [6, 4], pointRadius: 0, tension: .25, yAxisID: 'y2', spanGaps: true, order: 2 } ] },
+        options: { ...base, interaction: { mode: 'index', intersect: false }, plugins: { legend }, scales: { x, y: axis('Metres', { beginAtZero: true }), y2: axis('Metres per hour', { position: 'right', grid: { display: false }, beginAtZero: true }) } } });
+      make('drp-c-fuel', { type: 'doughnut', data: { labels: ['Drills', 'Compressors'], datasets: [{ data: [T.dfu, T.cfu], backgroundColor: [t.d, t.c], borderColor: t.surface, borderWidth: 3 }] },
+        options: { ...base, cutout: '64%', plugins: { legend, tooltip: { callbacks: { label: c => ` ${flNum(c.parsed)} L` } } } } });
+      const byMph = rows.filter(r => r.mph != null).sort((a, b) => b.mph - a.mph);
+      make('drp-c-mph', { type: 'bar', data: { labels: byMph.map(r => r.name), datasets: [{ data: byMph.map(r => r.mph), backgroundColor: byMph.map(r => r.mph < T.mph * .9 ? t.bad : t.d), maxBarThickness: 18 }] },
+        options: { ...base, indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${flNum(c.parsed.x, 1)} m per hour` } } }, scales: { x: axis('', { beginAtZero: true }), y: { grid: { display: false }, border: { display: false }, ticks: { color: t.sub, font: { size: 10 } } } } } });
+      make('drp-c-hours', { type: 'bar', data: { labels: rows.map(r => `${r.name}${r.comps.length ? ' / ' + r.comps.join(', ') : ''}`), datasets: [
+        { label: 'Drill hours', data: rows.map(r => r.dh), backgroundColor: t.d, maxBarThickness: 20 }, { label: 'Compressor hours', data: rows.map(r => r.ch), backgroundColor: t.c, maxBarThickness: 20 } ] },
+        options: { ...base, plugins: { legend }, scales: { x: { ...x, ticks: { ...x.ticks, font: { size: 9 } } }, y: axis('Hours', { beginAtZero: true }) } } });
+      make('drp-c-lph', { type: 'line', data: { labels, datasets: [
+        { label: 'Drill L/h', data: days.map(d => d.dlph), borderColor: t.d, backgroundColor: t.d, borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true },
+        { label: 'Compressor L/h', data: days.map(d => d.clph), borderColor: t.c, backgroundColor: t.c, borderWidth: 2, pointRadius: 0, tension: .25, spanGaps: true } ] },
+        options: { ...base, interaction: { mode: 'index', intersect: false }, plugins: { legend }, scales: { x, y: axis('Litres per hour', { beginAtZero: true }) } } });
+    }
+
+    function drpRender() {
+      const main = document.getElementById('drp-main'), { rows, days, T } = _drp.data, n = flNum, d1 = v => (v == null ? '—' : flNum(v, 1)), tile = flTile;
+      if (!rows.length) { drpKillCharts(); main.innerHTML = `<div class="fl-empty">No drill deployments between ${drpDay(_drp.from)} and ${drpDay(_drp.to)}.</div>`; return; }
+      const cmp = rows.filter(r => r.clph != null).sort((a, b) => b.clph - a.clph)[0], slow = rows.filter(r => r.mph != null).sort((a, b) => a.mph - b.mph)[0];
+      const idle = Math.max(0, T.ch - T.dh), lede = [
+        slow && rows.length > 1 && T.mph ? `<b>${drEsc(slow.name)}</b> drilled ${d1(slow.mph)} m an hour against ${d1(T.mph)} for all drills.` : '',
+        cmp && rows.length > 1 && T.clph ? `<b>${drEsc(cmp.comps.join(', '))}</b> burned ${d1(cmp.clph)} L an hour against ${d1(T.clph)} for all compressors.` : '',
+        idle > 0 && T.clph ? `Compressors ran ${n(idle)} hours more than their drills, about ${n(idle * T.clph)} L of diesel.` : '' ].filter(Boolean).join(' ');
+      const missing = T.entered < T.deploys ? `<p class="drp-lede" style="border-left:3px solid #e8a020;padding-left:10px;">Metres and holes are entered for ${T.entered} of ${T.deploys} deployments. Metres, holes and metres per hour count only those. Hours and fuel come from readings and are not affected.</p>` : '';
+      const col = (title, h, f, l) => `<div class="fl-col"><div class="fl-h">${title}</div><div class="fl-kpis drp-k3">${tile('Engine hours', n(h), 'h')}${tile('Fuel issued', n(f), 'L')}${tile('Average', d1(l), 'L/h')}</div></div>`;
+      main.innerHTML = `${missing}
+        <div class="fl-head"><div class="l"><h1>Drilling Report</h1></div><div class="m">${drpDay(_drp.from)} to ${drpDay(_drp.to)} · all shifts<br>Tripman</div></div>
+        ${lede ? `<p class="drp-lede">${lede}</p>` : ''}
+        <div class="fl-kpis">${tile('Holes drilled', n(T.holes), '')}${tile('Metres drilled', n(T.m), 'm')}
+          ${tile('Per hour, latest day', d1(T.lastDay && T.lastDay.mph), 'm/h', T.lastDay ? drpDay(T.lastDay.date) : '')}${tile('Cumulative per hour', d1(T.mph), 'm/h', 'whole range')}</div>
+        <div class="fl-cols" style="margin-bottom:14px;">${col('Drill machines', T.dh, T.dfu, T.dlph)}${col('Compressors', T.ch, T.cfu, T.clph)}</div>
+        <div class="fl-charts">
+          <figure style="grid-column:1/-1;"><figcaption>Metres per day, metres per hour, and the running per-hour figure</figcaption><div class="fl-cv drp-tall"><canvas id="drp-c-daily"></canvas></div></figure>
+          <figure><figcaption>Where the diesel went${T.dfu + T.cfu ? `: compressors took ${n(T.cfu / (T.dfu + T.cfu) * 100)}%` : ''}</figcaption><div class="fl-cv"><canvas id="drp-c-fuel"></canvas></div></figure>
+          <figure><figcaption>Metres per hour by drill (red: 10% under the fleet)</figcaption><div class="fl-cv"><canvas id="drp-c-mph"></canvas></div></figure>
+          <figure><figcaption>Hours: drill against its compressor</figcaption><div class="fl-cv"><canvas id="drp-c-hours"></canvas></div></figure>
+          <figure><figcaption>Litres per hour, running through the range</figcaption><div class="fl-cv"><canvas id="drp-c-lph"></canvas></div></figure>
+        </div>
+        <table class="fl-tbl"><thead><tr><th>Drill</th><th>Compressor</th><th>Holes</th><th>Metres</th><th>Drill h</th><th>Comp. h</th><th>Drill fuel L</th><th>Comp. fuel L</th><th>Drill L/h</th><th>Comp. L/h</th><th>m/h</th><th>L per m</th></tr></thead>
+        <tbody>${rows.map(r => `<tr><td>${drEsc(r.name)}</td><td class="t">${drEsc(r.comps.join(', ') || '—')}</td><td>${n(r.holes)}</td><td>${n(r.m)}</td><td>${n(r.dh)}</td><td>${n(r.ch)}</td><td>${n(r.dfu)}</td><td>${n(r.cfu)}</td><td>${d1(r.dlph)}</td><td>${d1(r.clph)}</td><td>${d1(r.mph)}</td><td>${d1(r.lpm)}</td></tr>`).join('')}
+        <tr style="font-weight:700;"><td>All</td><td></td><td>${n(T.holes)}</td><td>${n(T.m)}</td><td>${n(T.dh)}</td><td>${n(T.ch)}</td><td>${n(T.dfu)}</td><td>${n(T.cfu)}</td><td>${d1(T.dlph)}</td><td>${d1(T.clph)}</td><td>${d1(T.mph)}</td><td>${d1(T.lpm)}</td></tr></tbody></table>
+        <p class="fl-foot"><b>How to read this.</b> Hours are the meter movement in each shift's readings. Fuel is what was issued in the range, not what was burned, so litres per hour moves with refill days. Metres per hour counts only deployments with metres entered and hours recorded. A compressor is matched to its drill by the compressor number on the deployment; its hours and fuel go to that drill. L per m shows only when every deployment of that drill has metres.</p>`;
+      drpCharts();
+    }
+
+    function drpPrint() {
+      const title = document.title;
+      document.title = `Tripman Drilling Report ${_drp.from} to ${_drp.to}`;   // becomes the saved file's name
+      document.body.classList.add('drp-printing');
+      const done = () => { document.body.classList.remove('drp-printing'); document.title = title; window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      _drp.charts.forEach(c => c.resize());
+      setTimeout(() => window.print(), 250);
+    }
+    /* ═══════════════════════ END DRILLING REPORT ═══════════════════════ */
 
     /* ═══════════════════════ CONTROL ROOM ═══════════════════════ */
     // The page the mines manager leaves open all day. Data comes from the Deployments page's own pipeline:

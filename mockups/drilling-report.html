@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drilling report mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* Direction: documentary / data-dense, same paper + navy palette as the rest of Tripman.
+     Square-ish 3px corners, no gradients, no shadows, no emoji. Drill = navy, compressor = teal. */
+  :root {
+    --bg:#f5f4f0; --surface:#fff; --border:#e2e0d8; --border-strong:#c8c5bb;
+    --text:#1a1917; --text2:#6b6860; --text3:#9b9890; --accent:#1a3a5c; --accent-light:#e8eef5;
+    --drill:#1a3a5c; --comp:#16a085; --ok:#1f7a45; --bad:#a32d2d; --bad-bg:#fbe7e5; --warn-bg:#fdf1d6; --warn:#8a5a00;
+    --shift-a:#27ae60; --shift-b:#8e44ad; --shift-c:#e67e22;
+    --sans:'DM Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  [data-theme="dark"] {
+    --bg:#0d0f12; --surface:#16191f; --border:#262a33; --border-strong:#363b45;
+    --text:#e6e9ee; --text2:#9aa0a6; --text3:#646a73; --accent:#10b981; --accent-light:#064e3b;
+    --drill:#5b9bd5; --comp:#2dd4bf; --ok:#5fd493; --bad:#ff8a84; --bad-bg:#431a18; --warn-bg:#3a2d0c; --warn:#f5c04a;
+    --shift-a:#10b981; --shift-b:#8b5cf6; --shift-c:#f59e0b;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font:14px/1.45 var(--sans); background:var(--bg); color:var(--text); padding-bottom:48px; }
+  .num { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+  button { font:inherit; color:inherit; background:var(--surface); border:1px solid var(--border-strong); border-radius:3px; padding:5px 12px; cursor:pointer; }
+  button:hover { border-color:var(--text2); }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  .mock { background:var(--accent-light); border-bottom:1px dashed var(--border-strong); padding:8px 24px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size:12px; color:var(--text2); }
+  .seg { display:inline-flex; } .seg button { border-radius:0; margin-left:-1px; } .seg button:first-child { border-radius:3px 0 0 3px; margin:0; } .seg button:last-child { border-radius:0 3px 3px 0; }
+
+  .top { display:flex; align-items:center; gap:14px; padding:10px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .logo { background:#1e1e1e; color:#e8a24c; font-weight:700; font-size:18px; padding:5px 12px; border-radius:6px; }
+  .crumb { color:var(--text2); } .crumb b { color:var(--text); font-weight:600; }
+
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 16px 0; }
+  .head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:6px; }
+  h1 { font-size:24px; font-weight:700; letter-spacing:-.01em; }
+  .period { font-family:var(--mono); font-size:12px; color:var(--text2); border:1px solid var(--border-strong); padding:5px 10px; border-radius:3px; background:var(--surface); }
+  .lede { color:var(--text2); max-width:78ch; margin-bottom:18px; }
+  .lede b { color:var(--text); font-weight:600; }
+
+  .note { background:var(--warn-bg); color:var(--warn); border-left:3px solid var(--warn); padding:8px 12px; margin-bottom:14px; font-size:13px; }
+
+  /* Output strip: the four numbers that matter most, big. */
+  .out { display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--border); background:var(--surface); margin-bottom:14px; }
+  .out > div { padding:16px 18px; border-right:1px solid var(--border); }
+  .out > div:last-child { border-right:0; }
+  .out b { display:block; font-family:var(--mono); font-size:34px; font-weight:600; letter-spacing:-.03em; line-height:1.1; }
+  .out b small { font-size:14px; font-weight:400; color:var(--text2); letter-spacing:0; margin-left:4px; }
+  .out span { font-size:12px; color:var(--text2); }
+
+  /* Drill vs compressor pair: hours, fuel, L/hr side by side with a proportion bar. */
+  .pair { border:1px solid var(--border); background:var(--surface); margin-bottom:14px; }
+  .pair .cols { display:grid; grid-template-columns:110px 1fr 1fr; }
+  .pair .cols > div { padding:10px 18px; border-bottom:1px solid var(--border); }
+  .pair .cols > div:nth-last-child(-n+3) { border-bottom:0; }
+  .pair .hd { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--text2); background:var(--bg); }
+  .pair .hd i, .leg i { display:inline-block; width:10px; height:10px; margin-right:6px; }
+  .pair .lab { color:var(--text2); font-size:12px; align-self:center; }
+  .pair .v { font-family:var(--mono); font-size:22px; font-weight:600; letter-spacing:-.02em; }
+  .pair .v small { font-size:12px; font-weight:400; color:var(--text2); margin-left:3px; }
+  .pair .bar { height:4px; background:var(--border); margin-top:6px; } .pair .bar u { display:block; height:100%; text-decoration:none; }
+  .pair .foot { padding:9px 18px; font-size:13px; color:var(--text2); border-top:1px solid var(--border); }
+  .pair .foot b { color:var(--text); }
+
+  .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:14px; margin-bottom:14px; }
+  .card { background:var(--surface); border:1px solid var(--border); padding:14px 16px 12px; min-width:0; }
+  .c12 { grid-column:span 12; } .c8 { grid-column:span 8; } .c6 { grid-column:span 6; } .c4 { grid-column:span 4; }
+  .card h2 { font-size:14px; font-weight:600; }
+  .card p { font-size:12px; color:var(--text2); margin:2px 0 10px; }
+  .cv { position:relative; height:250px; } .cv.tall { height:290px; } .cv.sq { height:210px; }
+  .leg { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--text2); margin-top:8px; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border-strong); font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--text2); white-space:nowrap; }
+  td { padding:9px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  th.n, td.n { text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  tfoot td { font-weight:600; border-top:1px solid var(--border-strong); border-bottom:0; background:var(--bg); }
+  .scroll { overflow-x:auto; }
+  .bad { color:var(--bad); font-weight:600; }
+  .mbar { display:inline-block; vertical-align:middle; height:6px; margin-right:8px; background:var(--drill); }
+  .mbar.low { background:var(--bad); }
+  .miss { color:var(--text3); font-style:italic; font-family:var(--sans); }
+
+  @media (max-width:860px) {
+    .out { grid-template-columns:1fr 1fr; } .out > div:nth-child(2) { border-right:0; } .out > div:nth-child(-n+2) { border-bottom:1px solid var(--border); }
+    .out b { font-size:26px; } .out > div { padding:14px 12px; min-width:0; }
+    .c8,.c6,.c4 { grid-column:span 12; }
+    .pair .cols { grid-template-columns:70px 1fr 1fr; } .pair .cols > div { padding:10px 10px; } .pair .v { font-size:18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="mock">
+  <b>Mockup, generated data (30 days, 4 drills, 4 compressors).</b>
+  <span class="seg" id="mode"><button class="on" data-m="full">All metres entered</button><button data-m="partial">Metres missing for last 6 days</button></span>
+  <button id="theme">Dark / light</button>
+</div>
+
+<div class="top">
+  <span class="logo">Tripman</span>
+  <span class="crumb">Trips and reports &rsaquo; <b>Drilling report</b></span>
+</div>
+
+<main class="wrap">
+  <div class="head">
+    <h1>Drilling report</h1>
+    <span class="period">1 Sep to 30 Sep 2026 · all shifts</span>
+  </div>
+  <p class="lede" id="lede"></p>
+  <div id="note"></div>
+
+  <section class="out" id="out" aria-label="Output"></section>
+  <section class="pair" id="pair" aria-label="Drill and compressor"></section>
+
+  <div class="grid">
+    <div class="card c12">
+      <h2>Metres per day, and how fast they were drilled</h2>
+      <p>Bars are metres. The solid line is that day's metres per drill hour. The dashed line is the running total: all metres so far divided by all drill hours so far.</p>
+      <div class="cv tall"><canvas id="ch-daily" role="img" aria-label="Daily metres with per-hour and cumulative per-hour lines"></canvas></div>
+    </div>
+
+    <div class="card c6">
+      <h2>Where the diesel went</h2>
+      <p id="fuel-sub"></p>
+      <div class="cv sq"><canvas id="ch-fuel" role="img" aria-label="Fuel split drill vs compressor"></canvas></div>
+    </div>
+    <div class="card c6">
+      <h2>Metres per hour, by drill</h2>
+      <p id="mph-sub"></p>
+      <div class="cv sq"><canvas id="ch-mph" role="img" aria-label="Metres per hour by drill"></canvas></div>
+    </div>
+
+    <div class="card c6">
+      <h2>Hours: drill against its compressor</h2>
+      <p id="hrs-sub"></p>
+      <div class="cv"><canvas id="ch-hours" role="img" aria-label="Drill and compressor hours per pair"></canvas></div>
+    </div>
+    <div class="card c6">
+      <h2>Litres per hour, day by day</h2>
+      <p id="lph-sub"></p>
+      <div class="cv"><canvas id="ch-lph" role="img" aria-label="Fuel litres per hour for drill and compressor by day"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Every drill and its compressor</h2>
+    <p>The numbers behind the charts. A compressor is paired with the drill it was assigned to on the deployment.</p>
+    <div class="scroll"><table id="tbl"></table></div>
+  </div>
+</main>
+
+<script>
+/* ── mock data ─────────────────────────────────────────────────────────────
+   Seeded so the numbers do not move on reload. In the real page: holes + metres
+   come from /equipment-assignments (drill_machine), hours from HMR readings,
+   fuel from the fuel logs. Everything below is derived from these rows. */
+const DAYS = 30, ENTERED_DAYS_PARTIAL = 24;
+const PAIRS = [
+  { d:'DR-101', c:'CP-21', rate:12.4, df:23.5, cf:30 },
+  { d:'DR-102', c:'CP-22', rate:11.6, df:25.0, cf:31 },
+  { d:'DR-103', c:'CP-23', rate:8.9,  df:26.0, cf:41 },   // slow drill, thirsty compressor
+  { d:'DR-104', c:'CP-24', rate:12.9, df:22.5, cf:29 },
+];
+function rng(a){ return () => { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const R = rng(2609);
+const rows = PAIRS.map((p,i) => ({ ...p, days: Array.from({length:DAYS}, (_,day) => {
+  const down = R() < .09 || (i===2 && day>=11 && day<=14);            // DR-103 down 12 to 15 Sep
+  if (down) return { dh:0, ch:0, df:0, cf:0, m:0, h:0, sh:[0,0,0] };
+  const dh = 8 + R()*8, m = dh*p.rate*(.85+.3*R()), w = [.4+R()*.1, .33+R()*.08], sh = [w[0], w[1], 1-w[0]-w[1]].map(x=>x*m);
+  const ch = dh + 1.2 + R()*2.4;
+  return { dh, ch, df:dh*p.df*(.95+.1*R()), cf:ch*p.cf*(.95+.1*R()), m, h:Math.round(m/(6.5+R()*2.5)), sh };
+})}));
+
+const sum = (a,f=x=>x) => a.reduce((n,x)=>n+f(x),0);
+const fmt = (v,d=0) => Number(v).toLocaleString('en-IN',{maximumFractionDigits:d,minimumFractionDigits:d});
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let mode = 'full', charts = [];
+
+function model() {
+  const ok = day => mode==='full' || day < ENTERED_DAYS_PARTIAL;      // were metres entered that day
+  const per = rows.map(r => {
+    const e = r.days.filter((_,i)=>ok(i));
+    const t = { ...r, dh:sum(r.days,x=>x.dh), ch:sum(r.days,x=>x.ch), dfu:sum(r.days,x=>x.df), cfu:sum(r.days,x=>x.cf),
+                m:sum(e,x=>x.m), h:sum(e,x=>x.h), dhE:sum(e,x=>x.dh) };
+    return { ...t, mph:t.m/t.dhE, dlph:t.dfu/t.dh, clph:t.cfu/t.ch, lpm:(t.dfu+t.cfu)/t.m };
+  });
+  const day = Array.from({length:DAYS}, (_,i) => {
+    const a = rows.map(r=>r.days[i]), e = ok(i);
+    return { dh:sum(a,x=>x.dh), ch:sum(a,x=>x.ch), df:sum(a,x=>x.df), cf:sum(a,x=>x.cf), m:e?sum(a,x=>x.m):null, e,
+             sh:[0,1,2].map(s=>sum(a,x=>x.sh[s])) };
+  });
+  let cm=0, chh=0; day.forEach(d => { if (d.e) { cm+=d.m; chh+=d.dh; } d.cum = d.e ? cm/chh : null; d.mph = d.e && d.dh ? d.m/d.dh : null; });
+  const T = { holes:sum(rows,r=>sum(r.days.filter((_,i)=>ok(i)),x=>x.h)), m:sum(per,p=>p.m), dhE:sum(per,p=>p.dhE),
+              dh:sum(per,p=>p.dh), ch:sum(per,p=>p.ch), dfu:sum(per,p=>p.dfu), cfu:sum(per,p=>p.cfu),
+              shift:[0,1,2].map(s=>sum(day.filter(d=>d.e),d=>d.sh[s])), entered:day.filter(d=>d.e).length };
+  T.mph = T.m/T.dhE; T.dlph = T.dfu/T.dh; T.clph = T.cfu/T.ch; T.cum = day[DAYS-1].cum ?? [...day].reverse().find(d=>d.cum!=null).cum;
+  return { per, day, T };
+}
+
+/* ── draw ────────────────────────────────────────────────────────────────── */
+const centre = { id:'centre', afterDraw(ch) {
+  const o = ch.options.plugins.centre; if (!o || !o.big) return;
+  const { ctx, chartArea:a } = ch, x = (a.left+a.right)/2, y = (a.top+a.bottom)/2;
+  ctx.save(); ctx.textAlign='center'; ctx.fillStyle=css('--text'); ctx.font='600 22px IBM Plex Mono';
+  ctx.fillText(o.big, x, y+4); ctx.fillStyle=css('--text2'); ctx.font='11px DM Sans'; ctx.fillText(o.small, x, y+21); ctx.restore();
+}};
+Chart.register(centre);
+
+function render() {
+  charts.forEach(c=>c.destroy()); charts = [];
+  const { per, day, T } = model(), D = css('--drill'), C = css('--comp'), tx = css('--text2'), gr = css('--border');
+  Chart.defaults.font = { family:"'DM Sans',sans-serif", size:11 }; Chart.defaults.color = tx;
+  const labels = day.map((_,i)=>i+1);
+  const base = { responsive:true, maintainAspectRatio:false, animation:false };
+  const scale = (extra={}) => ({ grid:{color:gr}, border:{display:false}, ...extra });
+  const make = (id,cfg) => charts.push(new Chart(document.getElementById(id), cfg));
+
+  const worstMph = [...per].sort((a,b)=>a.mph-b.mph)[0], worstC = [...per].sort((a,b)=>b.clph-a.clph)[0];
+  const idleH = T.ch - T.dh, idleL = idleH * T.clph;
+  document.getElementById('lede').innerHTML =
+    `<b>${worstMph.d}</b> drilled ${fmt(worstMph.mph,1)} m an hour against ${fmt(T.mph,1)} for the fleet, and <b>${worstC.c}</b> burned ${fmt(worstC.clph,1)} L an hour against ${fmt(T.clph,1)} for all compressors. `
+    + `Compressors ran ${fmt(idleH)} hours while their drill was not drilling, about ${fmt(idleL)} L of diesel.`;
+  document.getElementById('note').innerHTML = T.entered < DAYS
+    ? `<div class="note">Metres and holes are entered for ${T.entered} of ${DAYS} days. Metres, holes and metres per hour only count those days. Hours and fuel come from readings, so they are complete.</div>` : '';
+
+  const o = (v,l,u='') => `<div><b>${v}<small>${u}</small></b><span>${l}</span></div>`;
+  document.getElementById('out').innerHTML =
+    o(fmt(T.holes),'holes drilled') + o(fmt(T.m),'metres drilled','m') + o(fmt(T.mph,1),'metres per drill hour','m/h') + o(fmt(T.cum,1),'cumulative, month to date','m/h');
+
+  const cell = (v,u,a,b,col) => `<div><span class="v">${v}<small>${u}</small></span><div class="bar"><u style="width:${a/(a+b)*100}%;background:${col}"></u></div></div>`;
+  document.getElementById('pair').innerHTML = `<div class="cols">
+    <div class="hd"></div><div class="hd"><i style="background:${D}"></i>Drill</div><div class="hd"><i style="background:${C}"></i>Compressor</div>
+    <div class="lab">Engine hours</div>${cell(fmt(T.dh),'h',T.dh,T.ch,D)}${cell(fmt(T.ch),'h',T.ch,T.dh,C)}
+    <div class="lab">Fuel used</div>${cell(fmt(T.dfu),'L',T.dfu,T.cfu,D)}${cell(fmt(T.cfu),'L',T.cfu,T.dfu,C)}
+    <div class="lab">Average</div>${cell(fmt(T.dlph,1),'L/h',T.dlph,T.clph,D)}${cell(fmt(T.clph,1),'L/h',T.clph,T.dlph,C)}
+  </div><div class="foot">Together: <b>${fmt(T.dfu+T.cfu)} L</b> over ${fmt(T.m)} m, which is <b>${fmt((T.dfu+T.cfu)/T.m,1)} L for every metre drilled</b>.</div>`;
+
+  // 1. metres + per-hour + cumulative
+  make('ch-daily', { data:{ labels, datasets:[
+    { type:'bar', label:'Metres', data:day.map(d=>d.m), backgroundColor:D, borderRadius:1, yAxisID:'y', order:3 },
+    { type:'line', label:'Metres per hour (day)', data:day.map(d=>d.mph), borderColor:css('--text'), backgroundColor:css('--text'), borderWidth:1.5, pointRadius:2, tension:0, yAxisID:'y2', order:1 },
+    { type:'line', label:'Cumulative metres per hour', data:day.map(d=>d.cum), borderColor:css('--ok'), borderWidth:2.5, borderDash:[6,4], pointRadius:0, tension:.25, yAxisID:'y2', order:2 },
+  ]}, options:{ ...base, interaction:{mode:'index',intersect:false}, plugins:{ legend:{position:'top',align:'start',labels:{boxWidth:10,boxHeight:10}}, tooltip:{callbacks:{title:i=>'September '+i[0].label}} },
+    scales:{ x:scale({grid:{display:false}, title:{display:true,text:'Day of September'}}), y:scale({title:{display:true,text:'Metres'}, beginAtZero:true}),
+      y2:{ position:'right', grid:{display:false}, border:{display:false}, title:{display:true,text:'Metres per hour'}, suggestedMin:6, suggestedMax:16 } } } });
+
+  // 2. fuel doughnut
+  document.getElementById('fuel-sub').textContent = `Compressors took ${fmt(T.cfu/(T.dfu+T.cfu)*100)}% of the diesel.`;
+  make('ch-fuel', { type:'doughnut', data:{ labels:['Drills','Compressors'], datasets:[{ data:[T.dfu,T.cfu], backgroundColor:[D,C], borderColor:css('--surface'), borderWidth:3 }] },
+    options:{ ...base, cutout:'66%', plugins:{ legend:{position:'bottom',labels:{boxWidth:10,boxHeight:10}}, centre:{ big:fmt((T.dfu+T.cfu)/1000,1)+'k', small:'litres' }, tooltip:{callbacks:{label:c=>` ${fmt(c.parsed)} L`}} } } });
+
+  // 4. metres per hour by drill, red if under the fleet figure
+  const byMph = [...per].sort((a,b)=>b.mph-a.mph);
+  document.getElementById('mph-sub').textContent = `Fleet is ${fmt(T.mph,1)} m/h. Red is more than 10% below it.`;
+  make('ch-mph', { type:'bar', data:{ labels:byMph.map(p=>p.d), datasets:[{ data:byMph.map(p=>p.mph), backgroundColor:byMph.map(p=>p.mph<T.mph*.9?css('--bad'):D), borderRadius:1 }] },
+    options:{ ...base, indexAxis:'y', plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>` ${fmt(c.parsed.x,1)} m per hour`}}}, scales:{ x:scale({beginAtZero:true}), y:{grid:{display:false},border:{display:false}} } } });
+
+  // 5. hours per pair
+  document.getElementById('hrs-sub').textContent = `The gap between the two bars is compressor time with no drilling. Fleet gap: ${fmt(idleH/T.ch*100)}% of compressor hours.`;
+  make('ch-hours', { type:'bar', data:{ labels:per.map(p=>`${p.d} / ${p.c}`), datasets:[
+    { label:'Drill hours', data:per.map(p=>p.dh), backgroundColor:D, borderRadius:1 },
+    { label:'Compressor hours', data:per.map(p=>p.ch), backgroundColor:C, borderRadius:1 } ] },
+    options:{ ...base, plugins:{legend:{position:'top',align:'start',labels:{boxWidth:10,boxHeight:10}}}, scales:{ x:{grid:{display:false}}, y:scale({beginAtZero:true,title:{display:true,text:'Hours'}}) } } });
+
+  // 6. L/h per day
+  document.getElementById('lph-sub').textContent = `Averages: drill ${fmt(T.dlph,1)} L/h, compressor ${fmt(T.clph,1)} L/h. Days with no engine hours are left blank.`;
+  const lph = k => day.map(d => d[k+'h'] ? d[k+'f']/d[k+'h'] : null);
+  make('ch-lph', { type:'line', data:{ labels, datasets:[
+    { label:'Drill L/h', data:lph('d'), borderColor:D, backgroundColor:D, borderWidth:2, pointRadius:0, tension:.25, spanGaps:false },
+    { label:'Compressor L/h', data:lph('c'), borderColor:C, backgroundColor:C, borderWidth:2, pointRadius:0, tension:.25, spanGaps:false } ] },
+    options:{ ...base, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'top',align:'start',labels:{boxWidth:10,boxHeight:10}}, tooltip:{callbacks:{title:i=>'September '+i[0].label}}}, scales:{ x:scale({grid:{display:false},title:{display:true,text:'Day of September'}}), y:scale({title:{display:true,text:'Litres per hour'}, suggestedMin:15}) } } });
+
+  // table
+  const mx = Math.max(...per.map(p=>p.mph));
+  const hdr = ['Drill','Compressor','Holes','Metres','Drill h','Comp. h','Drill fuel L','Comp. fuel L','Drill L/h','Comp. L/h','Metres per hour','L per metre'];
+  const body = per.map(p => `<tr><td>${p.d}</td><td>${p.c}</td>
+    <td class="n">${fmt(p.h)}</td><td class="n">${fmt(p.m)}</td><td class="n">${fmt(p.dh)}</td><td class="n">${fmt(p.ch)}</td>
+    <td class="n">${fmt(p.dfu)}</td><td class="n">${fmt(p.cfu)}</td><td class="n">${fmt(p.dlph,1)}</td><td class="n${p.clph>T.clph*1.15?' bad':''}">${fmt(p.clph,1)}</td>
+    <td class="n"><span class="mbar${p.mph<T.mph*.9?' low':''}" style="width:${p.mph/mx*60}px"></span>${fmt(p.mph,1)}</td><td class="n">${fmt(p.lpm,1)}</td></tr>`).join('');
+  document.getElementById('tbl').innerHTML = `<thead><tr>${hdr.map((h,i)=>`<th class="${i>1?'n':''}">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody>
+    <tfoot><tr><td colspan="2">Fleet</td><td class="n">${fmt(T.holes)}</td><td class="n">${fmt(T.m)}</td><td class="n">${fmt(T.dh)}</td><td class="n">${fmt(T.ch)}</td>
+    <td class="n">${fmt(T.dfu)}</td><td class="n">${fmt(T.cfu)}</td><td class="n">${fmt(T.dlph,1)}</td><td class="n">${fmt(T.clph,1)}</td><td class="n">${fmt(T.mph,1)}</td><td class="n">${fmt((T.dfu+T.cfu)/T.m,1)}</td></tr></tfoot>`;
+}
+
+document.getElementById('mode').onclick = e => { const b = e.target.closest('button'); if (!b) return; mode = b.dataset.m;
+  document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b)); render(); };
+document.getElementById('theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme==='dark'?'light':'dark'; render(); };
+render();
+</script>
+</body>
+</html>
