@@ -27594,7 +27594,7 @@
     /* ═══════════════════════ MAINTENANCE ═══════════════════════ */
     // Breakdown screen for the maintenance team, under Equipment health. Polls the status logs, pops up when a new
     // breakdown is reported and shows where it stopped on the satellite map. The rules sit in the mt:pure block
-    // (tests/maintenance.test.js). A worker whose department is "maintenance" (not admin or owner) sees only this page.
+    // (tests/maintenance.test.js). A worker whose only department is "maintenance" (not admin or owner) sees only this page.
     // mt:pure:start
     const MT_GPS_WAIT_MS = 2 * 60000, MT_REPEAT_MS = 7 * 864e5, MT_FIXED_MS = 864e5;
     // The live API sends IST with an offset. A bare string is read as UTC, which is how the Mongo dump stores it.
@@ -27646,8 +27646,10 @@
     const MT_FETCH_MS = 20000, MT_TICK_MS = 15000, MT_LOG_DAYS = 30, MT_ACK_KEY = 'tripman_mt_ack', MT_SOUND_KEY = 'tripman_mt_sound';
     const MT_SRC = [['vehicles', 'vehicle', v => `Truck #${v.vehicle_number}`], ['machines', 'machine', m => m.machine_number || m.machine_id], ['others', 'other', o => o.vehicle_number]];
     let _mt = { fetchTimer: 0, tickTimer: 0, items: [], logs: [], st: null, seen: null, acked: new Set(), pop: '', extra: 0, sel: '', lastOk: 0, error: false, map: null, layer: null, fitKey: '', title: '', ctx: null, master: null, sound: false };
-    // The worker's `department` ("maintenance") comes back at the top level of the login response.
-    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner' && currentUser.department === 'maintenance';
+    // The worker's `departments` list comes back at the top level of the login response. Locked to this page only when
+    // Maintenance is their one department; with several, the backend's route limits apply and the full menu stays.
+    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner'
+      && Array.isArray(currentUser.departments) && currentUser.departments.length === 1 && currentUser.departments[0] === 'maintenance';
     const mtClock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
     const mtSince = ms => isNaN(ms) ? 'time not recorded' : (new Date(ms).toDateString() === new Date().toDateString() ? 'since ' : 'since ' + new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ') + mtClock(ms);
     const mtAge = ms => isNaN(ms) ? '—' : eqhFmtDuration(Date.now() - ms);
