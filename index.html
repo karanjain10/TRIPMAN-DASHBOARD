@@ -6066,6 +6066,9 @@
     .wp-h { padding: 16px 0 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
     .wp-head:disabled { cursor: default; }
     .wp-head:disabled:hover { background: transparent; }
+    .wp-grp { display: flex; align-items: baseline; gap: 8px; padding: 18px 12px 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--rule); }
+    .wp-grp b { font-family: var(--font-mono); font-weight: 500; letter-spacing: 0; color: var(--text-secondary); }
+    .wp-dep { display: block; margin-top: 2px; font-size: 11px; color: var(--text-secondary); }
     .wp-acts { display: flex; gap: 8px; margin-top: 12px; }
     .wp-acts button { height: 32px; padding: 0 14px; border-radius: 3px; border: 1px solid var(--rule); background: var(--surface); color: var(--text-primary); font: inherit; font-size: 13px; cursor: pointer; }
     .wp-acts button.primary { background: var(--brand-fill); border-color: var(--brand-fill); color: #fff; }
@@ -25724,7 +25727,23 @@
     ];
     const WP_KEYS = WP_GROUPS.flatMap(g => [g.key, ...(g.kids || []).map(k => k[0])].filter(Boolean));   // shown
     const WP_ALL = [...WP_KEYS, 'deployment_trucks', 'deployment_excavators', 'others'];                    // all 44
-    let _wp = { workers: [], open: null, draft: null, state: 'loading', saving: false };
+    let _wp = { workers: [], open: null, draft: null, dep: [], state: 'loading', saving: false };
+    // Departments are a label: they only say who the worker belongs to (the backend stores a list per worker).
+    const WP_DEPTS = [['maintenance', 'Maintenance'], ['hr', 'HR'], ['production', 'Production'], ['fuel', 'Fuel'], ['other_1', 'Other 1'], ['other_2', 'Other 2']];
+    // wp:pure:start
+    const wpDeptList = w => Array.isArray(w && w.departments) ? w.departments : [];
+    // One group per department, in menu order. A worker sits under their FIRST department in that order
+    // (the row still lists the others); workers with none go last. Empty groups are left out.
+    function wpGroups(workers, depts) {
+      const order = depts.map(d => d[0]), by = {};
+      workers.forEach(w => {
+        const mine = wpDeptList(w).filter(d => order.includes(d)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        (by[mine[0] || ''] = by[mine[0] || ''] || []).push(w);
+      });
+      return [...depts.map(([k, label]) => ({ key: k, label, workers: by[k] || [] })), { key: '', label: 'No department', workers: by[''] || [] }].filter(g => g.workers.length);
+    }
+    const wpSameDepts = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+    // wp:pure:end
 
     const wpEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const wpCount = perms => WP_KEYS.filter(k => perms && perms[k]).length;
@@ -26254,18 +26273,19 @@
         list.innerHTML = `<div class="wp-note">${q ? `No worker matches "${wpEsc(q)}".` : 'No workers on this site yet.'}</div>`;
         return;
       }
-      list.innerHTML = rows.map(w => {
+      const row = w => {
         const open = _wp.open === w._id;
         return `<div class="wp-row${open ? ' open' : ''}">
           <button class="wp-head" onclick="wpToggleRow('${wpEsc(w._id)}')" aria-expanded="${open}" ${w.is_admin ? 'disabled title="Admins have full access, so permissions do not apply"' : ''}>
-            <span><span class="wp-name">${wpEsc(w.name || '—')}</span><span class="wp-id">${wpEsc(w.worker_id || '')}</span></span>
+            <span><span class="wp-name">${wpEsc(w.name || '—')}</span><span class="wp-id">${wpEsc(w.worker_id || '')}</span>${wpDeptList(w).length ? `<span class="wp-dep">${wpDeptList(w).map(d => wpEsc((WP_DEPTS.find(x => x[0] === d) || [0, d])[1])).join(' · ')}</span>` : ''}</span>
             <span class="wp-role">${wpEsc(w.is_admin ? 'admin' : (w.role || '—'))}</span>
             <span class="wp-n">${w.is_admin ? 'full access' : `${wpCount(w.permissions)} of ${WP_KEYS.length}`}</span>
             <span aria-hidden="true">${w.is_admin ? '' : open ? '⌃' : '›'}</span>
           </button>
           ${open ? wpEditorHtml() : ''}
         </div>`;
-      }).join('');
+      };
+      list.innerHTML = wpGroups(rows, WP_DEPTS).map(g => `<div class="wp-grp">${wpEsc(g.label)} <b>${g.workers.length}</b></div>` + g.workers.map(row).join('')).join('');
       if (_wp.open) wpSync();
     }
 
@@ -26274,9 +26294,12 @@
         <input type="checkbox" id="wp-k-${key}" onchange="wpToggle('${key}', this.checked)" /> ${label}</label>`;
       const kids = g => (g.kids || []).length ? `<div class="wp-kids">${g.kids.map(([k, l]) => box(k, l)).join('')}</div>` : '';
       return `<div class="wp-edit">
+        <div class="wp-h">Department</div>
+        <div class="wp-kids" style="padding-left:0">${WP_DEPTS.map(([k, l]) => `<label class="wp-perm"><input type="checkbox" id="wp-d-${k}" onchange="wpDept('${k}', this.checked)" /> ${l}</label>`).join('')}</div>
+        <div class="wp-h">Permissions</div>
         ${WP_GROUPS.map(g => g.key ? box(g.key, g.label) + kids(g) : `<div class="wp-h">${g.label}</div>${kids(g)}`).join('')}
         <div class="wp-acts">
-          <button class="primary" id="wp-save" onclick="wpSave()">Save permissions</button>
+          <button class="primary" id="wp-save" onclick="wpSave()">Save changes</button>
           <button onclick="wpToggleRow(null)">Cancel</button>
         </div>
       </div>`;
@@ -26296,17 +26319,24 @@
           document.getElementById(`wp-l-${k}`).classList.toggle('off', el.disabled);
         });
       });
+      WP_DEPTS.forEach(([k]) => { const el = document.getElementById(`wp-d-${k}`); if (el) el.checked = _wp.dep.includes(k); });
       const save = document.getElementById('wp-save');
-      const changed = WP_ALL.some(k => !!_wp.draft[k] !== !!(w.permissions || {})[k]);
+      const changed = WP_ALL.some(k => !!_wp.draft[k] !== !!(w.permissions || {})[k]) || !wpSameDepts(_wp.dep, wpDeptList(w));
       save.disabled = _wp.saving || !changed;
-      save.textContent = _wp.saving ? 'Saving…' : 'Save permissions';
+      save.textContent = _wp.saving ? 'Saving…' : 'Save changes';
     }
 
     function wpToggleRow(id) {
       const w = _wp.workers.find(x => x._id === id);
       _wp.open = w && !w.is_admin && _wp.open !== id ? id : null;
       _wp.draft = _wp.open ? { ...(w.permissions || {}) } : null;
+      _wp.dep = _wp.open ? [...wpDeptList(w)] : [];
       wpRender();
+    }
+
+    function wpDept(key, on) {
+      _wp.dep = on ? [..._wp.dep.filter(d => d !== key), key] : _wp.dep.filter(d => d !== key);
+      wpSync();
     }
 
     function wpToggle(key, on) {
@@ -26319,9 +26349,15 @@
       if (!w || _wp.saving) return;
       _wp.saving = true; wpSync();
       try {
-        const sent = wpFull(_wp.draft);
+        // Send only what changed: the backend replaces the whole list / object it is given, and a worker
+        // may not edit their own departments, so an untouched list must not be sent.
+        const sent = wpFull(_wp.draft), body = {};
+        const permsChanged = WP_ALL.some(k => !!_wp.draft[k] !== !!(w.permissions || {})[k]);
+        const deps = WP_DEPTS.map(d => d[0]).filter(d => _wp.dep.includes(d)), depsChanged = !wpSameDepts(deps, wpDeptList(w));
+        if (permsChanged) body.permissions = sent;
+        if (depsChanged) body.departments = deps;
         const res = await apiFetch(`${API}/workers/${encodeURIComponent(w._id)}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: sent })
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -26332,11 +26368,11 @@
         let kept = true;
         try {
           await wpLoad();
-          const saved = (_wp.workers.find(x => x._id === id) || {}).permissions || {};
-          kept = WP_ALL.every(k => !!saved[k] === !!sent[k]);
-        } catch (_) { w.permissions = sent; }
-        _wp.open = null; _wp.draft = null;
-        showToast(kept ? `Saved permissions for ${w.name}` : 'Saved, but the server kept different values. Please check.');
+          const back = _wp.workers.find(x => x._id === id) || {}, saved = back.permissions || {};
+          kept = (!permsChanged || WP_ALL.every(k => !!saved[k] === !!sent[k])) && (!depsChanged || wpSameDepts(wpDeptList(back), deps));
+        } catch (_) { if (permsChanged) w.permissions = sent; if (depsChanged) w.departments = deps; }
+        _wp.open = null; _wp.draft = null; _wp.dep = [];
+        showToast(kept ? `Saved changes for ${w.name}` : 'Saved, but the server kept different values. Please check.');
       } catch (e) {
         showToast(`Could not save: ${e.message}`);
       }
