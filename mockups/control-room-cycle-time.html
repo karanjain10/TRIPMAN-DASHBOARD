@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Control room: time per trip mockup</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5bb;--text:#1a1917;--text2:#6b6860;--text3:#9b9890;--accent:#1a3a5c;--ok:#1f7a45;--ok-bg:#e6f4ec;--warn:#8a5a00;--warn-bg:#fdf1d6;--bad:#a32d2d;--bad-bg:#fbe7e5;--bad-line:#c0392b;--idle-bg:#eeede8;--mono:'IBM Plex Mono',ui-monospace,monospace}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d0f12;--surface:#16191f;--border:#262a33;--border-strong:#363b45;--text:#e6e9ee;--text2:#9aa0a6;--text3:#646a73;--accent:#10b981;--ok:#5fd493;--ok-bg:#12301f;--warn:#f5c04a;--warn-bg:#3a2d0c;--bad:#ff8a84;--bad-bg:#431a18;--bad-line:#ef4444;--idle-bg:#1d2129}}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:24px;font-size:14px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:16px;font-weight:600;margin-bottom:4px} h2{font-size:12px;font-weight:600;color:var(--text2);margin:26px 0 10px;text-transform:uppercase;letter-spacing:.06em}
+  .note{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+  .ex{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border-strong);border-radius:10px;padding:12px 14px 14px}
+  .ex.hot{border-color:var(--bad-line)}
+  .h{display:flex;align-items:baseline;gap:8px}.h b{font-size:15px;font-weight:600}.sp{flex:1}
+  .mat{font-size:11px;color:var(--text2)} .hint{font-size:11px;color:var(--text3)}
+  .s{font-size:12px;color:var(--text2);margin:3px 0 10px}.s b{color:var(--text);font-weight:500;font-family:var(--mono)}
+  .new{outline:2px dashed #e8a020;outline-offset:2px;border-radius:3px;padding:0 3px}
+  .dots{display:flex;flex-wrap:wrap;gap:6px}
+  .tp{border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;background:var(--ok-bg);color:var(--ok);font-family:var(--mono)}
+  .tp.warn{background:var(--warn-bg);color:var(--warn)} .tp.bad{background:var(--bad-bg);color:var(--bad)}
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media(max-width:760px){.cmp{grid-template-columns:1fr}}
+  .lbl{font-size:11px;color:var(--text3);margin-bottom:6px}
+</style></head><body><div class="wrap">
+<h1>Control room: time per trip on each excavator tile</h1>
+<p class="note">Mockup only. Sample data. The dashed part is new; everything else on the tile stays as it is today.</p>
+
+<h2>Before and after (one tile)</h2>
+<div class="cmp">
+  <div><div class="lbl">Today</div>
+    <div class="ex"><div class="h"><b>EX-04</b><span class="mat">● Coal</span><span class="sp"></span><span class="hint">details ↗</span></div>
+      <div class="s"><b>23</b> trips · <b>3.4</b>/h · 6 tippers</div>
+      <div class="dots"><span class="tp">12 · 4m</span><span class="tp">15 · 9m</span><span class="tp">21 · 14m</span><span class="tp warn">27 · 33m</span><span class="tp">30 · 6m</span><span class="tp">34 · 11m</span></div></div></div>
+  <div><div class="lbl">New</div>
+    <div class="ex"><div class="h"><b>EX-04</b><span class="mat">● Coal</span><span class="sp"></span><span class="hint">details ↗</span></div>
+      <div class="s"><b>23</b> trips · <b>3.4</b>/h · <span class="new"><b>31 min</b>/trip</span> · 6 tippers</div>
+      <div class="dots"><span class="tp">12 · 4m</span><span class="tp">15 · 9m</span><span class="tp">21 · 14m</span><span class="tp warn">27 · 33m</span><span class="tp">30 · 6m</span><span class="tp">34 · 11m</span></div></div></div>
+</div>
+
+<h2>Different states</h2>
+<div class="grid">
+  <div class="ex"><div class="h"><b>EX-07</b><span class="mat">● Soft OB</span><span class="sp"></span><span class="hint">details ↗</span></div>
+    <div class="s"><b>41</b> trips · <b>5.8</b>/h · <span class="new"><b>19 min</b>/trip</span> · 9 tippers</div></div>
+  <div class="ex hot"><div class="h"><b>EX-11</b><span class="mat">● Hard OB</span><span class="sp"></span><span class="hint">details ↗</span></div>
+    <div class="s"><b>6</b> trips · <b>1.2</b>/h · <span class="new"><b>38 min</b>/trip</span> · 5 tippers</div></div>
+  <div class="ex"><div class="h"><b>EX-02</b><span class="mat">● Coal</span><span class="sp"></span><span class="hint">details ↗</span></div>
+    <div class="s"><b>2</b> trips · <span class="new"><b>—</b>/trip</span> · 4 tippers</div></div>
+</div>
+
+<h2>How it is worked out</h2>
+<p class="note">
+<b>Time per trip</b> = the gap between one trip of a tipper and its next trip, which is one full round (load, haul, dump, return). Every trip carries only one time stamp, so this is the only way to get a duration.<br>
+<b>Per excavator</b> = take those gaps for all tippers currently on that excavator, this shift only, and show the <b>median</b> of all of them together (5 tippers means one pool of gaps from all 5).<br>
+<b>Shown when</b> there are at least 5 gaps, otherwise "—" (like the per-hour figure, which waits for 30 minutes of shift). Moves with the shift, the same as the trips and per-hour numbers. Hover shows "median of N trips".<br>
+<b>Not changed:</b> the pace card, silence alerts, sound, and the pop-up.
+</p>
+</div></body></html>

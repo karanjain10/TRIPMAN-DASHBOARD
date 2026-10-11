@@ -4,8 +4,8 @@ const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/\/\/ ctl:pure:start([\s\S]*?)\/\/ ctl:pure:end/);
 assert(m, 'ctl:pure markers not found in index.html');
-const { silentLevel, ctlAlerts, ctlCurves, ctlAt, ctlFinish, ctlPaceState, fuelRisk } =
-  new Function(m[1] + '; return { silentLevel, ctlAlerts, ctlCurves, ctlAt, ctlFinish, ctlPaceState, fuelRisk };')();
+const { silentLevel, ctlAlerts, ctlCurves, ctlAt, ctlFinish, ctlPaceState, fuelRisk, ctlTripMedian } =
+  new Function(m[1] + '; return { silentLevel, ctlAlerts, ctlCurves, ctlAt, ctlFinish, ctlPaceState, fuelRisk, ctlTripMedian };')();
 
 // silence levels: 30 = warning, 45 = alert
 assert.deepStrictEqual([29, 30, 44, 45].map(silentLevel), ['ok', 'warn', 'warn', 'alert']);
@@ -106,4 +106,16 @@ const stale3 = risk({ logs: steady('A'), tanks: tk('A'), readings: { A: [pt(3, 1
 const fresh = risk({ logs: steady('A'), tanks: tk('A'), readings: { A: [pt(0, 145)] }, shiftHrs: { A: 20 } });
 assert(stale3[0].hoursLeft < fresh[0].hoursLeft);
 assert(Math.abs(stale3[0].since - 7.4) < 1e-9);
+// time per trip: gaps between one trip and the next of the same truck, one median over all of an excavator's tippers
+const MIN = 60000, mins = (...m) => m.map(x => x * MIN);
+let tm = ctlTripMedian([mins(0, 20, 40, 70), mins(5, 30, 50, 80)]);             // gaps 20,20,30 and 25,20,30
+assert.deepStrictEqual([tm.n, tm.min], [6, 22.5]);
+assert.strictEqual(ctlTripMedian([mins(0, 20, 40, 60), mins(5)]), null);         // 3 gaps: not enough
+assert.strictEqual(ctlTripMedian([]), null);
+tm = ctlTripMedian([mins(40, 0, 20, 60, 80, 100)]);                           // unsorted input; the 5 gaps are all 20
+assert.deepStrictEqual([tm.n, tm.min], [5, 20]);
+tm = ctlTripMedian([mins(0, 0, 20, 40, 60, 80, 100)]);                        // a doubled time stamp is not a 0-minute trip
+assert.strictEqual(tm.n, 5);
+tm = ctlTripMedian([mins(0, 15, 30, 45), mins(0, 15, 30, 600)]);               // a long idle (570 min) does not drag the median
+assert.strictEqual(tm.min, 15);
 console.log('control-room: all checks passed');

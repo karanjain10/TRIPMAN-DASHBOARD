@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Manage site: Retire and Un-retire mockup</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f5f4f0;--surface:#fff;--rule:#e2e0d8;--text:#1a1917;--text2:#6b6860;--text3:#9b9890;--ok:#1f7a45;--bad:#a32d2d;--track:#eeede8;--brand:#1a3a5c;--mono:'IBM Plex Mono',ui-monospace,monospace}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d0f12;--surface:#16191f;--rule:#262a33;--text:#e6e9ee;--text2:#9aa0a6;--text3:#646a73;--ok:#5fd493;--bad:#ff8a84;--track:#1d2129;--brand:#10b981}}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:24px;font-size:14px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:16px;font-weight:600;margin-bottom:4px} h2{font-size:12px;font-weight:600;color:var(--text2);margin:26px 0 10px;text-transform:uppercase;letter-spacing:.06em}
+  .note{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5}
+  .bar{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:12px;color:var(--text2)}
+  .list{border-top:1px solid var(--rule);background:var(--surface)}
+  .row{display:flex;align-items:center;gap:12px;padding:11px 12px;border-bottom:1px solid var(--rule);font-size:13px}
+  .row.off{opacity:.6}.row.ret{opacity:.75;background:var(--track)}
+  .main{flex:1;min-width:0}.main b{font-weight:600}.sub{margin-top:2px;font-size:12px;color:var(--text2)}.why{margin-top:3px;font-size:12px;color:var(--bad)}
+  .badge{flex:none;padding:1px 7px;border-radius:3px;font-size:10.5px;font-weight:600;background:var(--track);color:var(--ok)}
+  .row.off .badge{color:var(--bad)}.badge.ret{background:#3a3a3a;color:#fff}
+  button{font:inherit;font-size:12.5px;height:30px;padding:0 12px;border:1px solid var(--rule);border-radius:4px;background:var(--surface);color:var(--text);cursor:pointer}
+  button.warn{color:var(--bad);border-color:var(--bad)} button.primary{background:var(--bad);border-color:var(--bad);color:#fff}
+  .new{outline:2px dashed #e8a020;outline-offset:2px}
+  .dlg{width:100%;max-width:420px;padding:18px;border-radius:4px;background:var(--surface);border:1px solid var(--rule);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .dlg h3{font-size:15px;margin-bottom:4px}.dlg label{display:block;margin:12px 0 4px;font-size:12px;color:var(--text2)}
+  .dlg textarea{width:100%;padding:6px 8px;border:1px solid var(--rule);border-radius:3px;background:var(--bg);color:var(--text);font:inherit;font-size:13px}
+  .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+  .warnbox{margin-top:10px;padding:8px 10px;border-radius:3px;background:var(--track);font-size:12px;color:var(--text2);line-height:1.45}
+</style></head><body><div class="wrap">
+<h1>Manage site: Retire and Un-retire (admins and owners only)</h1>
+<p class="note">Mockup only. Sample data. Tippers page shown; the same buttons appear on every equipment type. Dashed = new.</p>
+
+<h2>The list</h2>
+<div class="bar"><span>Search</span><span style="flex:1"></span><span>27 active · 2 inactive · <span class="new">1 retired</span></span></div>
+<div class="list">
+  <div class="row"><div class="main"><b>Truck 12</b><div class="sub">MH 34 AB 1204 · BharatBenz 3228</div></div><span class="badge">Active</span><button>Deactivate</button><button class="warn new">Retire</button></div>
+  <div class="row off"><div class="main"><b>Truck 31</b><div class="sub">MH 34 AB 3111 · Tata Prima</div><div class="why">Waiting for spare · Gearbox</div></div><span class="badge">Inactive</span><button>Activate</button><button class="warn new">Retire</button></div>
+  <div class="row ret"><div class="main"><b>Truck 03</b><div class="sub">MH 34 AB 0303 · Ashok Leyland</div><div class="sub new">Retired 04 Oct 2026 by Karan Jain · Sold at auction</div></div><span class="badge ret new">Retired</span><button class="new">Un-retire</button></div>
+</div>
+<p class="note" style="margin-top:10px">A retired unit has no Activate button. A retired unit stays at the bottom of its list, dimmed, so it can be brought back.</p>
+
+<h2>Retire dialog</h2>
+<div class="dlg">
+  <h3>Retire Truck 12</h3><div class="sub" style="font-size:12px;color:var(--text2)">MH 34 AB 1204 · BharatBenz 3228</div>
+  <div class="warnbox">The unit is taken out of service for good: it is cleared from today's deployment and cannot be activated or deployed until someone un-retires it. It is not deleted, and its trips and history stay.</div>
+  <label>Reason (optional)</label><textarea rows="3" maxlength="300" placeholder="Sold, scrapped, returned to lessor…"></textarea>
+  <div class="acts"><button>Cancel</button><button class="primary">Retire</button></div>
+</div>
+
+<h2>Rules</h2>
+<p class="note">
+<b>Who sees the buttons:</b> admins and owners only, the same people the server allows (it refuses everyone else).<br>
+<b>Records:</b> the server writes a RETIRED / UNRETIRED line in the equipment status log with who and why. It is not counted as a breakdown.<br>
+<b>Maintenance screen and Equipment Health:</b> a retired unit is not listed as "Down now" (today it would show up there with no reason, because retiring also switches it inactive).<br>
+<b>Un-retire:</b> brings it back as inactive; use Activate afterwards to put it in service.
+</p>
+</div></body></html>

@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maintenance: two columns mockup</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5bb;--text:#1a1917;--text2:#6b6860;--text3:#9b9890;--accent:#1a3a5c;--ok:#1f7a45;--ok-bg:#e6f4ec;--warn:#8a5a00;--warn-bg:#fdf1d6;--bad:#a32d2d;--bad-bg:#fbe7e5;--bad-line:#c0392b;--idle-bg:#eeede8;--mono:'IBM Plex Mono',ui-monospace,monospace}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d0f12;--surface:#16191f;--border:#262a33;--border-strong:#363b45;--text:#e6e9ee;--text2:#9aa0a6;--text3:#646a73;--accent:#10b981;--ok:#5fd493;--ok-bg:#12301f;--warn:#f5c04a;--warn-bg:#3a2d0c;--bad:#ff8a84;--bad-bg:#431a18;--bad-line:#ef4444;--idle-bg:#1d2129}}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:24px;font-size:14px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:16px;font-weight:600;margin-bottom:4px}.note{font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:16px;align-items:start}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text2);margin-bottom:8px}
+  .cnt{font-family:var(--mono);font-size:12px;padding:1px 7px;border-radius:10px;background:var(--bad-bg);color:var(--bad);margin-left:8px}
+  /* the new part: two columns, smaller cards */
+  .list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .un{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--bad-line);border-radius:10px;padding:9px 12px;cursor:pointer;min-width:0}
+  .un.new{background:var(--bad-bg)}
+  .h{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.id{font-family:var(--mono);font-size:16px;font-weight:500}.sp{flex:1}
+  .ty{padding:1px 6px;border-radius:4px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:var(--idle-bg);color:var(--text2)}
+  .tag{padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700}.tag.new{background:var(--bad-line);color:#fff}.tag.rep{background:var(--warn-bg);color:var(--warn)}
+  .down{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--bad)}
+  .why{font-weight:600;font-size:13px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.why span{font-weight:400;color:var(--text2)}
+  .meta{font-size:11.5px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.meta b{color:var(--text);font-weight:500}
+  .loc{display:flex;align-items:center;gap:6px;margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:11.5px}
+  .acc{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:5px;background:var(--ok-bg);color:var(--ok)}.acc.r{background:var(--warn-bg);color:var(--warn)}.acc.n{background:var(--idle-bg);color:var(--text2)}
+  button{font:inherit;font-size:11.5px;height:24px;padding:0 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+  .map{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:sticky;top:12px}
+  .map i{display:block;height:420px;background:var(--idle-bg)}
+  .map p{padding:10px 16px;font-size:12px;color:var(--text2);border-top:1px solid var(--border)}
+  @media(max-width:980px){.grid{grid-template-columns:1fr}.map{position:static}}
+  @media(max-width:560px){.list{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<h1>Maintenance screen: breakdowns in two columns</h1>
+<p class="note">Mockup only. Sample data. Left is the list, now two cards per row; the map stays on the right as today. Card text is the same, just tighter.</p>
+<div class="grid">
+  <div>
+    <div class="eyebrow">Down now<span class="cnt">6</span></div>
+    <div class="list">
+      <div class="un new"><div class="h"><span class="id">Truck #27</span><span class="ty">Tipper</span><span class="tag new">NEW</span><span class="sp"></span><span class="down">12m</span></div>
+        <div class="why">Tyre burst <span>· Left rear, no spare</span></div>
+        <div class="meta">Reported by <b>Ramesh Yadav</b> · since 14:42 · Shift B</div>
+        <div class="loc"><span class="acc">±8 m</span><span style="color:var(--text2)">Pit 2 ramp</span><span class="sp"></span><button>Acknowledge</button><button>Show on map</button></div></div>
+      <div class="un"><div class="h"><span class="id">EX-04</span><span class="ty">Excavator</span><span class="tag rep">2nd in 7 days</span><span class="sp"></span><span class="down">3h 05m</span></div>
+        <div class="why">Hydraulic hose <span>· Boom cylinder leak</span></div>
+        <div class="meta">Reported by <b>Anil Yadav</b> · since 11:49 · Shift A</div>
+        <div class="loc"><span class="acc r">±64 m</span><span style="color:var(--text2)">Coal bench</span><span class="sp"></span><button>Show on map</button></div></div>
+      <div class="un"><div class="h"><span class="id">Truck #12</span><span class="ty">Tipper</span><span class="sp"></span><span class="down">5h 20m</span></div>
+        <div class="why">Engine overheating</div>
+        <div class="meta">Reported by <b>Satish Kumar</b> · since 09:34 · Shift A</div>
+        <div class="loc"><span class="acc n">no fix</span><span class="sp"></span><button>Show on map</button></div></div>
+      <div class="un"><div class="h"><span class="id">Truck #31</span><span class="ty">Tipper</span><span class="sp"></span><span class="down">1d 2h</span></div>
+        <div class="why">Waiting for spare <span>· Gearbox</span></div>
+        <div class="meta">Reported by <b>Hemanta Nayak</b> · since 12 Oct 13:10 · Shift B</div>
+        <div class="loc"><span class="acc">±12 m</span><span style="color:var(--text2)">Workshop</span><span class="sp"></span><button>Show on map</button></div></div>
+      <div class="un"><div class="h"><span class="id">Dozer D-02</span><span class="ty">Dozer</span><span class="sp"></span><span class="down">2d 4h</span></div>
+        <div class="why">Track chain broken</div>
+        <div class="meta">Reported by <b>Ishwardas B.</b> · since 11 Oct 09:00 · Shift A</div>
+        <div class="loc"><span class="acc n">no fix</span><span class="sp"></span><button>Show on map</button></div></div>
+      <div class="un"><div class="h"><span class="id">Truck #08</span><span class="ty">Tipper</span><span class="sp"></span><span class="down">6h 40m</span></div>
+        <div class="why">Brake failure</div>
+        <div class="meta">Reported by <b>Ramesh Yadav</b> · since 08:14 · Shift A</div>
+        <div class="loc"><span class="acc">±15 m</span><span style="color:var(--text2)">Dump yard</span><span class="sp"></span><button>Show on map</button></div></div>
+    </div>
+  </div>
+  <div class="map"><i></i><p>Satellite map, unchanged. Click a card and the map jumps to its pin.</p></div>
+</div>
+<p class="note" style="margin-top:18px">
+<b>What shrinks:</b> card padding, the unit number (20 → 16 px), the down time (18 → 14 px), and the reason, extra notes and "reported by" lines each take one line (long text is cut with …, the full text is in the tooltip and the pop-up). The Acknowledge button moves onto the location line.<br>
+<b>Same as today:</b> the four KPI cards on top, the map, sort order (new first, then longest down), the NEW and repeat tags, the pop-up and horn, the "Back in service" table and the "Off duty" list under the cards.<br>
+<b>Small screens:</b> two columns when the list is wide enough; one column on a phone.
+</p>
+</div></body></html>

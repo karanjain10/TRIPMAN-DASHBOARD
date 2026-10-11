@@ -44,4 +44,7 @@ assert.strictEqual(b.gpsWait, false); assert.strictEqual(b.loc.acc, 20); assert.
 assert.strictEqual(f.loc, null); assert.strictEqual(f.gpsWait, true);                                   // 1 min old, no usable fix yet = waiting
 assert.strictEqual(a.shift, 'B'); assert.strictEqual(a.by, 'Ramesh');
 assert.deepStrictEqual(st.fixed.map(x => x.name), ['Truck #11']);                                        // only the last 24 h
+// a retired unit is inactive on the server but is not a breakdown
+const rt = mtState([{ _id: 'z', _label: 'Truck #3', _source: 'vehicle', _type: 'tipper', is_active: false, retired: true }], [log('z', 'DEACTIVATED', 500, { reason: 'Engine' }), log('z', 'RETIRED', 100)], NOW);
+assert.deepStrictEqual([rt.down.length, rt.off.length], [0, 0]);
 console.log('maintenance tests passed');

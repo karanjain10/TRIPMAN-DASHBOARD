@@ -6120,6 +6120,8 @@
     .ms-list { border-top: 1px solid var(--rule); }
     .ms-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-bottom: 1px solid var(--rule); font-size: 13px; }
     .ms-row.off { opacity: .6; }
+    .ms-row.ret { opacity: .75; background: var(--track); } .ms-row.ret .ms-badge { color: var(--text-secondary); }
+    .ms-warn { margin-top: 10px; padding: 8px 10px; border-radius: 3px; background: var(--track); font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
     .ms-main { flex: 1; min-width: 0; }
     .ms-main b { font-weight: 600; }
     .ms-sub { margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
@@ -6333,7 +6335,14 @@
     .mt-grid { display:grid; grid-template-columns:minmax(0,1fr) 440px; gap:16px; align-items:start; }
     .mt-sec-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 2px 8px; flex-wrap:wrap; }
     .mt-count { font-family:var(--font-mono); font-size:12px; padding:1px 7px; border-radius:10px; background:var(--c-bad-bg); color:var(--bad); margin-left:8px; } .mt-count.z { background:var(--c-ok-bg); color:var(--ok); }
-    .mt-un { padding:14px 16px; border-left:4px solid var(--c-bad-line); margin-bottom:12px; cursor:pointer; transition:border-color .12s; }
+    #mt-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px; } #mt-list > .mt-none { grid-column:1/-1; }
+    .mt-un { padding:9px 12px; border-left:4px solid var(--c-bad-line); min-width:0; cursor:pointer; transition:border-color .12s; }
+    .mt-un .mt-un-h { gap:6px; } .mt-un .mt-id { font-size:16px; } .mt-un .mt-down { font-size:14px; }
+    .mt-un .mt-ty { padding:1px 6px; font-size:9.5px; } .mt-un .mt-tag { padding:1px 6px; font-size:10px; }
+    .mt-un .mt-reason, .mt-un .mt-meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mt-un .mt-reason { font-size:13px; margin-top:5px; } .mt-un .mt-notes { display:inline; font-size:inherit; margin:0; font-weight:400; }
+    .mt-un .mt-meta { font-size:11.5px; margin-top:3px; }
+    .mt-un .mt-loc { gap:6px; margin-top:7px; padding-top:7px; font-size:11.5px; } .mt-un .mt-loc .action-btn { height:24px; padding:0 8px; font-size:11.5px; }
     .mt-un:hover { border-color:var(--border-strong); border-left-color:var(--c-bad-line); }
     .mt-un.sel { border-color:var(--c-bad-line); box-shadow:0 0 0 1px var(--c-bad-line); }
     .mt-un.new { background:var(--c-bad-bg); }
@@ -6369,6 +6378,7 @@
     .mt-dlg .btns { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
     .action-btn.mt-primary { background:var(--c-bad-line); border-color:var(--c-bad-line); color:#fff; font-weight:600; }
     @media (max-width:700px) { #mt-live-t, #mt-sound-t { display:none; } }
+    @media (max-width:560px) { #mt-list { grid-template-columns:1fr; } }
     @media (max-width:980px) { .mt-grid { grid-template-columns:1fr; } .mt-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } .mt-mapc { position:static; } }
 
     /* ── CONTROL ROOM ───────────────────────────────────────────────────── */
@@ -7487,6 +7497,7 @@
       <div class="topbar-user">
         <span class="mt-live" id="mt-live"><i></i><span id="mt-live-t">Waiting for data</span></span>
         <button class="action-btn mt-sound off" id="mt-sound" onclick="mtToggleSound()" aria-pressed="false"><i id="mt-sound-ic" class="fi fi-rr-volume-mute" aria-hidden="true"></i><span id="mt-sound-t">Sound off, click to enable</span></button>
+        <button class="action-btn" onclick="closeMaintenancePage(); openEqHealthPage()" style="height:30px;font-size:12px;">Equipment health</button>
         <span class="topbar-logout" id="mt-out" onclick="doLogout()" style="display:none;">Sign out</span>
       </div>
     </div>
@@ -8266,7 +8277,7 @@
   <!-- EQUIPMENT HEALTH PAGE -->
   <div id="eq-health-page">
     <div class="topbar">
-      <button class="action-btn" onclick="closeEqHealthPage()" style="margin-right:8px;">← Back</button>
+      <button class="action-btn" id="eqh-back" onclick="closeEqHealthPage()" style="margin-right:8px;">← Back</button>
       <div class="topbar-tripman-logo"><span class="topbar-tripman-text">Tripman</span></div>
       <div class="topbar-title">🔧 Equipment Health</div>
       <div class="topbar-user" style="display:flex;align-items:center;gap:10px;">
@@ -8274,6 +8285,7 @@
         <button class="action-btn" onclick="closeEqHealthPage(); openMaintenancePage()" style="height:30px;font-size:12px;">Maintenance screen</button>
         <button class="action-btn" onclick="eqhRefresh()" style="height:30px;font-size:12px;">↻ Refresh</button>
         <span id="eqh-auto-refresh-indicator" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap;"></span>
+        <span class="topbar-logout" id="eqh-out" onclick="doLogout()" style="display:none;">Sign out</span>
       </div>
     </div>
 
@@ -8861,10 +8873,11 @@
   <!-- FUEL REPORTS PAGE -->
   <div id="fuel-page">
     <div class="topbar">
-      <button class="action-btn" onclick="closeReportToHub()" style="margin-right:8px;">← Back</button>
+      <button class="action-btn" id="fuel-back" onclick="closeReportToHub()" style="margin-right:8px;">← Back</button>
       <div class="topbar-title">⛽ Fuel Reports</div>
       <div class="topbar-user">
         <button class="action-btn" onclick="fuelRefreshActive()" style="height:30px;font-size:12px;">↻ Refresh</button>
+        <span class="topbar-logout" id="fuel-out" onclick="doLogout()" style="display:none;margin-left:10px;">Sign out</span>
       </div>
     </div>
 
@@ -10168,6 +10181,7 @@
 
     async function initApp() {
       if (mtOnly()) return openMaintenancePage(); // skip the dashboard's own data load
+      if (fuelOnly()) return openFuelPage();
       ovSkeleton();
       await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
       await loadTrips(true);
@@ -16512,7 +16526,8 @@
 
     // ── navigation ──
     function navGo(key) {
-      if (mtOnly() && key !== 'maintenance') return; // a maintenance login sees the Maintenance page only
+      if (mtOnly() && key !== 'maintenance' && key !== 'eqhealth') return; // a maintenance login sees these two pages only
+      if (fuelOnly()) return;                                             // a fuel login sees Fuel reports only
       closeNav();
       if (key === 'overview') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       const targets = {
@@ -16540,7 +16555,7 @@
       return '#' + key + (from ? `?from=${from}&to=${document.getElementById(ids[1]).value || from}` : '');
     }
     function navFromHash() {
-      if (mtOnly()) return;
+      if (mtOnly() || fuelOnly()) return;
       const [key, qs] = location.hash.slice(1).split('?');
       const q = new URLSearchParams(qs), ids = _navDates[key];
       if (ids && /^\d{4}-\d{2}-\d{2}$/.test(q.get('from'))) {
@@ -17097,6 +17112,14 @@
     // early in a shift, CTL_DAYS recent normal shifts of the same letter make the "usual" curve.
     const CTL_K = 60, CTL_DAYS = 8, CTL_NORMAL = 0.6;
     const ctlMedian = a => { const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
+    // Time per trip of one excavator. lists = one array of trip times (ms) per tipper. A trip has one time stamp only,
+    // so a trip's time is the gap to the same truck's next trip. Median of every gap of every tipper together; null under CTL_MIN_GAPS.
+    const CTL_MIN_GAPS = 5;
+    function ctlTripMedian(lists) {
+      const gaps = [];
+      lists.forEach(l => { const t = [...l].sort((a, b) => a - b); for (let i = 1; i < t.length; i++) if (t[i] > t[i - 1]) gaps.push((t[i] - t[i - 1]) / 60000); });
+      return gaps.length >= CTL_MIN_GAPS ? { min: ctlMedian(gaps), n: gaps.length } : null;
+    }
     // days = { 'YYYY-MM-DD': [minutes since shift start, one per trip] } for past shifts of one letter.
     // Returns the average and lowest cumulative trips every 30 min (17 points) over the last CTL_DAYS
     // normal days (a normal day has at least CTL_NORMAL x the median total), or null with under 3.
@@ -17716,7 +17739,7 @@
     // ── command palette (⌘K / Ctrl+K) ──
     let _cmdk = { items: [], shown: [], sel: 0 };
     function ovCmdkOpen() {
-      if (mtOnly()) return;
+      if (mtOnly() || fuelOnly()) return;
       const nav = [...document.querySelectorAll('#app-nav .nav-item')].filter(b => b.style.display !== 'none').map(b => ({
         label: b.textContent.trim(), icon: (b.querySelector('.fi') || {}).className || 'fi fi-rr-apps', run: () => navGo(b.dataset.nav)
       }));
@@ -19503,6 +19526,8 @@
     // ── Page open / close ──────────────────────────────────────────────────────
 
     function openFuelPage() {
+      document.getElementById('fuel-back').style.display = fuelOnly() ? 'none' : '';
+      document.getElementById('fuel-out').style.display = fuelOnly() ? '' : 'none';
       document.getElementById('app').style.display = 'none';
       document.getElementById('reports-hub-page').style.display = 'none';
       document.getElementById('fuel-page').style.display = 'block';
@@ -20407,6 +20432,8 @@
 
     // ── open / close ──────────────────────────────────────────────────────────
     function openEqHealthPage() {
+      document.getElementById('eqh-back').style.display = mtOnly() ? 'none' : '';
+      document.getElementById('eqh-out').style.display = mtOnly() ? '' : 'none';
       document.getElementById('app').style.display = 'none';
       document.getElementById('eq-health-page').style.display = 'block';
       document.getElementById('eqh-date-label').textContent = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -20464,7 +20491,7 @@
           _label: o.vehicle_number,
           _plate: o.number_plate, _hmr: o.last_hmr
         }))
-      ];
+      ].filter(i => !i.retired); // retired units are out of the fleet, so out of availability and downtime
 
       // Dynamically populate the Type filter dropdown from actual data
       const typeSel = document.getElementById('eqh-log-type');
@@ -26148,13 +26175,21 @@
       const t = kind === 'tipper' ? { title: d.vehicle_number, bits: [d.number_plate, d.model, msNum('Capacity', d.capacity_m3 && d.capacity_m3 + ' m³'), msNum('Fuel tank', d.fuel_tank_capacity)] }
         : kind === 'excavator' ? { title: d.machine_number ? `${d.machine_id} (No. ${d.machine_number})` : d.machine_id, bits: [d.number_plate, d.model, msNum('Bucket', d.bucket_capacity_m3 && d.bucket_capacity_m3 + ' m³'), msNum('Fuel tank', d.fuel_tank_capacity)] }
         : { title: d.number_plate, bits: [d.vehicle_number, d.model, msNum('Fuel tank', d.fuel_tank_capacity), msNum('Water tank', d.water_tank_capacity), msNum('Diesel tank', d.diesel_tanker_capacity)] };
-      return { id: d._id, title: t.title || '—', sub: t.bits.filter(Boolean).join(' · '), active: d.is_active !== false,
-               why: d.is_active === false && d.deactivation_reason ? [d.deactivation_reason, d.expected_return_date && 'back ' + d.expected_return_date, d.deactivation_notes].filter(Boolean).join(' · ') : '' };
+      const retired = !!d.retired, day = msDay(d.retired_at);
+      return { id: d._id, title: t.title || '—', sub: t.bits.filter(Boolean).join(' · '), active: d.is_active !== false, retired,
+               why: retired ? ['Retired' + (day ? ' ' + day : '') + (d.retired_by_name ? ' by ' + d.retired_by_name : ''), d.retired_reason].filter(Boolean).join(' · ')
+                 : d.is_active === false && d.deactivation_reason ? [d.deactivation_reason, d.expected_return_date && 'back ' + d.expected_return_date, d.deactivation_notes].filter(Boolean).join(' · ') : '' };
+    }
+    // '2026-10-04T10:02:00+05:30' -> '04 Oct 2026' ('' when there is no date)
+    function msDay(iso) {
+      const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(iso || '');
+      return m ? `${m[3]} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m[2] - 1]} ${m[1]}` : '';
     }
     function msPerson(d) {
       return { id: d._id, title: d.name || '—', sub: d.driver_id || d.operator_id || d.person_id || '', active: d.is_active !== false, why: '' };
     }
-    const msCounts = items => ({ total: items.length, active: items.filter(i => i.active).length, inactive: items.filter(i => !i.active).length });
+    // Retired units are counted apart: they are neither active nor a breakdown.
+    const msCounts = items => ({ total: items.length, active: items.filter(i => i.active).length, inactive: items.filter(i => !i.active && !i.retired).length, retired: items.filter(i => i.retired).length });
     // Site-wide KPIs: every equipment unit, and every driver / operator, across all types.
     const msTotals = (unitLists, peopleLists) => ({ equipment: msCounts(unitLists.flat()), manpower: msCounts(peopleLists.flat()) });
 
@@ -26164,6 +26199,8 @@
       return { is_active: false, deactivation_reason: form.reason, expected_return_date: form.date || null,
                deactivation_notes: (form.notes || '').trim().slice(0, 300) || null, performed_by: who.id, performed_by_name: who.name };
     }
+    // Retire / Un-retire body (admins and owners only on the server). The reason is optional.
+    const msRetireBody = (reason, who) => ({ reason: (reason || '').trim().slice(0, 300) || null, performed_by: who.id, performed_by_name: who.name });
     const msReactBody = who => ({ is_active: true, deactivation_reason: null, expected_return_date: null, deactivation_notes: null, performed_by: who.id, performed_by_name: who.name });
     // ms:pure:end
 
@@ -26214,6 +26251,15 @@
       } catch (e) { showToast('Could not change status: ' + e.message); }
       msRender();
     }
+    // Retire or un-retire a unit, then swap the returned record into the list.
+    async function msRetireUnit(t, u, retire, reason) {
+      try {
+        const doc = await msSend('PATCH', `/${t.units}/${u.id}/${retire ? 'retire' : 'unretire'}`, msRetireBody(reason, msWho()));
+        const list = _ms.docs[t.units]; list[list.findIndex(d => d._id === u.id)] = doc;
+        showToast(retire ? 'Retired' : 'Un-retired');
+      } catch (e) { showToast(`Could not ${retire ? 'retire' : 'un-retire'}: ` + e.message); }
+      msRender();
+    }
     async function msTogglePerson(t, p) {
       if (p.active && !confirm(`Deactivate ${p.title}? They will be removed from any current assignment.`)) return;
       try {
@@ -26242,6 +26288,20 @@
       document.body.append(modal);
     }
 
+    // Retire dialog: optional reason, and a plain warning of what it does.
+    function msAskRetire(t, u) {
+      const form = { reason: '' };
+      const modal = bkEl('div', { class: 'ms-modal', onclick: e => { if (e.target === modal) close(); } },
+        bkEl('div', { class: 'ms-dlg', role: 'dialog', 'aria-modal': 'true' },
+          bkEl('h3', {}, `Retire ${u.title}`), bkEl('div', { class: 'ms-sub' }, u.sub),
+          bkEl('div', { class: 'ms-warn' }, 'The unit is taken out of service for good: it is cleared from the current deployment and cannot be activated or deployed until someone un-retires it. It is not deleted, and its trips and history stay.'),
+          bkEl('label', {}, 'Reason (optional)'), bkEl('textarea', { rows: '3', maxlength: '300', placeholder: 'Sold, scrapped, returned to lessor…', oninput: e => { form.reason = e.target.value; } }),
+          bkEl('div', { class: 'acts' }, bkEl('button', { class: 'bk-btn', onclick: () => close() }, 'Cancel'),
+            bkEl('button', { class: 'bk-btn primary', onclick: () => { close(); msRetireUnit(t, u, true, form.reason); } }, 'Retire'))));
+      const close = () => modal.remove();
+      document.body.append(modal);
+    }
+
     function msRender() {
       const body = document.getElementById('ms-body'), t = MS_TYPES.find(x => x.key === _ms.sel);
       document.getElementById('ms-title').textContent = t ? t.label : 'Manage site';
@@ -26249,9 +26309,9 @@
       if (_ms.state === 'error') { body.replaceChildren(bkEl('div', { class: 'wp-note' }, 'Could not load equipment: ' + _ms.err, ' ', bkEl('button', { class: 'bk-btn', onclick: openManagePage }, 'Try again'))); return; }
 
       if (!t) {   // grid of types, biggest first
-        const cards = MS_TYPES.map(x => ({ x, c: msCounts(msUnits(x).map(u => ({ active: u.active }))) })).sort((a, b) => b.c.total - a.c.total || a.x.label.localeCompare(b.x.label))
+        const cards = MS_TYPES.map(x => ({ x, c: msCounts(msUnits(x).map(u => ({ active: u.active, retired: u.retired }))) })).sort((a, b) => b.c.total - a.c.total || a.x.label.localeCompare(b.x.label))
           .map(({ x, c }) => bkEl('button', { class: 'ms-card', onclick: () => msOpenType(x.key) }, bkEl('b', {}, x.label), bkEl('span', { class: 'n' }, String(c.total)),
-            bkEl('small', {}, bkEl('span', { class: 'on' }, c.active + ' active'), ' · ', bkEl('span', { class: 'off' }, c.inactive + ' inactive'))));
+            bkEl('small', {}, bkEl('span', { class: 'on' }, c.active + ' active'), ' · ', bkEl('span', { class: 'off' }, c.inactive + ' inactive'), c.retired ? ` · ${c.retired} retired` : '')));
         const tot = msTotals(MS_TYPES.map(x => msUnits(x)), MS_TYPES.map(x => _ms.ppl[x.key]));
         const kpi = (label, c) => bkEl('div', { class: 'ms-kpi' }, bkEl('small', {}, label), bkEl('b', {}, String(c.total)),
           bkEl('span', {}, bkEl('i', { class: 'on' }, c.active + ' active'), ' · ', bkEl('i', { class: 'off' }, c.inactive + ' inactive')));
@@ -26262,16 +26322,20 @@
 
       const onEq = _ms.tab === 'equipment', all = onEq ? msUnits(t) : _ms.ppl[t.key], c = msCounts(all);
       const q = _ms.q.trim().toLowerCase(), rows = all.filter(i => !q || (i.title + ' ' + i.sub).toLowerCase().includes(q));
-      const list = rows.length ? rows.map(i => bkEl('div', { class: 'ms-row' + (i.active ? '' : ' off') },
-            bkEl('div', { class: 'ms-main' }, bkEl('b', {}, i.title), bkEl('div', { class: 'ms-sub' }, i.sub), i.why ? bkEl('div', { class: 'ms-why' }, i.why) : null),
-            bkEl('span', { class: 'ms-badge' }, i.active ? 'Active' : 'Inactive'),
-            bkEl('button', { class: 'bk-btn', onclick: () => onEq ? (i.active ? msAskDeactivate(t, i) : msToggleUnit(t, i)) : msTogglePerson(t, i) }, i.active ? 'Deactivate' : 'Activate')))
+      const canRetire = onEq && srcIsAdminOrOwner(); // the server allows retire / un-retire for admins and owners only
+      const ordered = [...rows].sort((a, b) => !!a.retired - !!b.retired); // retired units sit at the bottom
+      const list = rows.length ? ordered.map(i => bkEl('div', { class: 'ms-row' + (i.retired ? ' ret' : i.active ? '' : ' off') },
+            bkEl('div', { class: 'ms-main' }, bkEl('b', {}, i.title), bkEl('div', { class: 'ms-sub' }, i.sub), i.why ? bkEl('div', { class: i.retired ? 'ms-sub' : 'ms-why' }, i.why) : null),
+            bkEl('span', { class: 'ms-badge' }, i.retired ? 'Retired' : i.active ? 'Active' : 'Inactive'),
+            i.retired ? (canRetire ? bkEl('button', { class: 'bk-btn', onclick: () => msRetireUnit(t, i, false) }, 'Un-retire') : null)
+              : bkEl('button', { class: 'bk-btn', onclick: () => onEq ? (i.active ? msAskDeactivate(t, i) : msToggleUnit(t, i)) : msTogglePerson(t, i) }, i.active ? 'Deactivate' : 'Activate'),
+            canRetire && !i.retired ? bkEl('button', { class: 'bk-btn', onclick: () => msAskRetire(t, i) }, 'Retire') : null))
           : [bkEl('div', { class: 'wp-note' }, all.length ? 'Nothing matches your search.' : `No ${onEq ? t.label.toLowerCase() + ' units' : t.people.toLowerCase()} yet.`)];
       const q_ = bkEl('input', { type: 'search', placeholder: 'Search', 'aria-label': 'Search', value: _ms.q, oninput: e => { _ms.q = e.target.value; const p = e.target.selectionStart; msRender(); const n = document.querySelector('#ms-body input[type=search]'); n.focus(); n.setSelectionRange(p, p); } });
       body.replaceChildren(
         bkEl('div', { class: 'ms-tabs' },
           ...[['equipment', t.label + ' equipment'], ['people', t.people]].map(([k, l]) => bkEl('button', { class: 'bk-cat' + (_ms.tab === k ? ' on' : ''), onclick: () => { _ms.tab = k; _ms.q = ''; msRender(); } }, l))),
-        bkEl('div', { class: 'ms-bar' }, q_, bkEl('span', { class: 'wp-count' }, `${c.active} active · ${c.inactive} inactive`),
+        bkEl('div', { class: 'ms-bar' }, q_, bkEl('span', { class: 'wp-count' }, `${c.active} active · ${c.inactive} inactive${c.retired ? ` · ${c.retired} retired` : ''}`),
           bkEl('button', { class: 'bk-btn', onclick: () => openBulkPage(t.bulk[onEq ? 0 : 1], 'manage', t.key) }, 'Add in bulk')),
         bkEl('div', { class: 'ms-list' }, list));
     }
@@ -27454,11 +27518,12 @@
 
     // What the screen shows, from the Deployments data: production excavators with their tippers.
     function ctlModel(start) {
-      const nowMs = Date.now(), last = {}, drvTrucks = {};
+      const nowMs = Date.now(), last = {}, drvTrucks = {}, times = {};
       _depRawTrips.forEach(t => {
         const num = _depVehicleIdMap[String(t.vehicle_id)], ts = new Date(t.timestamp).getTime();
         if (!num || isNaN(ts)) return;
         if (!(last[num] >= ts)) last[num] = ts;
+        (times[num] = times[num] || []).push(ts);
         const d = (getDriverName(t.driver_id) || '').trim();
         if (d && d !== '—') (drvTrucks[d] = drvTrucks[d] || new Set()).add(num);
       });
@@ -27475,7 +27540,7 @@
             const num = String(t.truck_number), lastTs = last[num], drv = (t.driver_name || '').trim();
             const dep = t.deployed_since ? new Date(t.deployed_since).getTime() : 0;
             const ref = lastTs || Math.max(dep, start.getTime()); // never tripped: grace runs from deployment
-            return { n: num, none: !lastTs, min: Math.max(0, Math.round((nowMs - ref) / 60000)), last: lastTs || 0,
+            return { n: num, none: !lastTs, min: Math.max(0, Math.round((nowMs - ref) / 60000)), last: lastTs || 0, ts: times[num] || [],
               trips: drv && drv !== '—' ? (_depDriverTripCounts[drv] ?? 0) : 0, truckTrips: _depTripCounts[num] || 0,
               multi: !!(drv && drvTrucks[drv] && drvTrucks[drv].size > 1) };
           })
@@ -27507,10 +27572,10 @@
       document.getElementById('ctl-exgrid').innerHTML = tiles.length ? tiles.map(t => {
         const silent = t.tippers.filter(x => x.min >= SILENT_WARN_MIN), hot = silent.length >= 3 && silent.length / t.tippers.length >= 0.6;
         const trips = t.tippers.reduce((a, x) => a + x.truckTrips, 0), mat = OV_MATERIALS.find(([n]) => n === t.material);
-        const tripsN = ovNum(trips, 0, `ctl-ex|${_ctl.scope}|${t.id}`);
+        const tripsN = ovNum(trips, 0, `ctl-ex|${_ctl.scope}|${t.id}`), cyc = ctlTripMedian(t.tippers.map(x => x.ts));
         return `<div class="ctl-ex${hot ? ' hot' : ''}" data-ex="${ctlEsc(t.id)}" role="button" tabindex="0" aria-label="Open ${ctlEsc(t.id)} deployment card">
           <div class="ctl-ex-h"><b>${ctlEsc(t.id)}</b>${t.material ? `<span class="ctl-mat"><i style="background:${mat ? mat[1] : 'var(--text-muted)'}"></i>${ctlEsc(t.material)}</span>` : ''}<span class="sp"></span><span class="ctl-hint">details ↗</span></div>
-          <div class="ctl-ex-s"><b>${tripsN}</b> trips${elapsed >= 30 ? ` · <b>${(trips / (elapsed / 60)).toFixed(1)}</b>/h` : ''} · ${plural(t.tippers.length, 'tipper')}</div>
+          <div class="ctl-ex-s"><b>${tripsN}</b> trips${elapsed >= 30 ? ` · <b>${(trips / (elapsed / 60)).toFixed(1)}</b>/h` : ''} · <span title="${cyc ? `Median of ${cyc.n} gaps between one trip and the next of the same tipper this shift` : `Needs at least ${CTL_MIN_GAPS} gaps between trips of the same tipper`}"><b>${cyc ? Math.round(cyc.min) + ' min' : '—'}</b>/trip</span> · ${plural(t.tippers.length, 'tipper')}</div>
           <div class="ctl-dots">${t.tippers.map(x => {
             const idle = x.none && x.min < SILENT_WARN_MIN, cls = idle ? 'idle' : ({ alert: 'bad', warn: 'warn', ok: 'ok' })[silentLevel(x.min)];
             return `<div class="ctl-tp ${cls}" title="Tipper ${ctlEsc(x.n)}: driver has ${x.trips} trips this shift (all trucks). ${x.none ? 'No trip yet' : x.min + ' min since last trip'}"><span class="l1"><span class="n">${ctlEsc(x.n)}${x.multi ? '<span class="ctl-multi" title="Driver also drove another truck this shift. Trips counted across both."></span>' : ''}</span><span class="m">${idle ? 'none' : x.min + 'm'}</span></span><span class="tb${x.trips ? '' : ' z'}">${plural(x.trips, 'trip')}</span></div>`;
@@ -27696,7 +27761,7 @@
             open = null;
           }
         });
-        if (it.is_active !== false) return;
+        if (it.is_active !== false || it.retired) return; // a retired unit is out of the fleet, not a breakdown
         const log = [...xs].reverse().find(l => l.action === 'DEACTIVATED') || null;
         const reason = (log && mtReason(log)) || it.deactivation_reason || '', notes = (log && mtNotes(log)) || it.deactivation_notes || '';
         const at = log ? mtMs(log.timestamp) : NaN, loc = log ? mtLoc(log.location) : null;
@@ -27717,8 +27782,11 @@
     let _mt = { fetchTimer: 0, tickTimer: 0, items: [], logs: [], st: null, seen: null, acked: new Set(), pop: '', extra: 0, sel: '', lastOk: 0, error: false, map: null, layer: null, fitKey: '', title: '', ctx: null, master: null, sound: false };
     // The worker's `departments` list comes back at the top level of the login response. Locked to this page only when
     // Maintenance is their one department; with several, the backend's route limits apply and the full menu stays.
-    const mtOnly = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner'
-      && Array.isArray(currentUser.departments) && currentUser.departments.length === 1 && currentUser.departments[0] === 'maintenance';
+    // Maintenance: Maintenance and Equipment health only. Fuel: Fuel reports only.
+    const deptSole = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner'
+      && Array.isArray(currentUser.departments) && currentUser.departments.length === 1 ? currentUser.departments[0] : '';
+    const mtOnly = () => deptSole() === 'maintenance';
+    const fuelOnly = () => deptSole() === 'fuel';
     const mtClock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
     const mtSince = ms => isNaN(ms) ? 'time not recorded' : (new Date(ms).toDateString() === new Date().toDateString() ? 'since ' : 'since ' + new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ') + mtClock(ms);
     const mtAge = ms => isNaN(ms) ? '—' : eqhFmtDuration(Date.now() - ms);
@@ -27808,10 +27876,9 @@
       document.getElementById('mt-list').innerHTML = list.length ? list.map(u => { const isNew = !_mt.acked.has(u.key); return `
         <div class="mt-card mt-un${isNew ? ' new' : ''}${_mt.sel === u.key ? ' sel' : ''}" data-key="${E(u.key)}" tabindex="0" role="button" aria-label="Show ${E(u.name)} on the map">
           <div class="mt-un-h"><span class="mt-id">${E(u.name)}</span><span class="mt-ty">${E(eqhFmtType(u.type))}</span>${isNew ? '<span class="mt-tag new">NEW</span>' : ''}${u.repeat > 1 ? `<span class="mt-tag rep">${u.repeat === 2 ? '2nd' : u.repeat + 'th'} breakdown in 7 days</span>` : ''}<span class="sp"></span><span class="mt-down">${mtAge(u.at)}</span></div>
-          <div class="mt-reason">${E(u.reason || 'No reason given')}</div>${u.notes ? `<div class="mt-notes">${E(u.notes)}</div>` : ''}
+          <div class="mt-reason" title="${E([u.reason || 'No reason given', u.notes].filter(Boolean).join(' · '))}">${E(u.reason || 'No reason given')}${u.notes ? ` <span class="mt-notes">· ${E(u.notes)}</span>` : ''}</div>
           <div class="mt-meta">${u.by ? `Reported by <b>${E(u.by)}</b> · ` : ''}${mtSince(u.at)}${u.shift ? ' · Shift ' + E(u.shift) : ''}</div>
-          <div class="mt-loc">${mtLocHtml(u)}</div>
-          ${isNew ? `<div style="margin-top:10px"><button class="action-btn" data-ack="${E(u.key)}">Acknowledge</button></div>` : ''}
+          <div class="mt-loc">${mtLocHtml(u)}${isNew ? `<button class="action-btn" data-ack="${E(u.key)}">Acknowledge</button>` : ''}</div>
         </div>`; }).join('') : '<div class="mt-card mt-none">Nothing is down. Every unit is in service.</div>';
 
       document.getElementById('mt-fixed').innerHTML = `<thead><tr><th>Unit</th><th>Reason</th><th>Down</th><th>Back</th><th>Downtime</th></tr></thead><tbody>` + (st.fixed.length
