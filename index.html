@@ -4788,6 +4788,10 @@
       margin-bottom: 20px;
     }
 
+    /* Material split inside the Excavators / Tippers KPI cards */
+    .dep-mats { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 11px; color: var(--text-secondary); }
+    .dep-mats b { font-family: var(--font-mono); font-weight: 500; color: var(--text-primary); }
+
     /* Filter bar */
     .dep-filter-bar {
       background: var(--surface);
@@ -9705,12 +9709,12 @@
         <div class="stat-card">
           <div class="stat-label">Excavators Deployed</div>
           <div class="stat-value" id="dep-stat-excavators" style="color:#e8a020;">—</div>
-          <div class="stat-sub" id="dep-stat-excavators-sub">latest version each</div>
+          <div class="dep-mats" id="dep-stat-excavators-sub"></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Tippers Deployed</div>
           <div class="stat-value" id="dep-stat-tippers" style="color:#2980b9;">—</div>
-          <div class="stat-sub" id="dep-stat-tippers-sub">latest version each</div>
+          <div class="dep-mats" id="dep-stat-tippers-sub"></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Completed Today</div>
@@ -21535,6 +21539,20 @@
         if (w && w.version != null) r.version = w.version;
       });
     }
+    // Excavators and tippers per material. `excavators` are the deduped excavator records; tippers come from
+    // truck_ids -> truck number (same rule as the Tippers Deployed card, so the two reconcile).
+    function depByMaterial(excavators, idToNum) {
+      const by = new Map();
+      excavators.forEach(e => {
+        const name = ((e.material || e.material_type || '') + '').trim() || 'No material';
+        const g = by.get(name.toLowerCase()) || { material: name, excavators: 0, tippers: new Set() };
+        g.excavators++;
+        (Array.isArray(e.truck_ids) ? e.truck_ids : []).forEach(t => { const n = idToNum[String(t)]; if (n) g.tippers.add(String(n)); });
+        by.set(name.toLowerCase(), g);
+      });
+      return [...by.values()].map(g => ({ material: g.material, excavators: g.excavators, tippers: g.tippers.size }))
+        .sort((a, b) => b.tippers - a.tippers || b.excavators - a.excavators || a.material.localeCompare(b.material));
+    }
     // dephist:pure:end
     const depEsc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     // Who deployed, or "Not recorded" (dozers and drill machines saved so far carry no deployer; see depLoadExtras).
@@ -21633,6 +21651,12 @@
         document.getElementById('dep-stat-tippers').textContent    = tipperCount;
         document.getElementById('dep-stat-completed').textContent  = completed;
       }
+
+      // Material split under the Excavators / Tippers numbers (same records as the counts above, so it follows date, shift, type and search)
+      const byMat = depByMaterial(sourceForCounts.filter(d => (d.equipment_type || '').toLowerCase() === 'excavator'), _depVehicleIdMap);
+      const matHtml = key => byMat.filter(m => m[key]).map(m => `<span>${depEsc(m.material)} <b>${m[key]}</b></span>`).join('') || '<span>—</span>';
+      document.getElementById('dep-stat-excavators-sub').innerHTML = matHtml('excavators');
+      document.getElementById('dep-stat-tippers-sub').innerHTML    = matHtml('tippers');
 
       document.getElementById('dep-live-count').textContent    = excavatorCount;
       document.getElementById('dep-history-count').textContent =

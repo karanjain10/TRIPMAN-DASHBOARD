@@ -4,8 +4,8 @@ const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const m = html.match(/\/\/ dephist:pure:start([\s\S]*?)\/\/ dephist:pure:end/);
 assert(m, 'dephist:pure markers not found in index.html');
-const { DEP_GENERIC_TYPES, depGenericTypesToFetch, depGenericRow, depWhoIndex, depMergeRows, depApplyWho } =
-  new Function(m[1] + '; return { DEP_GENERIC_TYPES, depGenericTypesToFetch, depGenericRow, depWhoIndex, depMergeRows, depApplyWho };')();
+const { DEP_GENERIC_TYPES, depGenericTypesToFetch, depGenericRow, depWhoIndex, depMergeRows, depApplyWho, depByMaterial } =
+  new Function(m[1] + '; return { DEP_GENERIC_TYPES, depGenericTypesToFetch, depGenericRow, depWhoIndex, depMergeRows, depApplyWho, depByMaterial };')();
 
 // ── which equipment types need their own request ──
 // The server's deployable list (drill compressors ride on a drill machine record and are never deployed alone).
@@ -60,5 +60,15 @@ assert.strictEqual(rows[1].deployed_by, ''); assert.strictEqual(rows[2].deployed
 depApplyWho([{ _id: 'x', edited_by_name: 'From Server', version: 4 }], who);                                // nothing known about x: keep what the server sent
 const keep = [{ _id: 'x', edited_by_name: 'From Server', version: 4 }]; depApplyWho(keep, who);
 assert.deepStrictEqual([keep[0].last_edited_by, keep[0].version], ['From Server', 4]);
+
+// ── excavators and tippers per material ──
+const idNum = { v1: 'T1', v2: 'T2', v3: 'T3' };
+assert.deepStrictEqual(depByMaterial([
+  { material: 'Coal', truck_ids: ['v1', 'v2'] }, { material: ' coal ', truck_ids: ['v2', 'v3'] },   // same material, a tipper counted once
+  { material_type: 'OB', truck_ids: ['v9'] },                                                       // unknown vehicle id adds no tipper
+  { entry_type: 'mine_dev' }                                                                        // no material
+], idNum), [
+  { material: 'Coal', excavators: 2, tippers: 3 }, { material: 'No material', excavators: 1, tippers: 0 }, { material: 'OB', excavators: 1, tippers: 0 }]);
+assert.deepStrictEqual(depByMaterial([], idNum), []);
 
 console.log('deployment-history: all checks passed');

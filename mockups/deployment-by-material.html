@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Deployments: by material mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--text-primary:#1a1917;--text-secondary:#6b6860;--text-muted:#9b9890;--accent:#1a3a5c;--font-main:'DM Sans',sans-serif;--font-mono:'IBM Plex Mono',monospace}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d0f12;--surface:#16191f;--border:#262a33;--text-primary:#e6e9ee;--text-secondary:#9aa0a6;--text-muted:#646a73;--accent:#10b981}}
+  body{font-family:var(--font-main);background:var(--bg);color:var(--text-primary);padding:24px;font-size:14px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:16px;font-weight:600;margin-bottom:4px}
+  h2{font-size:12px;font-weight:600;color:var(--text-secondary);margin:26px 0 10px;text-transform:uppercase;letter-spacing:.06em}
+  .note{font-size:12px;color:var(--text-secondary);margin-bottom:14px}
+  .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:8px}
+  .value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1}
+  .sub{font-size:10px;color:var(--text-muted);margin-top:4px}
+  /* new: one line per material inside the card, replaces the "latest version each" sub-line */
+  .mats{margin-top:8px;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:11px;color:var(--text-secondary)}
+  .mats b{font-family:var(--font-mono);font-weight:500;color:var(--text-primary)}
+  .new{outline:2px dashed #e8a020;outline-offset:3px}
+  @media(max-width:900px){.strip{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="wrap">
+<h1>Deployments page: tippers and excavators by material, inside the existing cards</h1>
+<p class="note">Mockup only. No new row. The dashed cards are the two existing ones with the material split added; the line "latest version each" is replaced. Sample data.</p>
+
+<h2>Typical day (3 materials)</h2>
+<div class="strip">
+  <div class="card"><div class="label">Total Deployed Today</div><div class="value" style="color:var(--accent)">38</div><div class="sub">all deployments</div></div>
+  <div class="card new"><div class="label">Excavators Deployed</div><div class="value" style="color:#e8a020">9</div>
+    <div class="mats"><span>Coal <b>4</b></span><span>Soft OB <b>3</b></span><span>Hard OB <b>2</b></span></div></div>
+  <div class="card new"><div class="label">Tippers Deployed</div><div class="value" style="color:#2980b9">27</div>
+    <div class="mats"><span>Coal <b>12</b></span><span>Soft OB <b>9</b></span><span>Hard OB <b>6</b></span></div></div>
+  <div class="card"><div class="label">Completed Today</div><div class="value" style="color:var(--text-secondary)">11</div><div class="sub">finished deployments</div></div>
+</div>
+
+<h2>Busy day (6 materials, wraps to a second line)</h2>
+<div class="strip">
+  <div class="card"><div class="label">Total Deployed Today</div><div class="value" style="color:var(--accent)">61</div><div class="sub">all deployments</div></div>
+  <div class="card new"><div class="label">Excavators Deployed</div><div class="value" style="color:#e8a020">14</div>
+    <div class="mats"><span>Coal <b>4</b></span><span>Soft OB <b>3</b></span><span>Hard OB <b>3</b></span><span>Rehandling <b>2</b></span><span>Top Soil <b>1</b></span><span>No material <b>1</b></span></div></div>
+  <div class="card new"><div class="label">Tippers Deployed</div><div class="value" style="color:#2980b9">44</div>
+    <div class="mats"><span>Coal <b>14</b></span><span>Soft OB <b>11</b></span><span>Hard OB <b>9</b></span><span>Rehandling <b>6</b></span><span>Top Soil <b>4</b></span></div></div>
+  <div class="card"><div class="label">Completed Today</div><div class="value" style="color:var(--text-secondary)">20</div><div class="sub">finished deployments</div></div>
+</div>
+
+<p class="note" style="margin-top:18px">Tippers per material add up to the Tippers Deployed number, excavators to the Excavators number. Follows the date, shift, type and search filters. Materials are sorted by most tippers first. "No material" (mine development) shows only when an excavator has none, and carries no tippers. Card height grows by at most one extra line on a busy day.</p>
+</div></body></html>
