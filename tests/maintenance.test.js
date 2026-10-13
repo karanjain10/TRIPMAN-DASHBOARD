@@ -3,7 +3,7 @@
 const fs = require('fs'), assert = require('assert');
 const html = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 const block = n => { const m = html.match(new RegExp(`// ${n}:pure:start([\\s\\S]*?)// ${n}:pure:end`)); assert(m, `${n}:pure markers not found`); return m[1]; };
-const { mtMs, mtLoc, mtAccLevel, mtState } = new Function(block('fleet') + block('mt') + '; return { mtMs, mtLoc, mtAccLevel, mtState };')();
+const { mtMs, mtLoc, mtAccLevel, mtState, mtOwnRecord, mtScreens } = new Function(block('fleet') + block('mt') + '; return { mtMs, mtLoc, mtAccLevel, mtState, mtOwnRecord, mtScreens };')();
 
 // timestamps: an offset is honoured, a bare string is UTC
 assert.strictEqual(mtMs('2026-10-09T12:00:00+05:30'), Date.parse('2026-10-09T06:30:00Z'));
@@ -47,4 +47,18 @@ assert.deepStrictEqual(st.fixed.map(x => x.name), ['Truck #11']);               
 // a retired unit is inactive on the server but is not a breakdown
 const rt = mtState([{ _id: 'z', _label: 'Truck #3', _source: 'vehicle', _type: 'tipper', is_active: false, retired: true }], [log('z', 'DEACTIVATED', 500, { reason: 'Engine' }), log('z', 'RETIRED', 100)], NOW);
 assert.deepStrictEqual([rt.down.length, rt.off.length], [0, 0]);
+// own record in the workers list: by _id, else worker_id; never matches on two missing ids
+const ws = [{ _id: 'a', worker_id: 'W1', departments: ['hr'] }, { _id: 'b', worker_id: 'W2', departments: ['maintenance'] }, { name: 'no ids' }];
+assert.strictEqual(mtOwnRecord(ws, { _id: 'b' }).worker_id, 'W2');
+assert.strictEqual(mtOwnRecord(ws, { worker_id: 'W2' })._id, 'b');
+assert.strictEqual(mtOwnRecord(ws, { name: 'x' }), null);
+assert.strictEqual(mtOwnRecord({ detail: 'nope' }, { _id: 'a' }), null);
+// screens by department: a union, admins/owners unlimited, undefined departments add nothing
+const sc = (departments, x = {}) => mtScreens({ departments, ...x });
+assert.deepStrictEqual(sc(['maintenance']), ['maintenance', 'eqhealth']);
+assert.deepStrictEqual(sc(['fuel']), ['fuel']);
+assert.deepStrictEqual(sc(['fuel', 'maintenance']), ['maintenance', 'eqhealth', 'fuel']);
+assert.deepStrictEqual(sc(['maintenance', 'hr']), ['maintenance', 'eqhealth']);   // hr has no screens listed
+assert.strictEqual(sc(['hr']), null); assert.strictEqual(sc([]), null); assert.strictEqual(mtScreens({}), null); assert.strictEqual(mtScreens(null), null);
+assert.strictEqual(sc(['maintenance'], { is_admin: true }), null); assert.strictEqual(sc(['fuel'], { role: 'Owner' }), null);
 console.log('maintenance tests passed');

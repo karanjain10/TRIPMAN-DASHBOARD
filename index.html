@@ -10123,6 +10123,7 @@
         const cnEl = document.getElementById('topbar-company-name');
         if (cnEl) cnEl.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
         updateAdminUI();
+        await loadOwnDepartments();
         initApp();
       } catch (e) {
         errEl.textContent = 'Connection error. Check your network.';
@@ -10141,7 +10142,7 @@
       selectSite(availableSites[0].id || availableSites[0]._id);
     }
 
-    function selectSite(siteId) {
+    async function selectSite(siteId) {
       currentSiteId = siteId;
       localStorage.setItem('tripman_site_id', currentSiteId || '');
       document.getElementById('login-screen').style.display = 'none';
@@ -10150,6 +10151,7 @@
       const cnEl2 = document.getElementById('topbar-company-name');
       if (cnEl2) cnEl2.textContent = currentCompanyName ? currentCompanyName + ' · ' : '';
       updateAdminUI();
+      await loadOwnDepartments();
       initApp();
     }
 
@@ -10180,8 +10182,8 @@
     }
 
     async function initApp() {
-      if (mtOnly()) return openMaintenancePage(); // skip the dashboard's own data load
-      if (fuelOnly()) return openFuelPage();
+      const scr = deptScreens(); // a department login lands on its first screen and skips the dashboard's own data load
+      if (scr) return ({ maintenance: openMaintenancePage, eqhealth: openEqHealthPage, fuel: openFuelPage })[scr[0]]();
       ovSkeleton();
       await Promise.all([loadVehicles(), loadDrivers(), loadWorkers(), loadMachines(), loadOperators(), lfLoad(), loadAssignmentsForLookup()]);
       await loadTrips(true);
@@ -16526,13 +16528,13 @@
 
     // ── navigation ──
     function navGo(key) {
-      if (mtOnly() && key !== 'maintenance' && key !== 'eqhealth') return; // a maintenance login sees these two pages only
-      if (fuelOnly()) return;                                             // a fuel login sees Fuel reports only
+      const scr = deptScreens();
+      if (scr && !scr.includes(key)) return; // a department login sees only its own screens
       closeNav();
       if (key === 'overview') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       const targets = {
         reports: openReportsHub, loadfactor: openLfPage, haul: openHaulPage, cutoff: openCutoffChooser,
-        deployments: openDeploymentsPage, eqhealth: openEqHealthPage, maintenance: openMaintenancePage, livemap: openLiveMapPage,
+        deployments: openDeploymentsPage, eqhealth: openEqHealthPage, fuel: openFuelPage, maintenance: openMaintenancePage, livemap: openLiveMapPage,
         compliance: openCompliancePage, changeover: openChangeoverPage, handover: openHandoverPage,
         manual: openManualTripPage, workers: openWorkersPage, manage: openManagePage, bulk: openBulkPage, drilling: openDrillPage, control: openControlPage
       };
@@ -16555,7 +16557,7 @@
       return '#' + key + (from ? `?from=${from}&to=${document.getElementById(ids[1]).value || from}` : '');
     }
     function navFromHash() {
-      if (mtOnly() || fuelOnly()) return;
+      if (deptLocked()) return;
       const [key, qs] = location.hash.slice(1).split('?');
       const q = new URLSearchParams(qs), ids = _navDates[key];
       if (ids && /^\d{4}-\d{2}-\d{2}$/.test(q.get('from'))) {
@@ -17739,7 +17741,7 @@
     // ── command palette (⌘K / Ctrl+K) ──
     let _cmdk = { items: [], shown: [], sel: 0 };
     function ovCmdkOpen() {
-      if (mtOnly() || fuelOnly()) return;
+      if (deptLocked()) return;
       const nav = [...document.querySelectorAll('#app-nav .nav-item')].filter(b => b.style.display !== 'none').map(b => ({
         label: b.textContent.trim(), icon: (b.querySelector('.fi') || {}).className || 'fi fi-rr-apps', run: () => navGo(b.dataset.nav)
       }));
@@ -19526,8 +19528,8 @@
     // ── Page open / close ──────────────────────────────────────────────────────
 
     function openFuelPage() {
-      document.getElementById('fuel-back').style.display = fuelOnly() ? 'none' : '';
-      document.getElementById('fuel-out').style.display = fuelOnly() ? '' : 'none';
+      document.getElementById('fuel-back').style.display = deptLocked() ? 'none' : '';
+      document.getElementById('fuel-out').style.display = deptLocked() ? '' : 'none';
       document.getElementById('app').style.display = 'none';
       document.getElementById('reports-hub-page').style.display = 'none';
       document.getElementById('fuel-page').style.display = 'block';
@@ -20432,8 +20434,8 @@
 
     // ── open / close ──────────────────────────────────────────────────────────
     function openEqHealthPage() {
-      document.getElementById('eqh-back').style.display = mtOnly() ? 'none' : '';
-      document.getElementById('eqh-out').style.display = mtOnly() ? '' : 'none';
+      document.getElementById('eqh-back').style.display = deptLocked() ? 'none' : '';
+      document.getElementById('eqh-out').style.display = deptLocked() ? '' : 'none';
       document.getElementById('app').style.display = 'none';
       document.getElementById('eq-health-page').style.display = 'block';
       document.getElementById('eqh-date-label').textContent = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -27775,18 +27777,33 @@
       fixed.sort((a, b) => b.to - a.to);
       return { down, off, fixed };
     }
+    // Screens a worker's departments allow (the union), or null for no limit. Departments with no screens listed here
+    // (hr, production, other_1, other_2) add nothing, so a worker with only those keeps the full menu. Admins and owners are never limited.
+    const DEPT_SCREENS = { maintenance: ['maintenance', 'eqhealth'], fuel: ['fuel'] };
+    function mtScreens(u) {
+      if (!u || u.is_admin === true || String(u.role || '').toLowerCase() === 'owner' || !Array.isArray(u.departments)) return null;
+      const keys = Object.keys(DEPT_SCREENS).filter(d => u.departments.includes(d)).flatMap(d => DEPT_SCREENS[d]);
+      return keys.length ? keys : null;
+    }
+    // The signed-in worker's own record in the /workers list (by _id, else worker_id), or null.
+    const mtOwnRecord = (list, me) => (Array.isArray(list) ? list : []).find(w => w && me && ((w._id && w._id === me._id) || (w.worker_id && w.worker_id === me.worker_id))) || null;
     // mt:pure:end
 
-    const MT_FETCH_MS = 20000, MT_TICK_MS = 15000, MT_LOG_DAYS = 30, MT_ACK_KEY = 'tripman_mt_ack', MT_SOUND_KEY = 'tripman_mt_sound';
+    const MT_FETCH_MS = 20000, MT_TICK_MS = 15000, MT_LOG_DAYS = 30, MT_ACK_KEY = 'tripman_mt_ack', MT_SOUND_KEY = 'tripman_mt_sound', MT_HORN_BEATS = 30; // half a second each: 15 s, cut short when the popup is closed
     const MT_SRC = [['vehicles', 'vehicle', v => `Truck #${v.vehicle_number}`], ['machines', 'machine', m => m.machine_number || m.machine_id], ['others', 'other', o => o.vehicle_number]];
     let _mt = { fetchTimer: 0, tickTimer: 0, items: [], logs: [], st: null, seen: null, acked: new Set(), pop: '', extra: 0, sel: '', lastOk: 0, error: false, map: null, layer: null, fitKey: '', title: '', ctx: null, master: null, sound: false };
-    // The worker's `departments` list comes back at the top level of the login response. Locked to this page only when
-    // Maintenance is their one department; with several, the backend's route limits apply and the full menu stays.
-    // Maintenance: Maintenance and Equipment health only. Fuel: Fuel reports only.
-    const deptSole = () => !!currentUser && currentUser.is_admin !== true && String(currentUser.role || '').toLowerCase() !== 'owner'
-      && Array.isArray(currentUser.departments) && currentUser.departments.length === 1 ? currentUser.departments[0] : '';
-    const mtOnly = () => deptSole() === 'maintenance';
-    const fuelOnly = () => deptSole() === 'fuel';
+    // Which pages a department login may open: see mtScreens (Maintenance: Maintenance + Equipment health, Fuel: Fuel reports).
+    const deptScreens = () => mtScreens(currentUser), deptLocked = () => !!deptScreens();
+    // The login response may leave `departments` out; the workers list always has it (Worker permissions reads it there).
+    // Without it a maintenance login looked like "no department" and got the full menu.
+    async function loadOwnDepartments() {
+      if (!currentUser || Array.isArray(currentUser.departments)) return;
+      try {
+        const r = await apiFetch(`${API}/workers`); if (!r.ok) return;
+        const me = mtOwnRecord(await r.json(), currentUser);
+        if (me && Array.isArray(me.departments)) currentUser.departments = me.departments;
+      } catch (_) { }
+    }
     const mtClock = ms => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
     const mtSince = ms => isNaN(ms) ? 'time not recorded' : (new Date(ms).toDateString() === new Date().toDateString() ? 'since ' : 'since ' + new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ') + mtClock(ms);
     const mtAge = ms => isNaN(ms) ? '—' : eqhFmtDuration(Date.now() - ms);
@@ -27794,8 +27811,8 @@
     function openMaintenancePage() {
       document.getElementById('app').style.display = 'none';
       document.getElementById('maintenance-page').style.display = 'block';
-      document.getElementById('mt-back').style.display = mtOnly() ? 'none' : '';
-      document.getElementById('mt-out').style.display = mtOnly() ? '' : 'none';
+      document.getElementById('mt-back').style.display = deptLocked() ? 'none' : '';
+      document.getElementById('mt-out').style.display = deptLocked() ? '' : 'none';
       try { _mt.acked = new Set(JSON.parse(localStorage.getItem(MT_ACK_KEY) || '[]')); } catch (_) { _mt.acked = new Set(); }
       _mt.seen = null; _mt.st = null; _mt.pop = ''; _mt.sel = ''; _mt.fitKey = ''; _mt.title = document.title;
       mtSoundInit(); mtMap();
@@ -27943,7 +27960,7 @@
           <div class="btns"><button class="action-btn mt-primary" id="mt-d-ack">Acknowledge</button><button class="action-btn" id="mt-d-map">Show on map</button><button class="action-btn" id="mt-d-x">Close</button></div>
         </div>`;
     }
-    function mtClosePop() { _mt.pop = ''; _mt.extra = 0; const o = document.getElementById('mt-ov'); o.classList.remove('show'); o.setAttribute('aria-hidden', 'true'); }
+    function mtClosePop() { mtStopSound(); _mt.pop = ''; _mt.extra = 0; const o = document.getElementById('mt-ov'); o.classList.remove('show'); o.setAttribute('aria-hidden', 'true'); }
     function mtKey(e) { if (_mt.pop && e.key === 'Escape') mtClosePop(); }
     document.getElementById('mt-dlg').addEventListener('click', e => {
       const id = (e.target.closest('button') || {}).id, key = _mt.pop;
@@ -27974,7 +27991,7 @@
     function mtPlay(check) {
       if (!_mt.sound) return;
       mtStopSound(); _mt.master = _mt.ctx.createGain(); _mt.master.connect(_mt.ctx.destination);
-      if (check) { mtTone(523, 0, .3); mtTone(784, .35, .4); } else for (let i = 0; i < 8; i++) mtTone(i % 2 ? 370 : 440, i * .5, .48);
+      if (check) { mtTone(523, 0, .3); mtTone(784, .35, .4); } else for (let i = 0; i < MT_HORN_BEATS; i++) mtTone(i % 2 ? 370 : 440, i * .5, .48);
     }
     function mtAudio() {
       if (!_mt.ctx) _mt.ctx = new (window.AudioContext || window.webkitAudioContext)();

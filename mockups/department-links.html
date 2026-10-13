@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Department links mockup</title>
+<style>
+  :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--text:#1a1917;--text2:#6b6860;--accent:#1a3a5c;--new:#e8a020}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d0f12;--surface:#16191f;--border:#262a33;--text:#e6e9ee;--text2:#9aa0a6;--accent:#10b981}}
+  *{box-sizing:border-box} body{font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px 16px}
+  .wrap{max-width:900px;margin:0 auto} h1{font-size:18px;margin:0 0 6px} .note{color:var(--text2);margin:0 0 18px}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
+  .box h3{margin:0;padding:8px 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);border-bottom:1px solid var(--border)}
+  .top{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .sp{flex:1} .btn{border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;background:var(--surface)}
+  .btn.new{border:2px solid var(--new)} .out{color:var(--text2);font-size:12px}
+  .body{padding:10px 12px;color:var(--text2);font-size:13px}
+</style></head><body><div class="wrap">
+<h1>Worker with Maintenance and Fuel: two small link buttons</h1>
+<p class="note">Mockup only. The orange outline marks the two new buttons. They appear only for a worker who has both departments. Nobody else sees any change. There is no Back to the dashboard and no main menu.</p>
+<div class="box"><h3>Maintenance page (lands here first)</h3>
+  <div class="top"><b>Tripman</b><span>Maintenance</span><span class="sp"></span><span class="btn">Sound on</span><span class="btn">Equipment health</span><span class="btn new">Fuel reports</span><span class="out">Sign out</span></div>
+  <div class="body">Today's page. "Fuel reports" is the new button.</div></div>
+<div class="box"><h3>Fuel reports page</h3>
+  <div class="top"><b>Fuel Reports</b><span class="sp"></span><span class="btn new">Maintenance</span><span class="btn">↻ Refresh</span><span class="out">Sign out</span></div>
+  <div class="body">"Maintenance" is the new button. Equipment health stays one click further, through Maintenance.</div></div>
+<div class="box"><h3>Equipment health page</h3>
+  <div class="top"><b>Equipment health</b><span class="sp"></span><span class="btn">Maintenance screen</span><span class="out">Sign out</span></div>
+  <div class="body">Unchanged.</div></div>
+</div></body></html>
