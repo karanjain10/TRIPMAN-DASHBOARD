@@ -6448,6 +6448,34 @@
     .ctl-dlg { position:relative; width:min(440px,100%); box-shadow:0 20px 60px rgba(0,0,0,.35); outline:none; }
     .ctl-dlg .dep-live-card { cursor:default; transform:none; } .ctl-dlg .dep-live-card:hover { transform:none; box-shadow:none; }
     .ctl-x { position:absolute; top:10px; right:10px; width:30px; padding:0; justify-content:center; font-size:18px; }
+    /* breakdown strip: one slim line under the date, every entry a button that opens its details */
+    .ctl-bk { display:flex; flex-wrap:wrap; gap:6px 28px; align-items:center; margin:-4px 0 14px; font-size:13px; }
+    .ctl-bk:empty { display:none; }
+    .ctl-bk-g { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+    .ctl-bk-g > b { font-weight:600; display:inline-flex; align-items:center; gap:7px; } .ctl-bk-g > b i { width:8px; height:8px; border-radius:50%; }
+    .ctl-bk-g.d > b i { background:var(--c-bad-line); } .ctl-bk-g.r > b i { background:var(--ok); }
+    .ctl-bk-g .n { font-family:var(--font-mono); font-weight:500; }
+    .ctl-bk-ex { display:inline-flex; align-items:baseline; gap:6px; padding:2px 8px; border-radius:6px; background:var(--c-idle-bg); }
+    .ctl-bk-g.r .ctl-bk-ex { background:var(--c-ok-bg); }
+    .ctl-bk-ex.new { box-shadow:0 0 0 2px var(--c-warn-line); }
+    .ctl-bk-ex .e { font-size:12px; color:var(--text-secondary); }
+    .ctl-bk-t { font:inherit; font-family:var(--font-mono); font-weight:500; background:none; border:0; padding:0 2px; border-radius:4px; cursor:pointer; color:inherit; text-decoration:underline dotted; text-underline-offset:3px; }
+    .ctl-bk-t:hover { background:var(--surface); } .ctl-bk-t:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+    .ctl-bk-t.down { color:var(--bad); } .ctl-bk-t.back { color:var(--text-muted); font-weight:400; } .ctl-bk-t.ok { color:var(--ok); }
+    .ctl-bk-t sup { font-size:10px; color:var(--text-secondary); margin-left:1px; }
+    .ctl-bk-none { color:var(--text-secondary); }
+    .ctl-bkd { padding:0; overflow:hidden; background:var(--surface); }
+    .ctl-bkd-h { padding:14px 48px 12px 16px; border-bottom:1px solid var(--border); }
+    .ctl-bkd-h .l1 { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; } .ctl-bkd-h b { font-size:17px; font-weight:600; }
+    .ctl-bkd-h .sub { color:var(--text-secondary); font-size:12px; margin-top:2px; }
+    .ctl-bkd-st { font-size:11px; font-weight:700; letter-spacing:.06em; padding:2px 8px; border-radius:4px; }
+    .ctl-bkd-st.down { background:var(--c-bad-bg); color:var(--bad); } .ctl-bkd-st.ready { background:var(--c-ok-bg); color:var(--ok); } .ctl-bkd-st.back { background:var(--c-idle-bg); color:var(--text-secondary); }
+    .ctl-bkd dl { display:grid; grid-template-columns:110px 1fr; gap:8px 12px; padding:14px 16px; font-size:13px; }
+    .ctl-bkd dt { color:var(--text-secondary); } .ctl-bkd dd { min-width:0; overflow-wrap:anywhere; }
+    .ctl-bkd .loc { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .ctl-bkd .loc a { font-size:12px; padding:3px 8px; border:1px solid var(--border-strong); border-radius:6px; color:var(--text-primary); text-decoration:none; }
+    .ctl-bkd-tl { margin:0 16px 14px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:12px; display:grid; gap:4px; }
+    .ctl-bkd-tl div { display:flex; justify-content:space-between; gap:10px; } .ctl-bkd-tl span { color:var(--text-secondary); } .ctl-bkd-tl b { font-family:var(--font-mono); font-weight:500; }
     @media (max-width:980px) { .ctl-grid, .ctl-pace { grid-template-columns:1fr; } .ctl-pace-l { border-right:0; border-bottom:1px solid var(--border); } .ctl-body { padding:12px 16px 32px; } }
   </style>
 </head>
@@ -7537,6 +7565,7 @@
     </div>
     <div class="ctl-body">
       <div class="ctl-when" id="ctl-when"></div>
+      <div class="ctl-bk" id="ctl-bk" aria-label="Tippers deactivated this shift and tippers ready"></div>
       <div class="ctl-card ctl-pace" aria-label="Pace this shift">
         <div class="ctl-pace-l">
           <div class="ctl-eyebrow">Pace · this shift</div>
@@ -7570,6 +7599,12 @@
           <div class="ctl-foot">Excavators, dozers, loaders and other engine-hour machines. Tippers are left out: their fills are too uneven to estimate. Assumes each fill topped the tank up.</div>
         </aside>
         </div>
+      </div>
+    </div>
+    <div class="ctl-ov" id="ctl-bk-ov" aria-hidden="true">
+      <div class="ctl-dlg" role="dialog" aria-modal="true" aria-labelledby="ctl-bkd-t" tabindex="-1">
+        <div id="ctl-bk-card"></div>
+        <button class="action-btn ctl-x" id="ctl-bk-x" aria-label="Close"><i class="fi fi-rr-cross-small" aria-hidden="true"></i></button>
       </div>
     </div>
     <div class="ctl-ov" id="ctl-ov" aria-hidden="true">
@@ -27398,9 +27433,73 @@
     const CTL_ACK_KEY = 'tripman_ctl_ack', CTL_SOUND_KEY = 'tripman_ctl_sound';
     const CTL_START_H = { A: 6, B: 14, C: 22 };
     const CTL_DEP_INPUTS = ['dep-filter-date', 'dep-filter-type', 'dep-filter-search']; // Deployments filters we borrow
-    let _ctl = { fetchTimer: 0, tickTimer: 0, fuelTimer: 0, fuel: null, saved: null, scope: '', curves: undefined, seen: null, acked: new Set(), lastOk: 0, error: false, open: '', ctx: null, master: null, sound: false };
+    let _ctl = { fetchTimer: 0, tickTimer: 0, fuelTimer: 0, fuel: null, bkLogs: null, bkEv: null, bkSeen: null, bkFresh: {}, bkOpen: '', saved: null, scope: '', curves: undefined, seen: null, acked: new Set(), lastOk: 0, error: false, open: '', ctx: null, master: null, sound: false };
     const ctlEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const ctlShiftStart = (date, shift) => new Date(`${date}T${ovPad(CTL_START_H[shift])}:00:00`);
+
+    // Breakdown strip rules. Uses the Maintenance rules (mtMs, mtBreakdown, mtReason, mtNotes, mtLoc). Tests: tests/control-room-breakdowns.test.js
+    // bk:pure:start
+    // dead = tippers deactivated in the running shift (latest breakdown of each); ready = tippers reactivated in the running shift that have
+    // not logged a trip since. Off-duty reasons (idle, service, other site) are not breakdowns. A tipper that broke down in an earlier shift
+    // and came back in this one is only in `ready`.
+    // logs = equipment status logs, tippers = { vehicle _id: tipper number }, start = shift start (ms), lastTrip = { number: ms },
+    // exOf = (vehicle _id, ms) => the excavator it was under, or ''.
+    const BK_REPEAT_MS = 7 * 864e5;
+    const bkShift = ms => { const h = new Date(ms).getHours(); return h >= 22 || h < 6 ? 'C' : h >= 14 ? 'B' : 'A'; };
+    function bkEvents(logs, tippers, start, lastTrip, exOf) {
+      const by = {}, dead = [], ready = [];
+      [...logs].sort((a, b) => mtMs(a.timestamp) - mtMs(b.timestamp)).forEach(l => { const id = String(l.entity_id); if (tippers[id]) (by[id] = by[id] || []).push(l); });
+      Object.keys(by).forEach(id => {
+        const xs = by[id], n = String(tippers[id]), pairs = [];
+        let open = null;
+        xs.forEach(l => {
+          if (l.action === 'DEACTIVATED') open = l;
+          else if (l.action === 'ACTIVATED' && open) { pairs.push([open, l]); open = null; }
+        });
+        if (open) pairs.push([open, null]);
+        const mk = (d, u) => {
+          const at = mtMs(d.timestamp), up = u ? mtMs(u.timestamp) : 0, lt = lastTrip[n] || 0;
+          return { key: `${id}:${d.timestamp}`, id, n, ex: exOf(id, at) || '', reason: mtReason(d), notes: mtNotes(d), by: d.performed_by_name || '', at, shift: bkShift(at),
+            loc: mtLoc(d.location), up, upBy: u ? u.performed_by_name || '' : '', trip: up && lt > up ? lt : 0,
+            rep: xs.filter(l => mtBreakdown(l) && mtMs(l.timestamp) <= at && mtMs(l.timestamp) > at - BK_REPEAT_MS).length };
+        };
+        const inShift = pairs.filter(([d]) => mtBreakdown(d) && mtMs(d.timestamp) >= start);
+        if (inShift.length) dead.push(mk(...inShift[inShift.length - 1]));
+        const last = pairs[pairs.length - 1]; // closed = the tipper is active now
+        if (last && last[1] && mtBreakdown(last[0]) && mtMs(last[1].timestamp) >= start) { const e = mk(last[0], last[1]); if (!e.trip) ready.push(e); }
+      });
+      return { dead: dead.sort((a, b) => b.at - a.at), ready: ready.sort((a, b) => b.up - a.up) };
+    }
+    // bk:pure:end
+
+    // The excavator a tipper was under when it was deactivated. A deactivated tipper leaves its excavator's list, so look at the earlier
+    // versions of the assignment rows first, then at the machine_id of the tipper's last trip. '' when neither knows.
+    function ctlExcavatorOf(id, atMs) {
+      const num = String(_depVehicleIdMap[id] || ''), at = d => Date.parse(d.deployed_since) || 0;
+      const rows = [..._depLiveData, ..._depHistoryData].filter(d => (d.equipment_type || '').toLowerCase() === 'excavator' && Array.isArray(d.truck_ids)
+        && d.truck_ids.some(t => String(t) === id || (num && String(t) === num))).sort((a, b) => at(b) - at(a));
+      const pick = rows.find(d => at(d) <= atMs + 60000) || rows[0];
+      if (pick && pick.truck_number) return String(pick.truck_number);
+      const trip = _depRawTrips.filter(t => String(t.vehicle_id) === id && t.machine_id && Date.parse(t.timestamp) <= atMs).sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+      const m = trip && allMachines.find(x => String(x._id) === String(trip.machine_id));
+      return m ? String(m.machine_number || m.machine_id || '') : '';
+    }
+    async function ctlLoadBreakdowns() {
+      try {
+        const from = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10); // 8 days: the "2nd breakdown in 7 days" count
+        const r = await apiFetch(`${API}/equipment-status-logs?from_date=${from}&limit=1000`);
+        if (!r.ok) return; // keep the last good list rather than show "nothing"
+        const d = await r.json();
+        _ctl.bkLogs = Array.isArray(d) ? d : (d.logs || []);
+      } catch (_) { }
+    }
+    function ctlBkEvents(start) {
+      if (!_ctl.bkLogs) return null;
+      const tippers = {}, last = {};
+      allVehicles.forEach(v => { if (!v.retired && (eqClassify(v) || {}).name === 'tipper') tippers[String(v._id)] = String(_depVehicleIdMap[String(v._id)] || v.vehicle_number); });
+      _depRawTrips.forEach(t => { const num = _depVehicleIdMap[String(t.vehicle_id)], ts = Date.parse(t.timestamp); if (num && ts > (last[num] || 0)) last[num] = ts; });
+      return bkEvents(_ctl.bkLogs, tippers, start.getTime(), last, ctlExcavatorOf);
+    }
 
     function openControlPage() {
       if (!_ctl.saved) _ctl.saved = { shift: _depCurrentShift, vals: CTL_DEP_INPUTS.map(id => document.getElementById(id).value) };
@@ -27419,7 +27518,7 @@
     function ctlStop() {
       clearInterval(_ctl.fetchTimer); clearInterval(_ctl.tickTimer); clearInterval(_ctl.fuelTimer);
       document.removeEventListener('keydown', ctlKey);
-      ctlClosePopup(); ctlStopSound();
+      ctlClosePopup(); ctlBkClose(); ctlStopSound();
       if (_ctl.saved) { // hand the Deployments page its own filters back
         CTL_DEP_INPUTS.forEach((id, i) => { document.getElementById(id).value = _ctl.saved.vals[i]; });
         _depCurrentShift = _ctl.saved.shift; _ctl.saved = null;
@@ -27439,12 +27538,12 @@
       document.getElementById('dep-filter-search').value = '';
       _depCurrentShift = shift;
       if (scope !== _ctl.scope) { // new page open or the shift changed
-        _ctl.scope = scope; _ctl.seen = null; _ctl.curves = undefined; _ctl.lastOk = 0;
+        _ctl.scope = scope; _ctl.seen = null; _ctl.bkSeen = null; _ctl.bkFresh = {}; _ctl.curves = undefined; _ctl.lastOk = 0;
         try { const o = JSON.parse(localStorage.getItem(CTL_ACK_KEY) || '{}'); _ctl.acked = new Set(o.scope === scope ? o.keys : []); } catch (_) { _ctl.acked = new Set(); }
         ctlLoadHistory(date, shift, scope);
       }
       const before = _depLiveData;
-      await depSilentRefresh();
+      await Promise.all([depSilentRefresh(), ctlLoadBreakdowns()]);
       _ctl.error = _depLiveData === before; // depSilentRefresh swallows errors; the same array means it failed
       if (!_ctl.error) _ctl.lastOk = Date.now();
       ctlRender();
@@ -27597,10 +27696,60 @@
         + (done.length ? `<details><summary>Acknowledged (${done.length})</summary>${done.map(a => row(a, true)).join('')}</details>` : '');
       const cnt = document.getElementById('ctl-cnt'); cnt.textContent = open.length; cnt.className = 'ctl-count' + (open.length ? '' : ' z');
 
+      ctlRenderBk(start, shift);
       ctlRenderFuel();
       ctlRenderPace(start, elapsed, shift);
       ovRollApply(document.getElementById('control-page'));
       if (_ctl.open) ctlFillPopup();
+    }
+
+    // The strip. Sound and the orange outline come once per new entry; the first look at a shift only records what is already there.
+    function ctlRenderBk(start, shift) {
+      const el = document.getElementById('ctl-bk'), ev = ctlBkEvents(start);
+      _ctl.bkEv = ev;
+      if (!ev) { el.innerHTML = ''; return; }
+      const E = ctlEsc, now = Date.now(), keys = [...ev.dead.map(e => 'd' + e.key), ...ev.ready.map(e => 'r' + e.key)];
+      if (_ctl.bkSeen === null) _ctl.bkSeen = new Set(keys);
+      else {
+        const fresh = keys.filter(k => !_ctl.bkSeen.has(k));
+        fresh.forEach(k => { _ctl.bkSeen.add(k); _ctl.bkFresh[k] = now + 6000; });
+        if (fresh.length && now - (_ctl.playedAt || 0) > 6000) ctlPlay(fresh.some(k => k[0] === 'd') ? 'dead' : 'ready'); // never cut a 30/45 min alert short
+      }
+      const group = (list, pre, mark) => {
+        const by = {}; list.forEach(e => (by[e.ex] = by[e.ex] || []).push(e));
+        return Object.keys(by).sort((a, b) => (a === '') - (b === '') || a.localeCompare(b, undefined, { numeric: true })).map(x => `<span class="ctl-bk-ex${by[x].some(e => _ctl.bkFresh[pre + e.key] > now) ? ' new' : ''}"><span class="e">${x ? E(x) : 'excavator not known'}</span>${by[x].map(e =>
+          `<button class="ctl-bk-t ${mark(e)}" data-k="${E(e.key)}" title="Tipper ${E(e.n)}: ${E(e.reason || 'no reason given')}. Click for details.">${E(e.n)}${e.shift !== shift ? `<sup>${e.shift}</sup>` : ''}</button>`).join(' ')}</span>`).join('');
+      };
+      el.innerHTML = `<div class="ctl-bk-g d"><b><i></i>Deactivated <span class="n">${ev.dead.length}</span> ${ev.dead.length === 1 ? 'tipper' : 'tippers'}</b>${ev.dead.length ? group(ev.dead, 'd', e => e.up ? 'back' : 'down') : '<span class="ctl-bk-none">none this shift</span>'}</div>`
+        + `<div class="ctl-bk-g r"><b><i></i>Ready <span class="n">${ev.ready.length}</span></b>${ev.ready.length ? group(ev.ready, 'r', () => 'ok') : '<span class="ctl-bk-none">none waiting for a first trip</span>'}</div>`;
+      if (_ctl.bkOpen) ctlBkFill();
+    }
+    function ctlBkFill() {
+      const e = _ctl.bkEv && [..._ctl.bkEv.dead, ..._ctl.bkEv.ready].find(x => x.key === _ctl.bkOpen);
+      if (!e) return ctlBkClose();
+      const E = ctlEsc, st = e.up ? (e.trip ? 'back' : 'ready') : 'down', end = e.up || Date.now();
+      const acc = e.loc ? mtAccLevel(e.loc.acc) : '';
+      document.getElementById('ctl-bk-card').innerHTML = `<div class="ctl-card ctl-bkd">
+        <div class="ctl-bkd-h"><div class="l1"><b id="ctl-bkd-t">Tipper ${E(e.n)}</b><span class="ctl-bkd-st ${st}">${st === 'down' ? 'DOWN ' + E(eqhFmtDuration(end - e.at)).toUpperCase() : st === 'ready' ? 'READY' : 'BACK, TRIPPED'}</span></div>
+          <div class="sub">${e.ex ? 'Deployed under ' + E(e.ex) : 'Excavator not known'}</div></div>
+        <dl>
+          <dt>Reason</dt><dd>${E(e.reason || 'No reason given')}${e.notes ? ' · ' + E(e.notes) : ''}</dd>
+          <dt>Reported by</dt><dd>${E(e.by || 'Not recorded')}</dd>
+          <dt>Deactivated</dt><dd>${mtClock(e.at)} · Shift ${e.shift}</dd>
+          <dt>Where</dt><dd class="loc">${e.loc ? `<span>${e.loc.acc == null ? 'accuracy unknown' : '±' + Math.round(e.loc.acc) + ' m'}${acc === 'poor' ? ', rough' : ''}</span><span style="font-family:var(--font-mono)">${e.loc.lat.toFixed(5)}, ${e.loc.lng.toFixed(5)}</span><a href="https://www.google.com/maps?q=${e.loc.lat},${e.loc.lng}" target="_blank" rel="noopener">Open in Maps ↗</a>` : '<span class="ctl-bk-none">No location. The phone gave no fix.</span>'}</dd>
+          ${e.rep > 1 ? `<dt>Repeat</dt><dd>${e.rep === 2 ? '2nd' : e.rep + 'th'} breakdown of this tipper in 7 days</dd>` : ''}
+        </dl>
+        <div class="ctl-bkd-tl">
+          <div><span>Deactivated</span><b>${mtClock(e.at)}</b></div>
+          <div><span>Ready</span><b>${e.up ? mtClock(e.up) + (e.upBy ? ' · by ' + E(e.upBy) : '') : 'not yet'}</b></div>
+          <div><span>First trip after</span><b>${e.trip ? mtClock(e.trip) : e.up ? 'none yet' : '—'}</b></div>
+          <div><span>Down for</span><b>${E(eqhFmtDuration(end - e.at))}</b></div>
+        </div></div>`;
+    }
+    function ctlBkOpen(key) { _ctl.bkOpen = key; ctlBkFill(); if (!_ctl.bkOpen) return; const o = document.getElementById('ctl-bk-ov'); o.classList.add('show'); o.setAttribute('aria-hidden', 'false'); document.getElementById('ctl-bk-x').focus(); }
+    function ctlBkClose() {
+      if (!_ctl.bkOpen) return;
+      _ctl.bkOpen = ''; const o = document.getElementById('ctl-bk-ov'); o.classList.remove('show'); o.setAttribute('aria-hidden', 'true');
     }
 
     function ctlRenderPace(start, elapsed, shift) {
@@ -27670,6 +27819,7 @@
       const tile = [...document.querySelectorAll('.ctl-ex')].find(t => t.dataset.ex === id); if (tile) tile.focus();
     }
     function ctlKey(e) {
+      if (_ctl.bkOpen) { if (e.key === 'Escape') ctlBkClose(); else if (e.key === 'Tab') { e.preventDefault(); document.getElementById('ctl-bk-x').focus(); } return; }
       if (!_ctl.open) return;
       if (e.key === 'Escape') ctlClosePopup(); else if (e.key === 'Tab') { e.preventDefault(); document.getElementById('ctl-x').focus(); }
     }
@@ -27678,6 +27828,9 @@
     document.getElementById('ctl-al').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b) ctlAck(b.dataset.k); });
     document.getElementById('ctl-ov').addEventListener('click', e => { if (e.target.id === 'ctl-ov') ctlClosePopup(); });
     document.getElementById('ctl-x').addEventListener('click', ctlClosePopup);
+    document.getElementById('ctl-bk').addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b) ctlBkOpen(b.dataset.k); });
+    document.getElementById('ctl-bk-ov').addEventListener('click', e => { if (e.target.id === 'ctl-bk-ov') ctlBkClose(); });
+    document.getElementById('ctl-bk-x').addEventListener('click', ctlBkClose);
 
     // Sound: soft chime x3 at 30 min, siren at 45 min. Browsers only start audio after a click.
     // ctl.sound is "wanted AND running"; the wish is remembered in localStorage.
@@ -27691,12 +27844,15 @@
     }
     const CTL_SOUNDS = {
       check: () => [[523, 0, .45], [784, .4, .6]].forEach(([f, at, dur]) => ctlTone({ f, at, dur, vol: .3 })), // 1 s "sound works" ping
+      dead: () => [[659, 0, .45], [494, .28, .6]].forEach(([f, at, dur]) => ctlTone({ f, at, dur, vol: .22 })), // a tipper was deactivated: soft two-note ping
+      ready: () => ctlTone({ f: 784, at: 0, dur: .55, vol: .2 }),                                                // a tipper is ready: one brighter ping
       warn: () => [523, 659, 784, 523, 659, 784, 523, 659, 784].forEach((f, i) => ctlTone({ f, at: i * .4, dur: .55, vol: .3 })),
       alert: () => [0, 1, 2].forEach(k => { ctlTone({ f: 650, to: 1050, at: k * 1.7, dur: .85, vol: .2, type: 'sawtooth', env: 'gate' }); ctlTone({ f: 1050, to: 650, at: k * 1.7 + .85, dur: .85, vol: .2, type: 'sawtooth', env: 'gate' }); }),
     };
     function ctlStopSound() { if (_ctl.master) { _ctl.master.gain.cancelScheduledValues(_ctl.ctx.currentTime); _ctl.master.gain.setTargetAtTime(0, _ctl.ctx.currentTime, .03); } }
     function ctlPlay(kind) {
       if (!_ctl.sound) return;
+      _ctl.playedAt = Date.now();
       ctlStopSound(); _ctl.master = _ctl.ctx.createGain(); _ctl.master.connect(_ctl.ctx.destination); CTL_SOUNDS[kind]();
     }
     function ctlAudio() { // true when the browser lets us make sound

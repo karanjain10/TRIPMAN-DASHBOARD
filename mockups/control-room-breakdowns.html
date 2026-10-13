@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control room breakdowns mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f5f4f0; --surface:#fff; --border:#e2e0d8; --border-strong:#c8c5bb;
+    --text:#1a1917; --text2:#6b6860; --text3:#9b9890; --accent:#1a3a5c; --accent-light:#e8eef5;
+    --ok:#1f7a45; --ok-bg:#e6f4ec; --ok-line:#27ae60; --warn-line:#e8a020;
+    --bad:#a32d2d; --bad-bg:#fbe7e5; --bad-line:#c0392b; --idle-bg:#eeede8;
+    --sans:'DM Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  [data-theme="dark"] {
+    --bg:#0d0f12; --surface:#16191f; --border:#262a33; --border-strong:#363b45;
+    --text:#e6e9ee; --text2:#9aa0a6; --text3:#646a73; --accent:#10b981; --accent-light:#064e3b;
+    --ok:#5fd493; --ok-bg:#12301f; --ok-line:#34d399; --warn-line:#f59e0b;
+    --bad:#ff8a84; --bad-bg:#431a18; --bad-line:#ef4444; --idle-bg:#1d2129;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font:14px/1.45 var(--sans); background:var(--bg); color:var(--text); padding:0 0 40px; }
+  .num { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-0.02em; }
+  button { font:inherit; color:inherit; background:var(--surface); border:1px solid var(--border-strong); border-radius:6px; padding:6px 12px; cursor:pointer; }
+  button:hover { border-color:var(--text2); }
+  .mock { background:var(--accent-light); border-bottom:1px dashed var(--border-strong); padding:10px 24px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; color:var(--text2); }
+  .mock b { color:var(--text); font-weight:500; }
+  .wrap { max-width:1280px; margin:0 auto; padding:0 24px; }
+  @media (max-width:700px) { .wrap { padding:0 16px; } }
+  .top { display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:18px 0 10px; }
+  .logo { background:#1e1e1e; color:#e8a24c; font-weight:700; font-size:18px; padding:6px 12px; border-radius:6px; }
+  .top h1 { font-size:18px; font-weight:600; }
+  .top .when { color:var(--text2); } .top .sp { flex:1; }
+  .live { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+  .live i { width:8px; height:8px; border-radius:50%; background:var(--ok); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:var(--text2); }
+
+  /* the new strip: one slim line under the title row, all details visible, nothing to click */
+  .strip { display:flex; flex-wrap:wrap; gap:6px 28px; align-items:center; padding:6px 0 14px; font-size:13px; }
+  .grp { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+  .grp > b { font-weight:600; display:inline-flex; align-items:center; gap:7px; }
+  .grp > b i { width:8px; height:8px; border-radius:50%; }
+  .grp.d > b i { background:var(--bad-line); } .grp.r > b i { background:var(--ok-line); }
+  .grp .n { font-family:var(--mono); font-weight:500; }
+  .ex { display:inline-flex; align-items:baseline; gap:6px; padding:2px 8px; border-radius:6px; background:var(--idle-bg); }
+  .ex .e { font-size:12px; color:var(--text2); }
+  .ex .t { font-family:var(--mono); font-weight:500; }
+  .ex .t.down { color:var(--bad); }
+  .ex .t.back { color:var(--text3); font-weight:400; }
+  .ex .t sup { font-size:10px; color:var(--text2); margin-left:1px; }
+  .grp.r .ex { background:var(--ok-bg); } .grp.r .ex .t { color:var(--ok); }
+  .ex.new { box-shadow:0 0 0 2px var(--warn-line); }
+  .none { color:var(--text2); }
+  .ex .t { font:inherit; font-family:var(--mono); font-weight:500; background:none; border:0; padding:0 2px; border-radius:4px; cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
+  .ex .t:hover { background:var(--surface); } .ex .t:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; align-items:flex-start; justify-content:center; padding:48px 16px; overflow:auto; }
+  .ov.show { display:flex; }
+  .dlg { position:relative; width:min(440px,100%); background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 20px 60px rgba(0,0,0,.35); outline:none; }
+  .dlg-h { padding:14px 48px 12px 16px; border-bottom:1px solid var(--border); }
+  .dlg-h .l1 { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .dlg-h b { font-size:17px; font-weight:600; }
+  .dlg-h .sub { color:var(--text2); font-size:12px; margin-top:2px; }
+  .st { font-size:11px; font-weight:700; letter-spacing:.06em; padding:2px 8px; border-radius:4px; }
+  .st.down { background:var(--bad-bg); color:var(--bad); } .st.ready { background:var(--ok-bg); color:var(--ok); } .st.back { background:var(--idle-bg); color:var(--text2); }
+  .dlg .x { position:absolute; top:10px; right:10px; width:30px; height:30px; padding:0; font-size:18px; line-height:1; }
+  .dl { display:grid; grid-template-columns:110px 1fr; gap:8px 12px; padding:14px 16px; font-size:13px; }
+  .dl dt { color:var(--text2); } .dl dd { min-width:0; overflow-wrap:anywhere; }
+  .dl .loc { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .acc { font-size:11px; font-weight:600; padding:1px 6px; border-radius:4px; background:var(--ok-bg); color:var(--ok); }
+  .tl { margin:0 16px 14px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:12px; display:grid; gap:4px; }
+  .tl div { display:flex; justify-content:space-between; gap:10px; } .tl span:first-child { color:var(--text2); }
+  .tl .on b { color:var(--ok); }
+  .dlg a.btn, .dlg button.sm { font-size:12px; padding:3px 8px; border:1px solid var(--border-strong); border-radius:6px; color:var(--text); text-decoration:none; background:var(--surface); cursor:pointer; }
+
+  .sec-head { padding:0 2px 8px; }
+  .exgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .exc { padding:12px 14px 14px; border-left:4px solid var(--ok-line); }
+  .ex-h { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .ex-h b { font-size:15px; font-weight:600; }
+  .mat { font-size:12px; color:var(--text2); display:inline-flex; align-items:center; gap:5px; }
+  .mat i { width:8px; height:8px; border-radius:50%; }
+  .ex-s { font-size:12px; color:var(--text2); margin:3px 0 10px; } .ex-s b { color:var(--text); font-weight:500; }
+  .dots { display:flex; flex-wrap:wrap; gap:6px; }
+  .tp { width:70px; padding:5px 7px 6px; border-radius:6px; border-left:4px solid var(--ok-line); line-height:1.2; }
+  .tp .l1 { display:flex; justify-content:space-between; align-items:baseline; }
+  .tp .n { font-size:14px; font-weight:500; } .tp .m { font-size:12px; color:var(--text2); }
+  .tp .tb { display:block; font-size:11px; color:var(--ok); margin-top:1px; }
+  .notes { margin-top:20px; padding:14px 16px; font-size:13px; color:var(--text2); }
+  .notes b { color:var(--text); font-weight:500; } .notes li { margin:4px 0 4px 18px; }
+</style>
+</head>
+<body>
+<div class="mock">
+  <b>Mockup, sample data.</b>
+  <button id="snd">Sound off, click to enable</button>
+  <button id="dead">Tipper 41 (under EX-05) is deactivated</button>
+  <button id="react">Maintenance reactivates tipper 24</button>
+  <button id="trip">Tipper 33 logs a trip</button>
+  <button id="reset">Reset</button>
+  <button id="theme">Light / dark</button>
+  <span>Shift B started 14:00. It is 15:10. Click a number for the full details.</span>
+</div>
+
+<div class="ov" id="ov" aria-hidden="true"><div class="dlg" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-t" tabindex="-1"><div id="dlg-c"></div><button class="x" id="dlg-x" aria-label="Close">×</button></div></div>
+
+<div class="wrap">
+  <div class="top">
+    <span class="logo">Tripman</span>
+    <h1>Control room</h1>
+    <span class="when">Mon 12 Oct 2026 · Shift B · 15:10 · 6h 50m left</span>
+    <span class="sp"></span>
+    <span class="live"><i></i>Updated 12s ago · refreshes every 60s</span>
+  </div>
+
+  <div class="strip" id="strip" aria-label="Tippers deactivated this shift and tippers ready"></div>
+
+  <div class="sec-head"><span class="eyebrow">Deployments · tippers by excavator</span></div>
+  <div class="exgrid">
+    <div class="card exc"><div class="ex-h"><b>EX-01</b><span class="mat"><i style="background:#c0392b"></i>Hard OB</span></div><div class="ex-s"><b class="num">42</b> trips</div>
+      <div class="dots"><div class="tp"><span class="l1"><span class="n num">31</span><span class="m num">11</span></span><span class="tb num">4 min</span></div><div class="tp"><span class="l1"><span class="n num">34</span><span class="m num">10</span></span><span class="tb num">9 min</span></div></div></div>
+    <div class="card exc"><div class="ex-h"><b>EX-03</b><span class="mat"><i style="background:#e8a020"></i>Soft OB</span></div><div class="ex-s"><b class="num">19</b> trips</div>
+      <div class="dots"><div class="tp"><span class="l1"><span class="n num">11</span><span class="m num">5</span></span><span class="tb num">6 min</span></div></div></div>
+    <div class="card exc"><div class="ex-h"><b>EX-05</b><span class="mat"><i style="background:#7a7a7a"></i>Coal</span></div><div class="ex-s"><b class="num">20</b> trips</div>
+      <div class="dots"><div class="tp"><span class="l1"><span class="n num">46</span><span class="m num">7</span></span><span class="tb num">15 min</span></div><div class="tp"><span class="l1"><span class="n num">27</span><span class="m num">6</span></span><span class="tb num">8 min</span></div></div></div>
+  </div>
+
+  <div class="card notes">
+    <b>What is new</b>
+    <ul>
+      <li><b>One slim line under the title row</b>, nothing to click. Left: tippers deactivated this shift, grouped by the excavator each was under. Right: tippers that maintenance has reactivated and are <b>Ready</b>, grouped the same way. A tipper leaves Ready as soon as it logs its first trip after being reactivated.</li>
+      <li>Red number = still down. Grey = already back (it also shows under Ready until its first trip). "A" next to a number = it broke down in Shift A. <b>Click a number</b> and the full details open in the same kind of window as an excavator card.</li>
+      <li>A new entry gets an orange outline for a few seconds, together with a small sound: a soft two-note ping for deactivated, a brighter single ping when a tipper turns Ready.</li>
+      <li>The excavator tiles are unchanged: a deactivated tipper has left its excavator, which is why the strip says where it was.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const NOW = 15 * 60 + 10, START = 14 * 60;
+const clock = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+const dur = m => m >= 60 ? Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0') + ' m' : m + ' m';
+const shiftOf = m => m >= 22 * 60 || m < 6 * 60 ? 'C' : m >= 14 * 60 ? 'B' : 'A';
+// n = tipper number, ex = the excavator it was deployed under, since = deactivated, back = reactivated
+const MAT = { 'EX-01': 'Hard OB', 'EX-03': 'Soft OB', 'EX-05': 'Coal' };
+const INIT = () => [
+  { n: '52', ex: 'EX-01', reason: 'Tyre puncture', notes: 'Rear left, no spare on site', since: 14 * 60 + 41, by: 'Dinesh', loc: { lat: 21.14872, lng: 79.08821, acc: 12 }, rep: 2 },
+  { n: '24', ex: 'EX-03', reason: 'Engine overheating', notes: '', since: 14 * 60 + 2, by: 'Ramesh', loc: { lat: 21.15310, lng: 79.09440, acc: 48 }, rep: 1 },
+  { n: '33', ex: 'EX-03', reason: 'Brake issue', notes: 'Pedal soft, checked by Imran', since: 14 * 60 + 20, back: 14 * 60 + 55, by: 'Imran', backBy: 'Suresh', loc: null, rep: 1 },
+  { n: '11', ex: 'EX-05', reason: 'Hydraulic hose', notes: 'Hose replaced', since: 12 * 60 + 43, back: 14 * 60 + 48, by: 'Suresh', backBy: 'Suresh', loc: { lat: 21.14105, lng: 79.08200, acc: 20 }, rep: 1 },
+];
+let U = INIT(), fresh = new Set();
+
+const tip = u => `Tipper ${u.n} · ${u.reason} · down ${clock(u.since)}${u.back ? ', ready since ' + clock(u.back) + (u.trip ? ', first trip ' + clock(u.trip) : ', no trip yet') : ', ' + dur(NOW - u.since) + ' so far'} · reported by ${u.by}`;
+function group(list, cls, mark) {
+  const by = {}; list.forEach(u => (by[u.ex] = by[u.ex] || []).push(u));
+  return Object.keys(by).sort().map(e => `<span class="ex${by[e].some(u => fresh.has(u.n + cls)) ? ' new' : ''}"><span class="e">${e}</span>${by[e].map(u =>
+    `<button class="t ${mark(u)}" data-n="${u.n}" title="${tip(u)}">${u.n}${u.since < START ? '<sup>' + shiftOf(u.since) + '</sup>' : ''}</button>`).join(' ')}</span>`).join('');
+}
+function render() {
+  const dead = U.filter(u => u.since >= START), back = U.filter(u => u.back && u.back >= START && !u.trip); // Ready until it logs a trip after being reactivated
+  document.getElementById('strip').innerHTML =
+    `<div class="grp d"><b><i></i>Deactivated <span class="n">${dead.length}</span> ${dead.length === 1 ? 'tipper' : 'tippers'}</b>${dead.length ? group(dead, 'd', u => u.back ? 'back' : 'down') : '<span class="none">none this shift</span>'}</div>`
+    + `<div class="grp r"><b><i></i>Ready <span class="n">${back.length}</span></b>${back.length ? group(back, 'r', () => 'ok') : '<span class="none">none waiting for a first trip</span>'}</div>`;
+}
+
+// details dialog, same overlay as the excavator card
+const OV = document.getElementById('ov');
+function openDetails(n) {
+  const u = U.find(x => x.n === n); if (!u) return;
+  const st = u.back ? (u.trip ? 'back' : 'ready') : 'down';
+  const stTxt = u.back ? (u.trip ? 'BACK, TRIPPED' : 'READY') : 'DOWN ' + dur(NOW - u.since).toUpperCase();
+  const acc = u.loc ? (u.loc.acc <= 25 ? 'good' : 'rough') : '';
+  document.getElementById('dlg-c').innerHTML = `
+    <div class="dlg-h"><div class="l1"><b id="dlg-t">Tipper ${u.n}</b><span class="st ${st}">${stTxt}</span></div><div class="sub">Deployed under ${u.ex} · ${MAT[u.ex]}</div></div>
+    <dl class="dl">
+      <dt>Reason</dt><dd>${u.reason}${u.notes ? ' · ' + u.notes : ''}</dd>
+      <dt>Reported by</dt><dd>${u.by}</dd>
+      <dt>Deactivated</dt><dd class="num">${clock(u.since)} · Shift ${shiftOf(u.since)}</dd>
+      <dt>Where</dt><dd class="loc">${u.loc ? `<span class="acc">±${u.loc.acc} m</span><span class="num">${u.loc.lat.toFixed(5)}, ${u.loc.lng.toFixed(5)}</span><a class="btn" href="https://www.google.com/maps?q=${u.loc.lat},${u.loc.lng}" target="_blank" rel="noopener">Open in Maps ↗</a>` : '<span style="color:var(--text2)">No location. The phone gave no fix.</span>'}</dd>
+      ${u.rep > 1 ? `<dt>Repeat</dt><dd>${u.rep === 2 ? '2nd' : u.rep + 'th'} breakdown of this tipper in 7 days</dd>` : ''}
+    </dl>
+    <div class="tl">
+      <div><span>Deactivated</span><b class="num">${clock(u.since)}</b></div>
+      <div class="${u.back ? 'on' : ''}"><span>Ready</span><b class="num">${u.back ? clock(u.back) + ' · by ' + u.backBy : 'not yet'}</b></div>
+      <div><span>First trip after</span><b class="num">${u.trip ? clock(u.trip) : u.back ? 'none yet' : '—'}</b></div>
+      <div><span>Down for</span><b class="num">${dur((u.back || NOW) - u.since)}</b></div>
+    </div>`;
+  OV.classList.add('show'); OV.setAttribute('aria-hidden', 'false'); document.getElementById('dlg-x').focus();
+}
+const closeDetails = () => { OV.classList.remove('show'); OV.setAttribute('aria-hidden', 'true'); };
+document.getElementById('strip').addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (b) openDetails(b.dataset.n); });
+document.getElementById('dlg-x').onclick = closeDetails;
+OV.addEventListener('click', e => { if (e.target === OV) closeDetails(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetails(); });
+
+// small sounds, the page's own Sound button decides
+let ctx, on = false;
+const tone = (f, at, d, vol) => {
+  const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime + at;
+  o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + d);
+  o.start(t); o.stop(t + d + .05);
+};
+const ping = kind => { if (!on) return; kind === 'dead' ? (tone(659, 0, .45, .22), tone(494, .28, .6, .22)) : tone(784, 0, .55, .2); };
+document.getElementById('snd').onclick = e => {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  ctx.resume().then(() => { on = !on; e.target.textContent = on ? 'Sound on' : 'Sound off, click to enable'; if (on) ping('back'); });
+};
+const flash = key => { fresh = new Set([key]); render(); setTimeout(() => { fresh = new Set(); render(); }, 6000); };
+document.getElementById('dead').onclick = () => {
+  if (U.some(u => u.n === '41')) return;
+  U.push({ n: '41', ex: 'EX-05', reason: 'Tyre puncture', notes: '', since: NOW, by: 'Dinesh', loc: null, rep: 1 }); flash('41d'); ping('dead');
+};
+document.getElementById('react').onclick = () => {
+  const u = U.find(x => x.n === '24'); if (!u || u.back) return;
+  u.back = NOW; u.backBy = 'Suresh'; flash('24r'); ping('back');
+};
+document.getElementById('trip').onclick = () => {
+  const u = U.find(x => x.n === '33'); if (!u || u.trip) return;
+  u.trip = NOW; render();
+};
+document.getElementById('reset').onclick = () => { U = INIT(); fresh = new Set(); render(); };
+document.getElementById('theme').onclick = () => { const h = document.documentElement; h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark'; };
+render();
+</script>
+</body>
+</html>
