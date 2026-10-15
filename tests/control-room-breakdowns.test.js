@@ -46,6 +46,16 @@ assert.strictEqual(r.dead.find(e => e.n === '29').rep, 3);                      
 assert.strictEqual(r.dead.find(e => e.n === '18').up, 0);                                                   // down again after being ready
 assert.strictEqual(r.ready.find(e => e.n === '24').ex, 'EX-03');
 
+// handover window: Shift B is still on screen at 22:10, so 22:05 logs (Shift C) stay out of it
+const END = new Date(2026, 9, 12, 22, 0).getTime();
+const hand = bkEvents([
+  log('a', 'DEACTIVATED', T(21, 50), { reason: 'Tyre' }),                                   // last minutes of B: stays
+  log('b', 'DEACTIVATED', T(22, 5), { reason: 'Engine' }),                                  // Shift C: not in B
+  log('c', 'DEACTIVATED', T(20, 0), { reason: 'Brake' }), log('c', 'ACTIVATED', T(22, 8)),  // back in C: not ready in B
+], tippers, START, {}, exOf, END);
+assert.deepStrictEqual(hand.dead.map(e => e.n).sort(), ['33', '52']); // 24 (22:05, Shift C) is left out
+assert.deepStrictEqual(hand.ready, []);
+
 // nothing at all
 assert.deepStrictEqual(run([]), { dead: [], ready: [] });
 console.log('control-room-breakdowns tests passed');

@@ -7534,7 +7534,7 @@
       <div class="mt-kpis" id="mt-kpis"></div>
       <div class="mt-grid">
         <section>
-          <div class="mt-sec-head"><span class="mt-eyebrow">Down now<span class="mt-count" id="mt-cnt"></span></span><span class="mt-note">new reports first, then longest down</span></div>
+          <div class="mt-sec-head"><span class="mt-eyebrow">Down now<span class="mt-count" id="mt-cnt"></span></span><span class="mt-note">newest first</span></div>
           <div id="mt-list"></div>
           <div class="mt-sec-head" style="padding-top:8px"><span class="mt-eyebrow">Back in service, last 24 hours</span></div>
           <div class="mt-card"><table class="mt-tbl" id="mt-fixed"></table></div>
@@ -27436,6 +27436,9 @@
     let _ctl = { fetchTimer: 0, tickTimer: 0, fuelTimer: 0, fuel: null, bkLogs: null, bkEv: null, bkSeen: null, bkFresh: {}, bkOpen: '', saved: null, scope: '', curves: undefined, seen: null, acked: new Set(), lastOk: 0, error: false, open: '', ctx: null, master: null, sound: false };
     const ctlEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const ctlShiftStart = (date, shift) => new Date(`${date}T${ovPad(CTL_START_H[shift])}:00:00`);
+    // A shift stays on screen for 20 min after it ends (handover), so the screen's date and shift are read from the clock minus 20 min.
+    const CTL_GRACE_MS = 20 * 60000, CTL_SHIFT_MS = 480 * 60000;
+    const ctlShiftNow = () => new Date(Date.now() - CTL_GRACE_MS);
 
     // Breakdown strip rules. Uses the Maintenance rules (mtMs, mtBreakdown, mtReason, mtNotes, mtLoc). Tests: tests/control-room-breakdowns.test.js
     // bk:pure:start
@@ -27446,7 +27449,8 @@
     // exOf = (vehicle _id, ms) => the excavator it was under, or ''.
     const BK_REPEAT_MS = 7 * 864e5;
     const bkShift = ms => { const h = new Date(ms).getHours(); return h >= 22 || h < 6 ? 'C' : h >= 14 ? 'B' : 'A'; };
-    function bkEvents(logs, tippers, start, lastTrip, exOf) {
+    // end = shift end (ms): in the 20 min handover window the next shift has begun, and its logs belong to it, not to this one.
+    function bkEvents(logs, tippers, start, lastTrip, exOf, end = Infinity) {
       const by = {}, dead = [], ready = [];
       [...logs].sort((a, b) => mtMs(a.timestamp) - mtMs(b.timestamp)).forEach(l => { const id = String(l.entity_id); if (tippers[id]) (by[id] = by[id] || []).push(l); });
       Object.keys(by).forEach(id => {
@@ -27463,10 +27467,10 @@
             loc: mtLoc(d.location), up, upBy: u ? u.performed_by_name || '' : '', trip: up && lt > up ? lt : 0,
             rep: xs.filter(l => mtBreakdown(l) && mtMs(l.timestamp) <= at && mtMs(l.timestamp) > at - BK_REPEAT_MS).length };
         };
-        const inShift = pairs.filter(([d]) => mtBreakdown(d) && mtMs(d.timestamp) >= start);
+        const inShift = pairs.filter(([d]) => mtBreakdown(d) && mtMs(d.timestamp) >= start && mtMs(d.timestamp) < end);
         if (inShift.length) dead.push(mk(...inShift[inShift.length - 1]));
         const last = pairs[pairs.length - 1]; // closed = the tipper is active now
-        if (last && last[1] && mtBreakdown(last[0]) && mtMs(last[1].timestamp) >= start) { const e = mk(last[0], last[1]); if (!e.trip) ready.push(e); }
+        if (last && last[1] && mtBreakdown(last[0]) && mtMs(last[1].timestamp) >= start && mtMs(last[1].timestamp) < end) { const e = mk(last[0], last[1]); if (!e.trip) ready.push(e); }
       });
       return { dead: dead.sort((a, b) => b.at - a.at), ready: ready.sort((a, b) => b.up - a.up) };
     }
@@ -27496,9 +27500,9 @@
     function ctlBkEvents(start) {
       if (!_ctl.bkLogs) return null;
       const tippers = {}, last = {};
-      allVehicles.forEach(v => { if (!v.retired && (eqClassify(v) || {}).name === 'tipper') tippers[String(v._id)] = String(_depVehicleIdMap[String(v._id)] || v.vehicle_number); });
+      allVehicles.forEach(v => { if (!v.retired && (eqClassify(v) || { name: 'tipper' }).name === 'tipper') tippers[String(v._id)] = String(_depVehicleIdMap[String(v._id)] || v.vehicle_number); });
       _depRawTrips.forEach(t => { const num = _depVehicleIdMap[String(t.vehicle_id)], ts = Date.parse(t.timestamp); if (num && ts > (last[num] || 0)) last[num] = ts; });
-      return bkEvents(_ctl.bkLogs, tippers, start.getTime(), last, ctlExcavatorOf);
+      return bkEvents(_ctl.bkLogs, tippers, start.getTime(), last, ctlExcavatorOf, start.getTime() + CTL_SHIFT_MS);
     }
 
     function openControlPage() {
@@ -27532,7 +27536,7 @@
 
     async function ctlRefresh() {
       if (document.getElementById('control-page').style.display !== 'block') return ctlStop(); // left by another route
-      const now = new Date(), date = ovMiningDate(now), shift = ovShiftOfHour(now.getHours()), scope = `${date}|${shift}`;
+      const eff = ctlShiftNow(), date = ovMiningDate(eff), shift = ovShiftOfHour(eff.getHours()), scope = `${date}|${shift}`;
       document.getElementById('dep-filter-date').value = date;
       document.getElementById('dep-filter-type').value = '';
       document.getElementById('dep-filter-search').value = '';
@@ -27619,7 +27623,7 @@
 
     // What the screen shows, from the Deployments data: production excavators with their tippers.
     function ctlModel(start) {
-      const nowMs = Date.now(), last = {}, drvTrucks = {}, times = {};
+      const nowMs = Math.min(Date.now(), start.getTime() + CTL_SHIFT_MS), last = {}, drvTrucks = {}, times = {}; // silence stops counting when the shift ends
       _depRawTrips.forEach(t => {
         const num = _depVehicleIdMap[String(t.vehicle_id)], ts = new Date(t.timestamp).getTime();
         if (!num || isNaN(ts)) return;
@@ -27650,10 +27654,10 @@
 
     function ctlRender() {
       if (document.getElementById('control-page').style.display !== 'block') return;
-      const now = new Date(), date = ovMiningDate(now), shift = ovShiftOfHour(now.getHours());
+      const now = new Date(), eff = ctlShiftNow(), date = ovMiningDate(eff), shift = ovShiftOfHour(eff.getHours());
       if (_ctl.scope && _ctl.scope !== `${date}|${shift}`) { ctlRefresh(); return; } // shift rolled over
       const start = ctlShiftStart(date, shift), elapsed = Math.min(480, Math.max(0, (now - start) / 60000)), left = Math.round(480 - elapsed);
-      document.getElementById('ctl-when').textContent = `${new Date(date + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${shift} · ${ovClock(now)} · ${Math.floor(left / 60)}h ${ovPad(left % 60)}m left`;
+      document.getElementById('ctl-when').textContent = `${new Date(date + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })} · Shift ${shift} · ${ovClock(now)} · ${left > 0 ? `${Math.floor(left / 60)}h ${ovPad(left % 60)}m left` : 'ended, closing the handover'}`;
       document.getElementById('ctl-live').classList.toggle('off', _ctl.error);
       document.getElementById('ctl-live-t').textContent = _ctl.error ? 'Not updating' : _ctl.lastOk ? `Updated ${ovAgo(Date.now() - _ctl.lastOk)}` : 'Waiting for data';
       if (!_ctl.lastOk) return;
@@ -27929,7 +27933,7 @@
         u.repeat = xs.filter(l => mtBreakdown(l) && mtMs(l.timestamp) <= at && mtMs(l.timestamp) > at - MT_REPEAT_MS).length;
         down.push(u);
       });
-      down.sort((a, b) => (a.at || Infinity) - (b.at || Infinity));
+      down.sort((a, b) => (isNaN(b.at) ? -Infinity : b.at) - (isNaN(a.at) ? -Infinity : a.at) || 0); // newest first, no time recorded last
       fixed.sort((a, b) => b.to - a.to);
       return { down, off, fixed };
     }
@@ -28037,7 +28041,7 @@
       const list = st.down.map((u, i) => [u, i]).sort((a, b) => (_mt.acked.has(a[0].key) - _mt.acked.has(b[0].key)) || a[1] - b[1]).map(x => x[0]);
       const unacked = st.down.filter(u => !_mt.acked.has(u.key)).length;
       document.title = (unacked ? `(${unacked}) ` : '') + (_mt.title || 'Maintenance');
-      const n = s => st.down.filter(u => u.source === s).length, longest = st.down.find(u => !isNaN(u.at));
+      const n = s => st.down.filter(u => u.source === s).length, longest = st.down.filter(u => !isNaN(u.at)).sort((a, b) => a.at - b.at)[0];
       const avg = st.fixed.length ? st.fixed.reduce((s, f) => s + f.to - f.from, 0) / st.fixed.length : 0;
       document.getElementById('mt-kpis').innerHTML = `
         <div class="mt-card mt-kpi${st.down.length ? ' hot' : ''}"><div class="mt-eyebrow">Down now</div><div class="big">${st.down.length}</div><div class="sub">${n('vehicle')} truck${n('vehicle') === 1 ? '' : 's'} · ${n('machine')} excavator${n('machine') === 1 ? '' : 's'} · ${n('other')} other${n('other') === 1 ? '' : 's'}</div></div>

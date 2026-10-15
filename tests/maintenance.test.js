@@ -36,9 +36,9 @@ const logs = [
   log('f', 'DEACTIVATED', 1, { reason: 'Engine', location: { latitude: 0, longitude: 0, accuracy: 3 } }), // 0,0 is no fix
 ];
 const st = mtState(items, logs, NOW);
-assert.deepStrictEqual(st.down.map(u => u.name), ['Truck #34', 'EX-04', 'Truck #60']);                   // longest down first; off duty is not down
+assert.deepStrictEqual(st.down.map(u => u.name), ['EX-04', 'Truck #60', 'Truck #34']);                   // newest first; off duty is not down
 assert.deepStrictEqual(st.off.map(u => u.name), ['Truck #8']);
-const [a, b, f] = st.down;
+const [b, f, a] = st.down; // newest first: EX-04, Truck #60, Truck #34
 assert.strictEqual(a.loc, null); assert.strictEqual(a.gpsWait, false);                                  // no fix after 2 min = "no location"
 assert.strictEqual(b.gpsWait, false); assert.strictEqual(b.loc.acc, 20); assert.strictEqual(b.repeat, 2); assert.strictEqual(a.repeat, 1); // 3 days ago + now = 2nd in 7 days
 assert.strictEqual(f.loc, null); assert.strictEqual(f.gpsWait, true);                                   // 1 min old, no usable fix yet = waiting
