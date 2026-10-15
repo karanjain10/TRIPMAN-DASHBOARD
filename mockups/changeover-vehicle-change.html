@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Changeover: vehicle change mockup</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#f5f4f0;--surface:#fff;--border:#e2e0d8;--border-strong:#c8c5bb;--text:#1a1917;--text2:#6b6860;--text3:#9b9890;--accent:#1a3a5c;--ok:#1f7a45;--ok-bg:#e6f4ec;--warn:#8a5a00;--warn-bg:#fdf1d6;--bad:#a32d2d;--bad-bg:#fbe7e5;--bad-line:#c0392b;--idle-bg:#eeede8;--info-bg:#e4edf7;--mono:'IBM Plex Mono',ui-monospace,monospace}
+  @media (prefers-color-scheme:dark){:root{--bg:#0d0f12;--surface:#16191f;--border:#262a33;--border-strong:#363b45;--text:#e6e9ee;--text2:#9aa0a6;--text3:#646a73;--accent:#10b981;--ok:#5fd493;--ok-bg:#12301f;--warn:#f5c04a;--warn-bg:#3a2d0c;--bad:#ff8a84;--bad-bg:#431a18;--bad-line:#ef4444;--idle-bg:#1d2129;--info-bg:#17283a}}
+  body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:24px;font-size:14px}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:16px;font-weight:600;margin-bottom:4px}h2{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text2);margin:22px 0 8px}
+  .note{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.55;max-width:900px}.note b{color:var(--text)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;min-width:1100px}
+  th{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);text-align:left;padding:9px 10px;border-bottom:1px solid var(--border-strong);white-space:nowrap}
+  th.r,td.r{text-align:right}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap}
+  td.m{font-family:var(--mono);font-size:12px;color:var(--text2)}
+  .shift{display:inline-block;padding:1px 7px;border-radius:5px;font:600 11px var(--mono);background:var(--ok-bg);color:var(--ok)}
+  .chip{display:inline-block;min-width:62px;text-align:right;padding:3px 9px;border-radius:6px;font:500 12px var(--mono)}
+  .g{background:var(--ok-bg);color:var(--ok)}.y{background:var(--warn-bg);color:var(--warn)}.p{background:var(--info-bg);color:var(--accent)}.none{color:var(--text3)}
+  /* the new parts */
+  tr.grp td{background:var(--idle-bg);border-bottom:1px solid var(--border-strong);padding:9px 10px}
+  .grp b{font-weight:600}.grp .sum{font-size:12px;color:var(--text2);margin-left:10px}.grp .sum b{color:var(--text);font-family:var(--mono);font-weight:500}
+  tr.seg td:first-child{padding-left:26px;color:var(--text2)}
+  .tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:6px;background:var(--warn-bg);color:var(--warn)}
+  tr.gap td{background:var(--bad-bg);border-bottom:1px solid var(--border)}
+  .gapline{display:flex;gap:10px;align-items:baseline;white-space:normal;padding-left:16px;font-size:12.5px;color:var(--text2);line-height:1.5}
+  .gapline b{color:var(--bad);font-family:var(--mono);font-weight:500}.gapline .why{color:var(--text)}
+  .ph{font-size:11px;color:var(--text3);font-style:italic}
+</style></head><body><div class="wrap">
+<h1>Shift Changeover Time Analysis: a driver who changed truck</h1>
+<p class="note"><b>Mockup only.</b> Hanuman Prasad Kaithal, Shift A, 15 Oct 2026. The trip times, trucks, the 11:17 / 11:22 / 13:58 deployment and reading times and the 5 / 15 / 133 / 7 / 27 min figures are from your two screenshots. The reason on the pink line is a <b>sample</b>: it will be read from the Equipment health log for truck 90, or say "no deactivation logged".</p>
+
+<h2>Today: one row, truck 29 only</h2>
+<div class="card"><table>
+  <thead><tr><th>Driver</th><th>Truck</th><th>Shift</th><th>Date</th><th>Deployed</th><th>Opening</th><th>1st Trip</th><th>Last Trip</th><th>Closing</th><th class="r">Deploy→Open</th><th class="r">Open→1st Trip</th><th class="r">Productive Span</th><th class="r">Last→Close</th><th class="r">Total Idle</th></tr></thead>
+  <tbody><tr><td>Hanuman Prasad Kaithal</td><td class="m" style="color:var(--text)"><b>29</b></td><td><span class="shift">A</span></td><td class="m">15 Oct</td><td class="m">11:17</td><td class="m">11:22</td><td class="m">11:38</td><td class="m">13:50</td><td class="m">13:58</td>
+    <td class="r"><span class="chip g">5 min</span></td><td class="r"><span class="chip y">15 min</span></td><td class="r"><span class="chip p">133 min</span></td><td class="r"><span class="chip g">7 min</span></td><td class="r"><b style="color:var(--warn);font:700 12px var(--mono)">27 min</b></td></tr></tbody>
+</table></div>
+<p class="note" style="margin-top:8px">His 3 trips on truck 90 (08:23, 08:40, 09:00) are not here, and neither is the wait for a truck between 09:00 and 11:17. The page only knows the work from 11:38.</p>
+
+<h2>Proposed: the driver's whole shift, truck by truck</h2>
+<div class="card"><table>
+  <thead><tr><th>Driver</th><th>Truck</th><th>Shift</th><th>Date</th><th>Deployed</th><th>Opening</th><th>1st Trip</th><th>Last Trip</th><th>Closing</th><th class="r">Deploy→Open</th><th class="r">Open→1st Trip</th><th class="r">Productive Span</th><th class="r">Last→Close</th><th class="r">Total Idle</th></tr></thead>
+  <tbody>
+    <tr class="grp"><td colspan="14"><b>Hanuman Prasad Kaithal</b> <span class="shift">A</span> <span style="color:var(--text2);font-size:12px">15 Oct</span>
+      <span class="sum">Worked <b>08:23 → 13:50</b> = <b>5h 27m</b> · <b>10</b> trips · <b>2</b> trucks · no truck <b>2h 17m</b></span></td></tr>
+    <tr class="seg"><td>Hanuman Prasad Kaithal</td><td class="m" style="color:var(--text)"><b>90</b><span class="tag">NO DEPLOYMENT RECORD</span></td><td><span class="shift">A</span></td><td class="m">15 Oct</td><td class="none">—</td><td class="none">—</td><td class="m">08:23</td><td class="m">09:00</td><td class="none">—</td>
+      <td class="r none">—</td><td class="r none">—</td><td class="r"><span class="chip p">37 min</span></td><td class="r none">—</td><td class="r none">—</td></tr>
+    <tr class="gap"><td colspan="14"><div class="gapline"><span>Truck 90 <b>→</b> truck 29</span><span>Last trip 09:00, next truck deployed 11:17: <b>137 min with no truck</b></span><span class="why">Truck 90 deactivated 09:04 · Engine <span class="ph">(sample, from the Equipment health log)</span></span></div></td></tr>
+    <tr class="seg"><td>Hanuman Prasad Kaithal</td><td class="m" style="color:var(--text)"><b>29</b></td><td><span class="shift">A</span></td><td class="m">15 Oct</td><td class="m">11:17</td><td class="m">11:22</td><td class="m">11:38</td><td class="m">13:50</td><td class="m">13:58</td>
+      <td class="r"><span class="chip g">5 min</span></td><td class="r"><span class="chip y">15 min</span></td><td class="r"><span class="chip p">133 min</span></td><td class="r"><span class="chip g">7 min</span></td><td class="r"><b style="color:var(--warn);font:700 12px var(--mono)">27 min</b></td></tr>
+  </tbody>
+</table></div>
+
+<h2>How the new numbers add up</h2>
+<p class="note">
+  Trips on truck 90 <b>37 min</b> (08:23 → 09:00) + no truck <b>137 min</b> (09:00 → 11:17) + getting going on 29 <b>21 min</b> (11:17 → 11:38) + trips on truck 29 <b>133 min</b> (11:38 → 13:50) = <b>328 min</b>, the same 5h 27m as the group line (08:23 → 13:50; the minutes are rounded one by one).<br>
+  The "Productive Span" chip stays per truck, as today. The new group line is the driver's own number, first trip to last trip across all trucks.<br><br>
+  <b>Rows come from the trips</b>, not only from deployment records, so a truck he drove with no deployment record (as truck 90 here) still gets its row. Only drivers who drove two or more trucks get the extra rows. The top cards count rows as before (a truck-only row adds to Records and Avg Productive, not to the idle averages), and CSV would carry the same rows plus a "Changed truck / reason" column. A driver who stayed on one truck looks exactly like today, with no group line.
+</p>
+</div></body></html>

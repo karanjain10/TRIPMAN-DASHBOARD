@@ -23157,6 +23157,40 @@
     const CO_GREEN_MAX  = 10;  // minutes — gap coloured green below this
     const CO_YELLOW_MAX = 20;  // minutes — yellow below this, red above
 
+    // co:pure:start
+    // A driver's shift truck by truck. trips = [{ drv, shift, date, ms, vid, trk }] (a trip with no driver is left out),
+    // rows = the deployment rows already built [{ drv, shift, date, vid, trk, depMs }], logs = [{ entity, ms, action, reason, notes }].
+    // One group per driver-shift-date: segs = one per truck, first trip first; changes = one per move to the next truck.
+    // A truck is covered when a row of the same truck, shift and date carries that driver (or no driver at all).
+    const CO_LOG_EARLY_MS = 15 * 60000; // a deactivation may be logged a few minutes before the last trip is synced
+    function coSegments(trips, rows, logs) {
+      const g = {};
+      trips.forEach(t => {
+        if (!t.drv || !(t.ms > 0)) return;
+        const gk = `${t.drv}|${t.shift}|${t.date}`, G = g[gk] = g[gk] || { gk, drv: t.drv, shift: t.shift, date: t.date, n: 0, segs: {} };
+        const S = G.segs[t.trk || t.vid] = G.segs[t.trk || t.vid] || { vid: t.vid, trk: t.trk, first: t.ms, last: t.ms, n: 0 };
+        S.n++; G.n++; S.first = Math.min(S.first, t.ms); S.last = Math.max(S.last, t.ms);
+      });
+      return Object.values(g).map(G => {
+        const segs = Object.values(G.segs).sort((a, b) => a.first - b.first), changes = [];
+        segs.forEach(s => {
+          const row = rows.find(r => r.shift === G.shift && r.date === G.date && (!r.drv || r.drv === G.drv) && ((r.vid && r.vid === s.vid) || (r.trk && r.trk === s.trk)));
+          s.covered = !!row; s.depMs = (row && row.depMs) || 0;
+        });
+        for (let i = 1; i < segs.length; i++) {
+          const a = segs[i - 1], b = segs[i];
+          const viaDeploy = b.depMs > a.last && b.depMs <= b.first; // the new truck's deployment time only counts when it falls between the two trucks' trips
+          const at = viaDeploy ? b.depMs : b.first;
+          const hit = logs.filter(l => l.action === 'DEACTIVATED' && a.vid && l.entity === a.vid && l.ms >= a.last - CO_LOG_EARLY_MS && l.ms <= b.first).sort((x, y) => y.ms - x.ms)[0] || null;
+          changes.push({ from: a, to: b, at, viaDeploy, noTruck: Math.max(0, Math.round((at - a.last) / 60000)), log: hit });
+        }
+        return { ...G, segs, changes, multi: segs.length >= 2, first: segs[0].first, last: Math.max(...segs.map(s => s.last)),
+          noTruck: changes.reduce((n, c) => n + c.noTruck, 0) };
+      });
+    }
+    // co:pure:end
+
+    let _coGroups     = {};   // driver|shift|date -> coSegments group
     let _coAllData    = [];   // computed rows from real API
     let _coFiltered   = [];   // after client-side filters applied
     let _coShift      = 'all';
@@ -23284,6 +23318,21 @@
         if (readingName !== '—') return readingName;
       }
       return '—';
+    }
+
+    // Paged like flFetchStatusLogs (the endpoint caps a page at 500). This endpoint filters on from_date.
+    async function coStatusLogs(from) {
+      const out = []; let firstId = null;
+      for (let page = 0; page < 10; page++) {
+        const res = await apiFetch(`${API}/equipment-status-logs?${new URLSearchParams({ from_date: from, limit: 500, skip: page * 500 })}`);
+        if (!res.ok) break;
+        const d = await res.json(), rows = Array.isArray(d) ? d : (d.logs || []);
+        if (!rows.length || (page && rows[0]._id === firstId)) break;
+        firstId = page ? firstId : rows[0]._id;
+        out.push(...rows);
+        if (rows.length < 500) break;
+      }
+      return out;
     }
 
     /* ── Data fetch and build ── */
@@ -23419,6 +23468,7 @@
           rows.push({
             driver_name:    coResolveDriverName(dep, reading),
             truck_number:   trk || '—',
+            drv: depDriverId, vid, trk, gk: depDriverId ? `${depDriverId}|${shift}|${date}` : '',
             shift,
             date,
             deployed_at:     deployedAt,
@@ -23429,6 +23479,30 @@
             gap1, gap2, productive, gap4,
             total_idle: totalIdle,
           });
+        });
+
+        // Truck by truck: a driver's trips on a truck with no deployment row of theirs get a row of their own, and each move from
+        // one truck to the next becomes a changeover line with the Equipment health reason.
+        const vnum = {};
+        allVehicles.forEach(v => { vnum[String(v._id)] = String(v.vehicle_number ?? ''); });
+        const segTrips = trips.map(t => {
+          const vid = String(t.vehicle_id || t.machine_id || '');
+          return { drv: String(t.driver_id || ''), shift: (t.shift || '').toUpperCase(), date: coTripShiftDate(t), vid,
+            ms: new Date(t.timestamp || t.trip_time || t.created_at).getTime(),
+            trk: String(t.truck_number || t.vehicle_number || t.equipment_code || vnum[vid] || '') };
+        });
+        let logs = [];
+        try { logs = (await coStatusLogs(ovShiftDate(dateFrom, -1))).map(l => ({ entity: String(l.entity_id), ms: mtMs(l.timestamp), action: l.action, reason: mtReason(l), notes: mtNotes(l) })); } catch (_) {}
+        const depRows = rows.map(r => ({ drv: r.drv, shift: r.shift, date: r.date, vid: r.vid, trk: r.trk, depMs: r.deployed_at ? new Date(r.deployed_at).getTime() : 0 }));
+        _coGroups = {};
+        coSegments(segTrips, depRows, logs).forEach(G => {
+          _coGroups[G.gk] = G;
+          const who = (allDrivers.find(x => String(x._id) === G.drv) || {}).name || '—';
+          if (G.multi) G.segs.filter(s => !s.covered).forEach(s => rows.push({
+            driver_name: who, truck_number: s.trk || '—', drv: G.drv, vid: s.vid, trk: s.trk, gk: G.gk, shift: G.shift, date: G.date,
+            deployed_at: null, opening_reading_at: null, first_trip_at: new Date(s.first).toISOString(), last_trip_at: new Date(s.last).toISOString(), closing_reading_at: null,
+            gap1: null, gap2: null, productive: Math.round((s.last - s.first) / 60000), gap4: null, total_idle: null, noDeploy: true
+          }));
         });
 
         // The summary API can include neighbouring history rows.
@@ -23562,33 +23636,71 @@
     }
 
     /* ── Table render ── */
-    function coRenderTable() {
-      const rows = coSorted(_coFiltered);
-      coUpdateIcons();
-      const tbody = document.getElementById('co-table-body');
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text-muted);">No records match the selected filters.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = rows.map(r => {
-        const shiftBg = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
-        const shiftClr = r.shift === 'A' ? '#065f46' : r.shift === 'B' ? '#5b21b6' : '#9a3412';
-        return `<tr style="border-bottom:1px solid var(--border);">
-          <td style="font-weight:500;">${r.driver_name}</td>
-          <td style="font-family:var(--font-mono);font-weight:500;">${r.truck_number}</td>
+    const coSegIs = (seg, r) => seg.trk === r.truck_number || (!!r.vid && seg.vid === r.vid); // a trip segment and a table row are the same truck
+    const coFmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h ` : '') + `${String(m % 60).padStart(m >= 60 ? 2 : 1, '0')}m`;
+    const coMono = 'font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);';
+    function coRowHtml(r, nested) {
+      const shiftBg = r.shift === 'A' ? '#d1fae5' : r.shift === 'B' ? '#ede9fe' : '#ffedd5';
+      const shiftClr = r.shift === 'A' ? '#065f46' : r.shift === 'B' ? '#5b21b6' : '#9a3412';
+      return `<tr style="border-bottom:1px solid var(--border);">
+          <td style="font-weight:500;${nested ? 'padding-left:26px;' : ''}">${ctlEsc(r.driver_name)}</td>
+          <td style="font-family:var(--font-mono);font-weight:500;">${ctlEsc(r.truck_number)}${r.noDeploy ? '<span style="margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:#fffbeb;color:#b45309;font-family:var(--font-main);" title="This driver has trips on this truck but no deployment record of their own">NO DEPLOYMENT RECORD</span>' : ''}</td>
           <td><span style="display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;font-family:var(--font-mono);background:${shiftBg};color:${shiftClr};">${r.shift}</span></td>
           <td style="color:var(--text-secondary);font-size:12px;">${coFmtDate(r.date)}</td>
-          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.deployed_at)}</td>
-          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.opening_reading_at)}</td>
-          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.first_trip_at)}</td>
-          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.last_trip_at)}</td>
-          <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${coFmtTime(r.closing_reading_at)}</td>
+          <td style="${coMono}">${coFmtTime(r.deployed_at)}</td>
+          <td style="${coMono}">${coFmtTime(r.opening_reading_at)}</td>
+          <td style="${coMono}">${coFmtTime(r.first_trip_at)}</td>
+          <td style="${coMono}">${coFmtTime(r.last_trip_at)}</td>
+          <td style="${coMono}">${coFmtTime(r.closing_reading_at)}</td>
           <td style="text-align:right;">${coGapHtml(r.gap1, false)}</td>
           <td style="text-align:right;">${coGapHtml(r.gap2, false)}</td>
           <td style="text-align:right;">${coGapHtml(r.productive, true)}</td>
           <td style="text-align:right;">${coGapHtml(r.gap4, false)}</td>
           <td style="text-align:right;">${coIdleHtml(r.total_idle)}</td>
         </tr>`;
+    }
+    // One sentence for a move from one truck to the next: when, how long with no truck, and why the old truck stopped.
+    function coChangeText(c) {
+      const t = ms => coFmtTime(new Date(ms).toISOString()), A = c.from.trk || 'previous truck', B = c.to.trk || 'next truck';
+      const gap = c.noTruck > 0
+        ? `Last trip ${t(c.from.last)}, next truck ${c.viaDeploy ? 'deployed' : 'first trip'} ${t(c.at)}: ${c.noTruck} min with no truck`
+        : `Changed truck at ${t(c.to.first)}`;
+      const why = c.log ? `Truck ${A} deactivated ${t(c.log.ms)} · ${c.log.reason || 'no reason given'}${c.log.notes ? ' · ' + c.log.notes : ''}` : `No deactivation logged for truck ${A}`;
+      return { head: `Truck ${A} → truck ${B}`, gap, why };
+    }
+    function coRenderTable() {
+      coUpdateIcons();
+      const tbody = document.getElementById('co-table-body');
+      if (!_coFiltered.length) {
+        tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:40px;color:var(--text-muted);">No records match the selected filters.</td></tr>`;
+        return;
+      }
+      if (_coSortKey) { tbody.innerHTML = coSorted(_coFiltered).map(r => coRowHtml(r, false)).join(''); return; } // sorted by a column: flat, as before
+      const ms = v => (v ? new Date(v).getTime() : 0), units = [], seen = {};
+      coSorted(_coFiltered).forEach(r => {
+        const G = r.gk && _coGroups[r.gk];
+        if (!G || !G.multi) return units.push({ rows: [r] });
+        if (seen[r.gk]) return;
+        seen[r.gk] = 1;
+        units.push({ G, rows: _coFiltered.filter(x => x.gk === r.gk).sort((a, b) => ms(a.first_trip_at) - ms(b.first_trip_at)) });
+      });
+      tbody.innerHTML = units.map(u => {
+        if (!u.G) return coRowHtml(u.rows[0], false);
+        const G = u.G, n = Math.round((G.last - G.first) / 60000), t = x => coFmtTime(new Date(x).toISOString());
+        const head = `<tr style="background:var(--surface-2,rgba(128,128,128,.10));border-bottom:1px solid var(--border);"><td colspan="14" style="padding:9px 10px;">
+          <b>${ctlEsc(u.rows[0].driver_name)}</b> <span style="color:var(--text-secondary);font-size:12px;">${coFmtDate(G.date)} · Shift ${ctlEsc(G.shift)}</span>
+          <span style="font-size:12px;color:var(--text-secondary);margin-left:10px;">Worked <b style="font-family:var(--font-mono);color:var(--text-primary);">${t(G.first)} → ${t(G.last)}</b> = <b style="font-family:var(--font-mono);color:var(--text-primary);">${coFmtDur(n)}</b>
+          · <b style="font-family:var(--font-mono);color:var(--text-primary);">${G.n}</b> trips · <b style="font-family:var(--font-mono);color:var(--text-primary);">${G.segs.length}</b> trucks${G.noTruck > 0 ? ` · no truck <b style="font-family:var(--font-mono);color:#dc2626;">${coFmtDur(G.noTruck)}</b>` : ''}</span></td></tr>`;
+        return head + u.rows.map((r, i) => {
+          const prev = u.rows[i - 1], c = prev && G.changes.find(x => coSegIs(x.from, prev) && coSegIs(x.to, r));
+          let line = '';
+          if (c) {
+            const x = coChangeText(c);
+            line = `<tr style="background:#fff5f5;border-bottom:1px solid var(--border);"><td colspan="14" style="padding:7px 10px 7px 26px;font-size:12.5px;color:var(--text-secondary);line-height:1.5;">
+              ${ctlEsc(x.head)} · <b style="color:#dc2626;">${ctlEsc(x.gap)}</b> · <span style="color:var(--text-primary);">${ctlEsc(x.why)}</span></td></tr>`;
+          }
+          return line + coRowHtml(r, true);
+        }).join('');
       }).join('');
     }
 
@@ -23596,7 +23708,12 @@
     function coExportCsv() {
       const rows = coSorted(_coFiltered);
       const hdr  = ['Driver','Truck','Shift','Date','Deployed','Opening','1st Trip','Last Trip','Closing',
-                     'Deploy→Open (min)','Open→1st Trip (min)','Productive Span (min)','Last→Close (min)','Total Idle (min)'];
+                     'Deploy→Open (min)','Open→1st Trip (min)','Productive Span (min)','Last→Close (min)','Total Idle (min)','Note'];
+      const note = r => { // the move onto this truck, or a missing deployment record
+        const G = _coGroups[r.gk], i = G && G.multi ? G.segs.findIndex(s => coSegIs(s, r)) : -1;
+        const c = i > 0 ? G.changes[i - 1] : null, x = c && coChangeText(c);
+        return [x && `${x.head}: ${x.gap}. ${x.why}`, r.noDeploy && 'No deployment record'].filter(Boolean).join(' | ');
+      };
       const esc  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       const lines = [
         'Tripman — Shift Changeover Time Analysis',
@@ -23608,7 +23725,7 @@
           r.driver_name, r.truck_number, r.shift, r.date,
           coFmtTime(r.deployed_at), coFmtTime(r.opening_reading_at),
           coFmtTime(r.first_trip_at), coFmtTime(r.last_trip_at), coFmtTime(r.closing_reading_at),
-          r.gap1 ?? '', r.gap2 ?? '', r.productive ?? '', r.gap4 ?? '', r.total_idle ?? ''
+          r.gap1 ?? '', r.gap2 ?? '', r.productive ?? '', r.gap4 ?? '', r.total_idle ?? '', note(r)
         ].map(esc).join(','))
       ];
       const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
