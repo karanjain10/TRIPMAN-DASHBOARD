@@ -24161,6 +24161,19 @@
       }
     }
 
+    // src-comp:pure:start
+    // The server never deploys a drill compressor on its own: it rides on its drill machine's record
+    // (compressor_unit_id / compressor_number), and the operator submits the compressor's HMR separately.
+    // Give each such compressor its own row so a shift with no compressor reading shows as missing, not nothing.
+    function srcWithCompressors(deployments) {
+      return deployments.flatMap(d => {
+        if (!d || d.equipment_type !== 'drill_machine' || !d.compressor_unit_id) return [d];
+        return [d, { ...d, _id: `${d._id}:compressor`, vehicle_id: d.compressor_unit_id, truck_number: d.compressor_number || null,
+          equipment_type: 'drill_compressor', compressor_unit_id: null, compressor_number: null }];
+      });
+    }
+    // src-comp:pure:end
+
     async function srcFetch() {
       const dateFrom = document.getElementById('src-date-from').value;
       const dateTo   = document.getElementById('src-date-to').value || dateFrom;
@@ -24271,7 +24284,7 @@
         // for more than one vehicle in that shift), emit one row per reading so
         // all readings are visible — not just the last one.
         const enriched = [];
-        ;[...live, ...history].forEach(d => {
+        ;srcWithCompressors([...live, ...history]).forEach(d => {
           const matchingReadings = srcReadingKeys(d)
             .flatMap(key => readingsMap[key] || [])
             // Deduplicate readings by their own _id in case multiple keys point
