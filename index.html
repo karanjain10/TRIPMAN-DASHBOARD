@@ -23988,7 +23988,7 @@
       const previous = document.getElementById('src-flags-prev');
       const next = document.getElementById('src-flags-next');
       const resolvedFilter = document.getElementById('src-flag-resolved').value;
-      const isAdmin = srcIsAdminOrOwner();
+      const isAdmin = srcCanEdit();
       const page = Math.floor(_srcFlagsOffset / SRC_FLAGS_LIMIT) + 1;
       if (pageLabel) pageLabel.textContent = _srcFlagsTotal ? `Page ${page} · ${_srcFlagsTotal} flags` : `Page ${page}`;
       if (previous) previous.disabled = _srcFlagsOffset === 0;
@@ -24693,7 +24693,7 @@
       const statusFilter = _srcStatusFilter;
       let rows = _srcFiltered.slice();
       if (statusFilter) rows = rows.filter(d => srcGetStatus(d) === statusFilter);
-      const isAdmin = srcIsAdminOrOwner();
+      const isAdmin = srcCanEdit();
 
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No deployments found for selected filters</td></tr>';
@@ -24830,6 +24830,12 @@
       return !!(currentUser.is_admin || role === 'admin' || role === 'owner');
     }
 
+    // Who may edit / create / resolve on Compliance: admins, owners and anyone in the HR department.
+    // (Retire stays admin/owner only, so it keeps srcIsAdminOrOwner.)
+    function srcCanEdit() {
+      return srcIsAdminOrOwner() || !!(currentUser && Array.isArray(currentUser.departments) && currentUser.departments.includes('hr'));
+    }
+
     function srcFormatApiError(payload, fallback) {
       if (!payload || typeof payload !== 'object') return fallback;
       const detail = payload.detail;
@@ -24904,7 +24910,7 @@
     }
 
     function srcShowAdminButtons() {
-      const isAdmin = srcIsAdminOrOwner();
+      const isAdmin = srcCanEdit();
       ['src-create-btn', 'src-audit-btn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = isAdmin ? 'inline-flex' : 'none';
@@ -25028,7 +25034,7 @@
     let _srcCreateShift = '';
 
     function srcOpenCreateModal() {
-      if (!srcIsAdminOrOwner()) return;
+      if (!srcCanEdit()) return;
       _srcCreateShift = '';
 
       // Populate equipment datalist from currently-loaded data
@@ -25188,7 +25194,7 @@
     // ── Audit log modal ─────────────────────────────────────────────────────────────────────────
 
     function srcOpenAuditModal() {
-      if (!srcIsAdminOrOwner()) return;
+      if (!srcCanEdit()) return;
       document.getElementById('src-audit-equip-filter').value = '';
       document.getElementById('src-audit-by-filter').value    = '';
       document.getElementById('src-audit-modal').classList.add('open');
